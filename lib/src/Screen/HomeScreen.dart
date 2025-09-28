@@ -99,6 +99,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     
                     // Configuración rápida
                     _buildQuickSettings(),
+                    const SizedBox(height: 24),
+                    
+                    // Navegación rápida
+                    _buildQuickNavigation(),
                   ],
                 ),
               ),
@@ -679,6 +683,104 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildQuickNavigation() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          '🚀 Navegación rápida',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: AppColors.textLight,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: _buildNavigationCard(
+                'Estadísticas',
+                Icons.analytics,
+                AppColors.accentBlue,
+                () => navigate(context, CustomScreen.statistics),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildNavigationCard(
+                'Recompensas',
+                Icons.card_giftcard,
+                Colors.orange,
+                () => navigate(context, CustomScreen.rewards),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _buildNavigationCard(
+                'Configuración',
+                Icons.settings,
+                AppColors.accentPurple,
+                () => navigate(context, CustomScreen.settings),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Container(), // Espacio vacío para mantener el layout
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNavigationCard(String title, IconData icon, Color color, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppColors.textLight.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withValues(alpha: 0.4), width: 1.5),
+          boxShadow: [
+            BoxShadow(
+              color: color.withValues(alpha: 0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.textLight.withValues(alpha: 0.9),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: color, size: 24),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textLight,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
   }

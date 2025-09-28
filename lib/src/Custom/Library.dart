@@ -3,6 +3,11 @@ import 'package:nofacezone/src/Screen/SplashScreen.dart';
 import 'package:nofacezone/src/Screen/WelcomeScreen.dart';
 import 'package:nofacezone/src/Screen/OnboardingScreen.dart';
 import 'package:nofacezone/src/Screen/HomeScreen.dart';
+import 'package:nofacezone/src/Screen/StatisticsScreen.dart';
+import 'package:nofacezone/src/Screen/Settings.dart';
+import 'package:nofacezone/src/Screen/RewardsScreen.dart';
+import 'package:nofacezone/src/Screen/LoginScreen.dart';
+import 'package:nofacezone/src/Screen/RegisterScreen.dart';
 import 'package:nofacezone/src/Custom/Constans.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -10,7 +15,12 @@ enum CustomScreen { //enumerancion para las pantallas
   splash, 
   onboarding,
   welcome,
-  home
+  home,
+  statistics,
+  settings,
+  rewards,
+  login,
+  register
 }
 
 enum TypeAnimation { //enumeracion para los tipos de animacion
@@ -36,6 +46,21 @@ void navigate(BuildContext mContext, CustomScreen mScreen, {bool finishCurrent =
       break;
     case CustomScreen.home:
       target = const HomeScreen();
+      break;
+    case CustomScreen.statistics:
+      target = const StatisticsScreen();
+      break;
+    case CustomScreen.settings:
+      target = const Settings();
+      break;
+    case CustomScreen.rewards:
+      target = const RewardsScreen();
+      break;
+    case CustomScreen.login:
+      target = const LoginScreen();
+      break;
+    case CustomScreen.register:
+      target = const RegisterScreen();
       break;
   }
 

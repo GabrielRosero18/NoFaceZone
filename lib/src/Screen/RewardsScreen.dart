@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:nofacezone/src/Custom/AppColors.dart';
 
-class Settings extends StatefulWidget {
-  const Settings({super.key});
+class RewardsScreen extends StatefulWidget {
+  const RewardsScreen({super.key});
 
   @override
-  State<Settings> createState() => _SettingsState();
+  State<RewardsScreen> createState() => _RewardsScreenState();
 }
 
-class _SettingsState extends State<Settings> {
+class _RewardsScreenState extends State<RewardsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Configuración'),
+        title: const Text('Recompensas'),
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
@@ -36,13 +36,13 @@ class _SettingsState extends State<Settings> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
-                Icons.settings,
+                Icons.card_giftcard,
                 size: 80,
                 color: AppColors.textLight,
               ),
               SizedBox(height: 16),
               Text(
-                'Configuración',
+                'Recompensas',
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
