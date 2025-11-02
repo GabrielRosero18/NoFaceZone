@@ -49,15 +49,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     super.dispose();
   }
 
-  Future<void> _logout() async {
-    final userProvider = Provider.of<UserProvider>(context, listen: false);
-    await userProvider.logout();
-    
-    if (mounted) {
-      navigate(context, CustomScreen.welcome, finishCurrent: true);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -95,10 +86,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     
                     // Progreso semanal
                     _buildWeeklyProgress(),
-                    const SizedBox(height: 24),
-                    
-                    // Configuración rápida
-                    _buildQuickSettings(),
                     const SizedBox(height: 24),
                     
                     // Navegación rápida
@@ -546,142 +533,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
             ],
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQuickSettings() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          '⚙️ Control de adicción',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: AppColors.textLight,
-          ),
-        ),
-        const SizedBox(height: 16),
-        _buildSettingItem(
-          'Bloqueo automático',
-          'Activar cuando se alcance el límite',
-          Icons.block,
-          true,
-          (value) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Bloqueo automático ${value == true ? 'activado' : 'desactivado'}')),
-            );
-          },
-        ),
-        const SizedBox(height: 12),
-        _buildSettingItem(
-          'Recordatorios',
-          'Notificaciones de pausa',
-          Icons.notifications,
-          true,
-          (value) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Recordatorios ${value == true ? 'activados' : 'desactivados'}')),
-            );
-          },
-        ),
-        const SizedBox(height: 12),
-        _buildSettingItem(
-          'Modo estricto',
-          'Bloquear acceso completo',
-          Icons.security,
-          false,
-          (value) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Modo estricto ${value == true ? 'activado' : 'desactivado'}')),
-            );
-          },
-        ),
-        const SizedBox(height: 12),
-        _buildSettingItem(
-          'Cerrar sesión',
-          'Salir de la aplicación',
-          Icons.logout,
-          null,
-          (value) => _logout(),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSettingItem(String title, String subtitle, IconData icon, bool? value, Function(bool?) onChanged) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.textLight.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.textLight.withValues(alpha: 0.3), width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.textLight.withValues(alpha: 0.1),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: AppColors.textLight.withValues(alpha: 0.9),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, color: AppColors.accentBlue, size: 20),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textLight,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.textLight.withValues(alpha: 0.9),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (value != null)
-            Switch(
-              value: value,
-              onChanged: onChanged,
-              activeThumbColor: AppColors.accentBlue,
-              activeTrackColor: AppColors.accentBlue.withValues(alpha: 0.3),
-              inactiveThumbColor: AppColors.textLight.withValues(alpha: 0.5),
-              inactiveTrackColor: AppColors.textLight.withValues(alpha: 0.2),
-            )
-          else
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppColors.textLight.withValues(alpha: 0.9),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: IconButton(
-                onPressed: () => onChanged(null),
-                icon: const Icon(Icons.arrow_forward_ios, color: AppColors.accentBlue, size: 16),
-              ),
-            ),
         ],
       ),
     );
