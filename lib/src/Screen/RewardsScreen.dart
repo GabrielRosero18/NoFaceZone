@@ -126,21 +126,6 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
               ],
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: AppColors.accentGradient),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Text(
-              '💎 Premium',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textLight,
-              ),
-            ),
-          ),
         ],
       ),
     );
@@ -495,22 +480,17 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Row(
-                    children: [
-                      Text(
-                        font.name,
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textLight,
-                        ),
-                      ),
-                      if (!font.unlocked) ...[
-                        const SizedBox(width: 8),
-                        const Icon(Icons.lock, color: AppColors.textLight, size: 16),
-                      ],
-                    ],
+                  Text(
+                    font.name,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textLight,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -519,13 +499,16 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
                       fontSize: 14,
                       color: AppColors.textLight.withValues(alpha: 0.8),
                     ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
             ),
+            const SizedBox(width: 8),
             if (!font.unlocked)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
                   color: Colors.amber.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(20),
@@ -533,12 +516,12 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.stars, color: Colors.amber, size: 16),
+                    const Icon(Icons.stars, color: Colors.amber, size: 14),
                     const SizedBox(width: 4),
                     Text(
                       '${font.price}',
                       style: const TextStyle(
-                        fontSize: 14,
+                        fontSize: 12,
                         fontWeight: FontWeight.bold,
                         color: Colors.amber,
                       ),
@@ -548,26 +531,12 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
               )
             else
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
                   color: Colors.green.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.check_circle, color: Colors.green, size: 16),
-                    SizedBox(width: 4),
-                    Text(
-                      'Disponible',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.green,
-                      ),
-                    ),
-                  ],
-                ),
+                child: const Icon(Icons.check_circle, color: Colors.green, size: 18),
               ),
           ],
         ),
@@ -641,9 +610,9 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
             ),
           ),
           const SizedBox(height: 8),
-          Text(
+              Text(
             'Desbloquea colecciones de mensajes inspiradores',
-            style: TextStyle(
+                style: TextStyle(
               fontSize: 14,
               color: AppColors.textLight.withValues(alpha: 0.8),
             ),
@@ -806,13 +775,67 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
         progress: 0.7,
       ),
       _RewardBadge(
+        id: 'early_bird',
+        name: 'Madrugador',
+        description: 'Completa 5 días antes del mediodía',
+        icon: Icons.wb_sunny,
+        color: Colors.yellow,
+        unlocked: userPoints >= 180,
+        progress: 0.4,
+      ),
+      _RewardBadge(
+        id: 'streak_master',
+        name: 'Maestro de Racha',
+        description: 'Mantén 10 días consecutivos',
+        icon: Icons.local_fire_department,
+        color: Colors.red,
+        unlocked: userPoints >= 250,
+        progress: 0.5,
+      ),
+      _RewardBadge(
+        id: 'goal_crusher',
+        name: 'Destructor de Metas',
+        description: 'Cumple todas las metas semanales',
+        icon: Icons.flag,
+        color: Colors.indigo,
+        unlocked: userPoints >= 300,
+        progress: 0.6,
+      ),
+      _RewardBadge(
+        id: 'zen_master',
+        name: 'Maestro Zen',
+        description: '10 horas libres en un día',
+        icon: Icons.spa,
+        color: Colors.teal,
+        unlocked: userPoints >= 200,
+        progress: 0.3,
+      ),
+      _RewardBadge(
+        id: 'night_owl',
+        name: 'Búho Nocturno',
+        description: 'Completa 5 días después de medianoche',
+        icon: Icons.nights_stay,
+        color: Colors.deepPurple,
+        unlocked: userPoints >= 220,
+        progress: 0.2,
+      ),
+      _RewardBadge(
+        id: 'unstoppable',
+        name: 'Imparable',
+        description: '15 días consecutivos sin faltar',
+        icon: Icons.speed,
+        color: Colors.pink,
+        unlocked: userPoints >= 280,
+        progress: 0.8,
+      ),
+      _RewardBadge(
         id: 'legend',
         name: 'Leyenda',
         description: 'Completa 100 días consecutivos',
         icon: Icons.emoji_events,
         color: Colors.orange,
-        unlocked: false,
-        progress: 0.0,
+        unlocked: userPoints >= 400,
+        progress: 0.1,
       ),
     ];
 
