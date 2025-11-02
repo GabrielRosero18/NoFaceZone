@@ -309,7 +309,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
       physics: const NeverScrollableScrollPhysics(),
       mainAxisSpacing: 12,
       crossAxisSpacing: 12,
-      childAspectRatio: 1.5,
+      childAspectRatio: 1.3,
       children: [
         _buildMetricCard('🎯 Efectividad', '85%', Icons.track_changes, Colors.orange),
         _buildMetricCard('💪 Motivación', 'Alta', Icons.emoji_events, Colors.yellow),
@@ -321,7 +321,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
 
   Widget _buildMetricCard(String label, String value, IconData icon, Color color) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: AppColors.textLight.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(12),
@@ -329,25 +329,30 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: color, size: 32),
-          const SizedBox(height: 8),
+          Icon(icon, color: color, size: 28),
+          const SizedBox(height: 6),
           Text(
             value,
             style: TextStyle(
-              fontSize: 20,
+              fontSize: 18,
               fontWeight: FontWeight.bold,
               color: AppColors.textLight,
             ),
           ),
           const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              color: AppColors.textLight.withValues(alpha: 0.9),
+          Flexible(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                color: AppColors.textLight.withValues(alpha: 0.9),
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
-            textAlign: TextAlign.center,
           ),
         ],
       ),
