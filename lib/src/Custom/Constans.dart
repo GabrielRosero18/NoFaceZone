@@ -17,6 +17,7 @@ class Constants {
   static const String themeKey = 'theme_mode';
   static const String colorThemeKey = 'color_theme';
   static const String fontFamilyKey = 'font_family';
+  static const String activeMessageCollectionsKey = 'active_message_collections';
   static const String languageKey = 'language';
   static const String onboardingKey = 'onboarding';
   

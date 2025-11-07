@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:nofacezone/src/Services/PreferencesService.dart';
 import 'package:nofacezone/src/Custom/AppColors.dart';
 import 'package:nofacezone/src/Custom/AppFonts.dart';
+import 'package:nofacezone/src/Custom/AppMessages.dart';
 
 /// Provider para manejar el estado global de la aplicación
 class AppProvider extends ChangeNotifier {
@@ -24,6 +25,10 @@ class AppProvider extends ChangeNotifier {
   // Fuente de la aplicación
   String _fontFamily = 'default';
   String get fontFamily => _fontFamily;
+
+  // Colecciones de mensajes activas
+  List<String> _activeMessageCollections = ['daily'];
+  List<String> get activeMessageCollections => List.from(_activeMessageCollections);
 
   // Idioma de la aplicación
   String _language = 'es';
@@ -80,6 +85,10 @@ class AppProvider extends ChangeNotifier {
       // Cargar fuente
       _fontFamily = PreferencesService.getFontFamily();
       AppFonts.setFont(_fontFamily);
+      
+      // Cargar colecciones de mensajes activas
+      _activeMessageCollections = PreferencesService.getActiveMessageCollections();
+      AppMessages.setActiveCollections(_activeMessageCollections);
       
       // Cargar configuraciones adicionales
       _notificationsEnabled = PreferencesService.areNotificationsEnabled();
@@ -148,6 +157,50 @@ class AppProvider extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       debugPrint('Error setting font family: $e');
+    }
+  }
+
+  /// Cambiar colecciones de mensajes activas
+  Future<void> setActiveMessageCollections(List<String> collectionIds) async {
+    try {
+      await PreferencesService.setActiveMessageCollections(collectionIds);
+      _activeMessageCollections = collectionIds;
+      AppMessages.setActiveCollections(collectionIds);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error setting active message collections: $e');
+    }
+  }
+
+  /// Agregar una colección de mensajes activa
+  Future<void> addMessageCollection(String collectionId) async {
+    if (!_activeMessageCollections.contains(collectionId)) {
+      final updated = List<String>.from(_activeMessageCollections)..add(collectionId);
+      await setActiveMessageCollections(updated);
+    }
+  }
+
+  /// Remover una colección de mensajes activa
+  Future<void> removeMessageCollection(String collectionId) async {
+    // No permitir remover la colección 'daily' (predeterminada)
+    if (collectionId == 'daily') return;
+    
+    if (_activeMessageCollections.contains(collectionId)) {
+      final updated = List<String>.from(_activeMessageCollections)..remove(collectionId);
+      // Asegurar que siempre haya al menos una colección activa
+      if (updated.isEmpty) {
+        updated.add('daily');
+      }
+      await setActiveMessageCollections(updated);
+    }
+  }
+
+  /// Alternar una colección de mensajes (activar/desactivar)
+  Future<void> toggleMessageCollection(String collectionId) async {
+    if (_activeMessageCollections.contains(collectionId)) {
+      await removeMessageCollection(collectionId);
+    } else {
+      await addMessageCollection(collectionId);
     }
   }
 

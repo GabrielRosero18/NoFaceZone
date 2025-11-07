@@ -100,6 +100,20 @@ class PreferencesService {
     return prefs.getString(Constants.fontFamilyKey) ?? 'default'; // 'default' es la fuente predeterminada (Roboto)
   }
 
+  /// Guardar colecciones de mensajes activas (lista de IDs separados por coma)
+  static Future<bool> setActiveMessageCollections(List<String> collectionIds) async {
+    return await prefs.setString(Constants.activeMessageCollectionsKey, collectionIds.join(','));
+  }
+
+  /// Obtener colecciones de mensajes activas
+  static List<String> getActiveMessageCollections() {
+    final collectionsString = prefs.getString(Constants.activeMessageCollectionsKey);
+    if (collectionsString == null || collectionsString.isEmpty) {
+      return ['daily']; // 'daily' es la colección predeterminada
+    }
+    return collectionsString.split(',').where((id) => id.isNotEmpty).toList();
+  }
+
   // ===== PREFERENCIAS DE CONFIGURACIÓN =====
   
   /// Guardar si las notificaciones están habilitadas

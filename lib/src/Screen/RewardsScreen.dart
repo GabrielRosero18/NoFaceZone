@@ -692,18 +692,42 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
   }
 
   Widget _buildMessageCard(_MotivationalMessage message) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.textLight.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: message.unlocked
-              ? AppColors.accentPurple.withValues(alpha: 0.5)
-              : AppColors.textLight.withValues(alpha: 0.2),
-          width: 1.5,
+    final appProvider = Provider.of<AppProvider>(context, listen: false);
+    final activeCollections = Provider.of<AppProvider>(context).activeMessageCollections;
+    final isActive = activeCollections.contains(message.id);
+
+    return GestureDetector(
+      onTap: message.unlocked
+          ? () async {
+              await appProvider.toggleMessageCollection(message.id);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      isActive
+                          ? 'Colección "${message.title}" desactivada'
+                          : 'Colección "${message.title}" activada ✨',
+                    ),
+                    backgroundColor: isActive ? Colors.orange : Colors.green,
+                  ),
+                );
+              }
+            }
+          : null,
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppColors.textLight.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isActive
+                ? AppColors.textLight
+                : message.unlocked
+                    ? AppColors.accentPurple.withValues(alpha: 0.5)
+                    : AppColors.textLight.withValues(alpha: 0.2),
+            width: isActive ? 2.5 : 1.5,
+          ),
         ),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -771,7 +795,36 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
                   ),
                 )
               else
-                const Icon(Icons.check_circle, color: Colors.green, size: 24),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: isActive
+                        ? Colors.white.withValues(alpha: 0.3)
+                        : Colors.green.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isActive ? Icons.star : Icons.check_circle,
+                        color: isActive ? Colors.white : Colors.green,
+                        size: 18,
+                      ),
+                      if (isActive) ...[
+                        const SizedBox(width: 4),
+                        const Text(
+                          'Activa',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
             ],
           ),
           if (message.unlocked) ...[
@@ -796,6 +849,7 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
                 )),
           ],
         ],
+      ),
       ),
     );
   }
