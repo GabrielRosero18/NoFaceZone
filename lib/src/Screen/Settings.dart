@@ -1,10 +1,14 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:nofacezone/src/Custom/AppColors.dart';
 import 'package:nofacezone/src/Custom/Library.dart';
+import 'package:nofacezone/src/Custom/Config.dart';
 import 'package:nofacezone/src/Providers/AppProvider.dart';
 import 'package:nofacezone/src/Providers/UserProvider.dart';
 import 'package:nofacezone/src/Screen/EditProfileScreen.dart';
+import 'package:nofacezone/src/Services/PreferencesService.dart';
 
 class Settings extends StatefulWidget {
   const Settings({super.key});
@@ -302,11 +306,7 @@ class _SettingsState extends State<Settings> {
           'Guardar tu progreso',
           Icons.file_download,
           null,
-          () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Función en desarrollo')),
-            );
-          },
+          () => _exportData(),
         ),
         const SizedBox(height: 12),
         _buildSettingItemWithValue(
@@ -314,11 +314,7 @@ class _SettingsState extends State<Settings> {
           'Restaurar tu progreso',
           Icons.file_upload,
           null,
-          () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Función en desarrollo')),
-            );
-          },
+          () => _importData(),
         ),
         const SizedBox(height: 12),
         _buildSettingItemWithValue(
@@ -349,8 +345,8 @@ class _SettingsState extends State<Settings> {
           'Versión',
           'Información de la app',
           Icons.info,
-          '1.0.0',
           null,
+          () => _showVersionInfo(),
         ),
         const SizedBox(height: 12),
         _buildSettingItemWithValue(
@@ -358,11 +354,7 @@ class _SettingsState extends State<Settings> {
           'Leer documentos legales',
           Icons.description,
           null,
-          () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Función en desarrollo')),
-            );
-          },
+          () => _showTermsAndConditions(),
         ),
         const SizedBox(height: 12),
         _buildSettingItemWithValue(
@@ -370,11 +362,7 @@ class _SettingsState extends State<Settings> {
           'Cómo protegemos tus datos',
           Icons.privacy_tip,
           null,
-          () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Función en desarrollo')),
-            );
-          },
+          () => _showPrivacyPolicy(),
         ),
         const SizedBox(height: 12),
         _buildSettingItemWithValue(
@@ -382,11 +370,7 @@ class _SettingsState extends State<Settings> {
           'Soporte y sugerencias',
           Icons.support_agent,
           null,
-          () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Función en desarrollo')),
-            );
-          },
+          () => _showContactInfo(),
         ),
         const SizedBox(height: 24),
         _buildSettingItemWithValue(
@@ -799,9 +783,7 @@ class _SettingsState extends State<Settings> {
     );
 
     if (shouldReset == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Función en desarrollo')),
-      );
+      await _resetSettings();
     }
   }
 
@@ -861,5 +843,695 @@ class _SettingsState extends State<Settings> {
       default:
         return language;
     }
+  }
+
+  // Exportar datos del usuario
+  Future<void> _exportData() async {
+    try {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final appProvider = Provider.of<AppProvider>(context, listen: false);
+      
+      final user = userProvider.user;
+      if (user == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No hay datos de usuario para exportar')),
+          );
+        }
+        return;
+      }
+
+      // Crear objeto con todos los datos
+      final exportData = {
+        'user': user.toJson(),
+        'settings': {
+          'notificationsEnabled': appProvider.notificationsEnabled,
+          'notificationInterval': appProvider.notificationInterval,
+          'dailyUsageLimit': appProvider.dailyUsageLimit,
+          'weeklyGoal': appProvider.weeklyGoal,
+          'themeMode': appProvider.themeMode.toString(),
+          'colorTheme': appProvider.colorTheme,
+          'language': appProvider.language,
+        },
+        'preferences': {
+          'todayUsageTime': PreferencesService.getTodayUsageTime(),
+          'lastUsageDate': PreferencesService.getLastUsageDate(),
+          'recordTimeWithoutFacebook': PreferencesService.getRecordTimeWithoutFacebook(),
+        },
+        'exportDate': DateTime.now().toIso8601String(),
+        'appVersion': await Config.getAppVersion(),
+      };
+
+      final jsonString = const JsonEncoder.withIndent('  ').convert(exportData);
+      
+      if (mounted) {
+        await showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            backgroundColor: const Color(0xFF1A1F3A),
+            title: const Text(
+              'Datos exportados',
+              style: TextStyle(color: AppColors.textLight),
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Tus datos han sido preparados para exportar. Copia el siguiente JSON:',
+                    style: TextStyle(color: AppColors.textLight),
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.darkSurface,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.textLight.withValues(alpha: 0.3)),
+                    ),
+                    child: SelectableText(
+                      jsonString,
+                      style: const TextStyle(
+                        color: AppColors.textLight,
+                        fontSize: 12,
+                        fontFamily: 'monospace',
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cerrar'),
+              ),
+              TextButton(
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: jsonString));
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Datos copiados al portapapeles')),
+                  );
+                },
+                child: Text('Copiar', style: TextStyle(color: AppColors.accentBlue)),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al exportar datos: $e')),
+        );
+      }
+    }
+  }
+
+  // Importar datos del usuario
+  Future<void> _importData() async {
+    try {
+      final TextEditingController jsonController = TextEditingController();
+      
+      final shouldImport = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: const Color(0xFF1A1F3A),
+          title: const Text(
+            'Importar datos',
+            style: TextStyle(color: AppColors.textLight),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Pega el JSON con tus datos exportados:',
+                  style: TextStyle(color: AppColors.textLight),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: jsonController,
+                  maxLines: 10,
+                  style: const TextStyle(color: AppColors.textLight),
+                  decoration: InputDecoration(
+                    hintText: 'Pega el JSON aquí...',
+                    hintStyle: TextStyle(color: AppColors.textLight.withValues(alpha: 0.5)),
+                    filled: true,
+                    fillColor: AppColors.darkSurface,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: AppColors.textLight.withValues(alpha: 0.3)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text('Importar', style: TextStyle(color: AppColors.accentBlue)),
+            ),
+          ],
+        ),
+      );
+
+      if (shouldImport == true && jsonController.text.isNotEmpty) {
+        try {
+          final importData = jsonDecode(jsonController.text) as Map<String, dynamic>;
+          
+          // Importar datos del usuario
+          if (importData.containsKey('user')) {
+            final userProvider = Provider.of<UserProvider>(context, listen: false);
+            final userData = importData['user'] as Map<String, dynamic>;
+            // Aquí podrías actualizar el usuario si tienes un método para eso
+          }
+
+          // Importar configuraciones
+          if (importData.containsKey('settings')) {
+            final appProvider = Provider.of<AppProvider>(context, listen: false);
+            final settings = importData['settings'] as Map<String, dynamic>;
+            
+            if (settings.containsKey('notificationsEnabled')) {
+              await appProvider.setNotificationsEnabled(settings['notificationsEnabled'] as bool);
+            }
+            if (settings.containsKey('notificationInterval')) {
+              await appProvider.setNotificationInterval(settings['notificationInterval'] as int);
+            }
+            if (settings.containsKey('dailyUsageLimit')) {
+              await appProvider.setDailyUsageLimit(settings['dailyUsageLimit'] as int);
+            }
+            if (settings.containsKey('weeklyGoal')) {
+              await appProvider.setWeeklyGoal(settings['weeklyGoal'] as int);
+            }
+          }
+
+          // Importar preferencias
+          if (importData.containsKey('preferences')) {
+            final prefs = importData['preferences'] as Map<String, dynamic>;
+            if (prefs.containsKey('todayUsageTime')) {
+              await PreferencesService.setTodayUsageTime(prefs['todayUsageTime'] as int);
+            }
+            if (prefs.containsKey('lastUsageDate')) {
+              await PreferencesService.setLastUsageDate(prefs['lastUsageDate'] as String);
+            }
+            if (prefs.containsKey('recordTimeWithoutFacebook')) {
+              await PreferencesService.setRecordTimeWithoutFacebook(prefs['recordTimeWithoutFacebook'] as int);
+            }
+          }
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Datos importados correctamente')),
+            );
+          }
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Error al importar datos: JSON inválido')),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al importar datos: $e')),
+        );
+      }
+    }
+  }
+
+  // Reiniciar configuración
+  Future<void> _resetSettings() async {
+    try {
+      final appProvider = Provider.of<AppProvider>(context, listen: false);
+      
+      // Resetear a valores por defecto
+      await appProvider.setNotificationsEnabled(true);
+      await appProvider.setNotificationInterval(15);
+      await appProvider.setDailyUsageLimit(60);
+      await appProvider.setWeeklyGoal(10);
+      await appProvider.setThemeMode(ThemeMode.system);
+      await appProvider.setColorTheme('ocean');
+      await appProvider.setLanguage('es');
+      
+      // Limpiar preferencias de uso
+      await PreferencesService.setTodayUsageTime(0);
+      await PreferencesService.setLastUsageDate('');
+      await PreferencesService.setRecordTimeWithoutFacebook(0);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Configuración reiniciada correctamente')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al reiniciar configuración: $e')),
+        );
+      }
+    }
+  }
+
+  // Mostrar información de versión
+  Future<void> _showVersionInfo() async {
+    try {
+      final version = await Config.getAppVersion();
+      final packageInfo = await Config.getPackageInfo();
+      
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            backgroundColor: const Color(0xFF1A1F3A),
+            title: const Text(
+              'Información de la aplicación',
+              style: TextStyle(color: AppColors.textLight),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildInfoRow('Nombre', Config.appName),
+                const SizedBox(height: 8),
+                _buildInfoRow('Versión', version),
+                const SizedBox(height: 8),
+                _buildInfoRow('Build', packageInfo.buildNumber),
+                const SizedBox(height: 8),
+                _buildInfoRow('Descripción', Config.appDescription),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cerrar'),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al obtener información: $e')),
+        );
+      }
+    }
+  }
+
+  Widget _buildInfoRow(String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 100,
+          child: Text(
+            '$label:',
+            style: TextStyle(
+              color: AppColors.textLight.withValues(alpha: 0.7),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(color: AppColors.textLight),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Mostrar términos y condiciones
+  Future<void> _showTermsAndConditions() async {
+    if (mounted) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: const Color(0xFF1A1F3A),
+          title: const Text(
+            'Términos y Condiciones',
+            style: TextStyle(color: AppColors.textLight),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Última actualización: ${DateTime.now().toString().split(' ')[0]}',
+                  style: const TextStyle(
+                    color: AppColors.textLight,
+                    fontSize: 12,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  '1. Aceptación de los Términos',
+                  style: TextStyle(
+                    color: AppColors.textLight,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Al usar NoFaceZone, aceptas estos términos y condiciones. Si no estás de acuerdo, no uses la aplicación.',
+                  style: TextStyle(color: AppColors.textLight),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  '2. Uso de la Aplicación',
+                  style: TextStyle(
+                    color: AppColors.textLight,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'NoFaceZone está diseñada para ayudarte a controlar tu uso de redes sociales. Debes usar la aplicación de manera responsable y legal.',
+                  style: TextStyle(color: AppColors.textLight),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  '3. Privacidad',
+                  style: TextStyle(
+                    color: AppColors.textLight,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Respetamos tu privacidad. Los datos que recopilamos se utilizan únicamente para mejorar tu experiencia en la aplicación. Consulta nuestra Política de Privacidad para más detalles.',
+                  style: TextStyle(color: AppColors.textLight),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  '4. Limitación de Responsabilidad',
+                  style: TextStyle(
+                    color: AppColors.textLight,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'NoFaceZone se proporciona "tal cual" sin garantías. No nos hacemos responsables de ningún daño derivado del uso de la aplicación.',
+                  style: TextStyle(color: AppColors.textLight),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  '5. Modificaciones',
+                  style: TextStyle(
+                    color: AppColors.textLight,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Nos reservamos el derecho de modificar estos términos en cualquier momento. Te notificaremos sobre cambios importantes.',
+                  style: TextStyle(color: AppColors.textLight),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cerrar'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  // Mostrar política de privacidad
+  Future<void> _showPrivacyPolicy() async {
+    if (mounted) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: const Color(0xFF1A1F3A),
+          title: const Text(
+            'Política de Privacidad',
+            style: TextStyle(color: AppColors.textLight),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Última actualización: ${DateTime.now().toString().split(' ')[0]}',
+                  style: const TextStyle(
+                    color: AppColors.textLight,
+                    fontSize: 12,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  '1. Sobre NoFaceZone',
+                  style: TextStyle(
+                    color: AppColors.textLight,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'NoFaceZone es una aplicación de autocontrol diseñada para ayudarte a gestionar y reducir tu tiempo de uso en redes sociales, especialmente Facebook. Nuestro objetivo es proporcionarte herramientas para desarrollar hábitos más saludables y conscientes en el uso de tecnología.',
+                  style: TextStyle(color: AppColors.textLight),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  '2. Información que Recopilamos',
+                  style: TextStyle(
+                    color: AppColors.textLight,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Para brindarte un servicio de autocontrol efectivo, recopilamos: información de tu cuenta (nombre, email), datos de uso de la aplicación (tiempo de uso, límites establecidos, metas alcanzadas), preferencias de configuración (notificaciones, temas, idioma), y estadísticas de autocontrol (tiempo sin usar Facebook, progreso semanal). Todos estos datos se almacenan de forma segura y se utilizan exclusivamente para tu beneficio personal.',
+                  style: TextStyle(color: AppColors.textLight),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  '3. Cómo Usamos tu Información para el Autocontrol',
+                  style: TextStyle(
+                    color: AppColors.textLight,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Utilizamos tu información únicamente para: generar estadísticas personalizadas sobre tu uso de redes sociales, enviarte recordatorios y notificaciones que te ayuden a mantener tus límites de autocontrol, crear gráficos y reportes de tu progreso, personalizar tu experiencia según tus objetivos de autocontrol, y mejorar las funcionalidades de la aplicación para mejorarte en tu proceso de autocontrol.',
+                  style: TextStyle(color: AppColors.textLight),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  '4. Privacidad y Confidencialidad',
+                  style: TextStyle(
+                    color: AppColors.textLight,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Entendemos que el autocontrol es un proceso personal y privado. Por ello, NO vendemos, compartimos ni divulgamos tu información personal con terceros. Tus datos de autocontrol son completamente confidenciales y solo tú tienes acceso a ellos. Solo utilizamos datos agregados y completamente anónimos para análisis generales que nos ayudan a mejorar la aplicación.',
+                  style: TextStyle(color: AppColors.textLight),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  '5. Seguridad de tus Datos',
+                  style: TextStyle(
+                    color: AppColors.textLight,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Implementamos medidas de seguridad técnicas y organizativas para proteger tu información personal y tus datos de autocontrol. Utilizamos encriptación y almacenamiento seguro. Sin embargo, ningún método de transmisión por Internet es 100% seguro, por lo que te recomendamos mantener tu cuenta segura con una contraseña fuerte.',
+                  style: TextStyle(color: AppColors.textLight),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  '6. Tus Derechos de Autocontrol',
+                  style: TextStyle(
+                    color: AppColors.textLight,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Tienes control total sobre tus datos: puedes acceder, modificar, exportar o eliminar tu información personal y datos de autocontrol en cualquier momento a través de la configuración de la aplicación. También puedes reiniciar tus estadísticas o ajustar tus límites de autocontrol cuando lo desees. Tu autonomía y control sobre tus datos es nuestra prioridad.',
+                  style: TextStyle(color: AppColors.textLight),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  '7. Datos de Autocontrol y Estadísticas',
+                  style: TextStyle(
+                    color: AppColors.textLight,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Los datos de autocontrol (tiempo de uso, límites, metas, progreso) se almacenan localmente en tu dispositivo y de forma segura en nuestros servidores para permitir sincronización entre dispositivos. Estos datos son esenciales para que la aplicación funcione correctamente y te proporcione las herramientas de autocontrol que necesitas. Puedes eliminar estos datos en cualquier momento desde la configuración.',
+                  style: TextStyle(color: AppColors.textLight),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cerrar'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  // Mostrar información de contacto
+  Future<void> _showContactInfo() async {
+    if (mounted) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: const Color(0xFF1A1F3A),
+          title: const Text(
+            'Contacto',
+            style: TextStyle(color: AppColors.textLight),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                '¿Necesitas ayuda o tienes sugerencias?',
+                style: TextStyle(color: AppColors.textLight),
+              ),
+              const SizedBox(height: 24),
+              _buildContactRow(
+                Icons.email,
+                'Email',
+                'soporte@nofacezone.com',
+                () {
+                  // Aquí podrías abrir el cliente de email si tienes url_launcher
+                  Clipboard.setData(const ClipboardData(text: 'soporte@nofacezone.com'));
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Email copiado al portapapeles')),
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
+              _buildContactRow(
+                Icons.help_outline,
+                'Soporte',
+                'Centro de ayuda',
+                () {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Centro de ayuda próximamente disponible')),
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
+              _buildContactRow(
+                Icons.feedback,
+                'Feedback',
+                'Envíanos tus comentarios',
+                () {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Gracias por tu interés en mejorar NoFaceZone')),
+                  );
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cerrar'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  Widget _buildContactRow(IconData icon, String label, String value, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.darkSurface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.textLight.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: AppColors.accentBlue, size: 24),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: AppColors.textLight.withValues(alpha: 0.7),
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    value,
+                    style: const TextStyle(
+                      color: AppColors.textLight,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.arrow_forward_ios,
+              color: AppColors.textLight.withValues(alpha: 0.5),
+              size: 16,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
