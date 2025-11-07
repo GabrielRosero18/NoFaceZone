@@ -15,6 +15,10 @@ class Settings extends StatefulWidget {
 class _SettingsState extends State<Settings> {
   @override
   Widget build(BuildContext context) {
+    // Escuchar cambios del AppProvider para actualizar el tema
+    final appProvider = Provider.of<AppProvider>(context);
+    AppColors.setTheme(appProvider.colorTheme);
+    
     return Scaffold(
       appBar: AppBar(
         title: const Text('Configuración'),
@@ -28,7 +32,7 @@ class _SettingsState extends State<Settings> {
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -96,7 +100,7 @@ class _SettingsState extends State<Settings> {
                 height: 64,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  gradient: const LinearGradient(colors: AppColors.accentGradient),
+                  gradient: LinearGradient(colors: AppColors.accentGradient),
                   boxShadow: AppColors.cardShadow,
                 ),
                 child: Container(

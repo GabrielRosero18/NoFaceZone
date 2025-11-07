@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:nofacezone/src/Custom/AppColors.dart';
 import 'package:nofacezone/src/Providers/UserProvider.dart';
+import 'package:nofacezone/src/Providers/AppProvider.dart';
 import 'package:nofacezone/src/Custom/Library.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -51,11 +52,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    // Escuchar cambios del AppProvider para actualizar el tema
+    final appProvider = Provider.of<AppProvider>(context);
+    AppColors.setTheme(appProvider.colorTheme);
+    
     return Scaffold(
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -146,7 +151,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               height: 56,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: const LinearGradient(colors: AppColors.accentGradient),
+                gradient: LinearGradient(colors: AppColors.accentGradient),
                 boxShadow: AppColors.cardShadow,
               ),
               child: Container(
@@ -468,7 +473,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   color: AppColors.textLight.withValues(alpha: 0.9),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.trending_up,
                   color: AppColors.accentPurple,
                   size: 20,
@@ -498,7 +503,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               widthFactor: 0.75,
               child: Container(
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: AppColors.accentGradient),
+                  gradient: LinearGradient(colors: AppColors.accentGradient),
                   borderRadius: BorderRadius.circular(6),
                   boxShadow: [
                     BoxShadow(

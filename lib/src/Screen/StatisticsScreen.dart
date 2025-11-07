@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:nofacezone/src/Custom/AppColors.dart';
+import 'package:nofacezone/src/Providers/AppProvider.dart';
 
 class StatisticsScreen extends StatefulWidget {
   const StatisticsScreen({super.key});
@@ -25,6 +27,10 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
 
   @override
   Widget build(BuildContext context) {
+    // Escuchar cambios del AppProvider para actualizar el tema
+    final appProvider = Provider.of<AppProvider>(context);
+    AppColors.setTheme(appProvider.colorTheme);
+    
     return Scaffold(
       appBar: AppBar(
         title: const Text('Estadísticas'),
@@ -50,7 +56,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -404,7 +410,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
           width: 35,
           height: 140 * height,
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
+            gradient: LinearGradient(
               begin: Alignment.bottomCenter,
               end: Alignment.topCenter,
               colors: [AppColors.accentPurple, AppColors.accentBlue],
@@ -573,9 +579,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
               alignment: Alignment.centerLeft,
               widthFactor: progress,
               child: Container(
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   gradient: LinearGradient(colors: AppColors.accentGradient),
-                  borderRadius: BorderRadius.all(Radius.circular(5)),
+                  borderRadius: const BorderRadius.all(Radius.circular(5)),
                 ),
               ),
             ),

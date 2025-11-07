@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:nofacezone/src/Custom/AppColors.dart';
+import 'package:nofacezone/src/Providers/AppProvider.dart';
 
 class RewardsScreen extends StatefulWidget {
   const RewardsScreen({super.key});
@@ -53,7 +55,7 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -132,12 +134,19 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
   }
 
   Widget _buildThemesTab() {
+    // Obtener el tema actual para mostrar los colores correctos
+    final currentColorTheme = AppColors.getTheme(Provider.of<AppProvider>(context, listen: false).colorTheme) ?? AppColors.currentTheme;
+    
     final themes = [
       _RewardTheme(
         id: 'ocean',
         name: 'Océano Azul',
         description: 'Un tema relajante inspirado en el mar',
-        colors: [Colors.blue[800]!, Colors.teal[400]!, Colors.cyan[300]!],
+        colors: const [
+          Color(0xFF7F53AC), // primaryPurple
+          Color(0xFF647DEE), // primaryBlue
+          Color(0xFFB8C1FF), // lightLavender
+        ],
         price: 0,
         unlocked: true,
         icon: Icons.water_drop,
@@ -231,31 +240,40 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
   }
 
   Widget _buildThemeCard(_RewardTheme theme) {
+    final appProvider = Provider.of<AppProvider>(context, listen: false);
+    final currentTheme = Provider.of<AppProvider>(context).colorTheme;
+    final isSelected = currentTheme == theme.id;
+
     return GestureDetector(
       onTap: theme.unlocked
-          ? () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Tema "${theme.name}" aplicado ✨'),
-                  backgroundColor: Colors.green,
-                ),
-              );
+          ? () async {
+              await appProvider.setColorTheme(theme.id);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Tema "${theme.name}" aplicado ✨'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              }
             }
           : null,
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: theme.colors,
-          ),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: theme.unlocked
-                ? AppColors.textLight.withValues(alpha: 0.3)
-                : AppColors.textLight.withValues(alpha: 0.1),
-            width: 2,
-          ),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: theme.colors,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isSelected
+                  ? AppColors.textLight
+                  : theme.unlocked
+                      ? AppColors.textLight.withValues(alpha: 0.3)
+                      : AppColors.textLight.withValues(alpha: 0.1),
+              width: isSelected ? 3 : 2,
+            ),
           boxShadow: [
             BoxShadow(
               color: theme.colors[0].withValues(alpha: 0.3),
@@ -275,7 +293,16 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Icon(theme.icon, color: Colors.white, size: 28),
-                      if (!theme.unlocked)
+                      if (isSelected)
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.3),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(Icons.check_circle, color: Colors.white, size: 20),
+                        )
+                      else if (!theme.unlocked)
                         Container(
                           padding: const EdgeInsets.all(6),
                           decoration: BoxDecoration(
@@ -332,21 +359,27 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
                         ],
                       ),
                     )
-                  else
+                    else
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
+                        color: isSelected
+                            ? Colors.white.withValues(alpha: 0.4)
+                            : Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.check_circle, color: Colors.white, size: 16),
-                          SizedBox(width: 4),
+                          Icon(
+                            isSelected ? Icons.star : Icons.check_circle,
+                            color: Colors.white,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 4),
                           Text(
-                            'Disponible',
-                            style: TextStyle(
+                            isSelected ? 'Activo' : 'Disponible',
+                            style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
@@ -435,15 +468,22 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
   }
 
   Widget _buildFontCard(_RewardFont font) {
+    final appProvider = Provider.of<AppProvider>(context, listen: false);
+    final currentFont = Provider.of<AppProvider>(context).fontFamily;
+    final isSelected = currentFont == font.id;
+
     return GestureDetector(
       onTap: font.unlocked
-          ? () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Fuente "${font.name}" aplicada ✨'),
-                  backgroundColor: Colors.green,
-                ),
-              );
+          ? () async {
+              await appProvider.setFontFamily(font.id);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Fuente "${font.name}" aplicada ✨'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              }
             }
           : null,
       child: Container(
@@ -452,10 +492,12 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
           color: AppColors.textLight.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: font.unlocked
-                ? AppColors.accentBlue.withValues(alpha: 0.5)
-                : AppColors.textLight.withValues(alpha: 0.2),
-            width: 1.5,
+            color: isSelected
+                ? AppColors.textLight
+                : font.unlocked
+                    ? AppColors.accentBlue.withValues(alpha: 0.5)
+                    : AppColors.textLight.withValues(alpha: 0.2),
+            width: isSelected ? 2.5 : 1.5,
           ),
         ),
         child: Row(
@@ -465,7 +507,7 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
               height: 60,
               decoration: BoxDecoration(
                 gradient: font.unlocked
-                    ? const LinearGradient(colors: AppColors.accentGradient)
+                    ? LinearGradient(colors: AppColors.accentGradient)
                     : null,
                 color: font.unlocked ? null : AppColors.textLight.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
@@ -533,10 +575,32 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
-                  color: Colors.green.withValues(alpha: 0.2),
+                  color: isSelected
+                      ? Colors.white.withValues(alpha: 0.3)
+                      : Colors.green.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: const Icon(Icons.check_circle, color: Colors.green, size: 18),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      isSelected ? Icons.star : Icons.check_circle,
+                      color: isSelected ? Colors.white : Colors.green,
+                      size: 18,
+                    ),
+                    if (isSelected) ...[
+                      const SizedBox(width: 4),
+                      const Text(
+                        'Activa',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ),
           ],
         ),
@@ -649,7 +713,7 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
                   gradient: message.unlocked
-                      ? const LinearGradient(colors: AppColors.accentGradient)
+                      ? LinearGradient(colors: AppColors.accentGradient)
                       : null,
                   color: message.unlocked ? null : AppColors.textLight.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),

@@ -5,6 +5,7 @@ import 'package:nofacezone/src/Custom/AppColors.dart';
 import 'package:nofacezone/src/Services/UserService.dart';
 import 'package:nofacezone/src/Custom/Library.dart';
 import 'package:nofacezone/src/Providers/UserProvider.dart';
+import 'package:nofacezone/src/Providers/AppProvider.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -120,6 +121,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Escuchar cambios del AppProvider para actualizar el tema
+    final appProvider = Provider.of<AppProvider>(context);
+    AppColors.setTheme(appProvider.colorTheme);
+    
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -137,7 +142,7 @@ class _LoginScreenState extends State<LoginScreen> {
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -188,7 +193,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.accentBlue, width: 2),
+                      borderSide: BorderSide(color: AppColors.accentBlue, width: 2),
                     ),
                     filled: true,
                     fillColor: AppColors.textLight.withValues(alpha: 0.1),
@@ -215,7 +220,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.accentBlue, width: 2),
+                      borderSide: BorderSide(color: AppColors.accentBlue, width: 2),
                     ),
                     filled: true,
                     fillColor: AppColors.textLight.withValues(alpha: 0.1),
@@ -252,7 +257,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 Container(
                   height: 56,
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(colors: AppColors.accentGradient),
+                    gradient: LinearGradient(colors: AppColors.accentGradient),
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: AppColors.cardShadow,
                   ),

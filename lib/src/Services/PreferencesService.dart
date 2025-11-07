@@ -80,6 +80,26 @@ class PreferencesService {
     return prefs.getString(Constants.languageKey) ?? 'es';
   }
 
+  /// Guardar tema de colores seleccionado
+  static Future<bool> setColorTheme(String themeId) async {
+    return await prefs.setString(Constants.colorThemeKey, themeId);
+  }
+
+  /// Obtener tema de colores seleccionado
+  static String getColorTheme() {
+    return prefs.getString(Constants.colorThemeKey) ?? 'ocean'; // 'ocean' es el tema predeterminado
+  }
+
+  /// Guardar fuente seleccionada
+  static Future<bool> setFontFamily(String fontId) async {
+    return await prefs.setString(Constants.fontFamilyKey, fontId);
+  }
+
+  /// Obtener fuente seleccionada
+  static String getFontFamily() {
+    return prefs.getString(Constants.fontFamilyKey) ?? 'default'; // 'default' es la fuente predeterminada (Roboto)
+  }
+
   // ===== PREFERENCIAS DE CONFIGURACIÓN =====
   
   /// Guardar si las notificaciones están habilitadas

@@ -1,20 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'RegisterScreen.dart';
 import 'LoginScreen.dart';
 import 'package:nofacezone/src/Custom/AppColors.dart';
 import 'package:nofacezone/src/Custom/Config.dart';
 import 'package:nofacezone/src/Custom/Constans.dart';
+import 'package:nofacezone/src/Providers/AppProvider.dart';
 
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    // Escuchar cambios del AppProvider para actualizar el tema
+    final appProvider = Provider.of<AppProvider>(context);
+    AppColors.setTheme(appProvider.colorTheme);
+    
     return Scaffold(
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -37,7 +43,7 @@ class WelcomeScreen extends StatelessWidget {
                     height: 120,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      gradient: const LinearGradient(colors: AppColors.accentGradient),
+                      gradient: LinearGradient(colors: AppColors.accentGradient),
                       boxShadow: AppColors.elevatedShadow,
                     ),
                     child: Container(
@@ -65,7 +71,7 @@ class WelcomeScreen extends StatelessWidget {
                   const SizedBox(height: 32),
                   // Título con gradiente
                   ShaderMask(
-                    shaderCallback: (rect) => const LinearGradient(
+                    shaderCallback: (rect) => LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                       colors: AppColors.accentGradient,
@@ -114,7 +120,7 @@ class WelcomeScreen extends StatelessWidget {
                         children: [
                           Container(
                             decoration: BoxDecoration(
-                              gradient: const LinearGradient(colors: AppColors.accentGradient),
+                              gradient: LinearGradient(colors: AppColors.accentGradient),
                               borderRadius: BorderRadius.circular(12),
                               boxShadow: AppColors.cardShadow,
                             ),

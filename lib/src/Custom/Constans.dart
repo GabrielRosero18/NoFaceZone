@@ -15,6 +15,8 @@ class Constants {
   static const String userDataKey = 'user_data';
   static const String isFirstTimeKey = 'is_first_time';
   static const String themeKey = 'theme_mode';
+  static const String colorThemeKey = 'color_theme';
+  static const String fontFamilyKey = 'font_family';
   static const String languageKey = 'language';
   static const String onboardingKey = 'onboarding';
   

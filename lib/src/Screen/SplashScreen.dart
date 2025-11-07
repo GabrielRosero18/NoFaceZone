@@ -16,9 +16,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   late final Animation<double> _scaleIn;
   late final Animation<double> _fadeIn;
 
-  // Usar la paleta de colores consistente
-  final List<Color> _backgroundGradient = AppColors.backgroundGradient;
-  final List<Color> _accentGradient = AppColors.accentGradient;
+  // Los gradientes se obtendrán dinámicamente en el build
 
 
   startTime() async {
@@ -63,6 +61,10 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
   @override
   Widget build(BuildContext context) {
+    // Escuchar cambios del AppProvider para actualizar el tema
+    final appProvider = Provider.of<AppProvider>(context);
+    AppColors.setTheme(appProvider.colorTheme);
+    
     return Scaffold(
       body: Container(
         width: double.infinity,
@@ -71,7 +73,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: _backgroundGradient,
+            colors: AppColors.backgroundGradient,
           ),
         ),
         child: Stack(
@@ -88,7 +90,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                     padding: const EdgeInsets.all(3),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      gradient: LinearGradient(colors: _accentGradient),
+                      gradient: LinearGradient(colors: AppColors.accentGradient),
                       boxShadow: const [
                         BoxShadow(
                           color: Color(0x33000000),
@@ -137,7 +139,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                         shaderCallback: (rect) => LinearGradient(
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
-                          colors: _accentGradient,
+                          colors: AppColors.accentGradient,
                         ).createShader(rect),
                         blendMode: BlendMode.srcIn,
                         child: const Text(

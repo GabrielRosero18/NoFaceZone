@@ -64,11 +64,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Escuchar cambios del AppProvider para actualizar el tema
+    final appProvider = Provider.of<AppProvider>(context);
+    AppColors.setTheme(appProvider.colorTheme);
+    
     return Scaffold(
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -140,7 +144,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     // Botón siguiente/empezar
                     Container(
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(colors: AppColors.accentGradient),
+                        gradient: LinearGradient(colors: AppColors.accentGradient),
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: AppColors.cardShadow,
                       ),
@@ -204,7 +208,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             height: 120,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: const LinearGradient(colors: AppColors.accentGradient),
+              gradient: LinearGradient(colors: AppColors.accentGradient),
               boxShadow: AppColors.elevatedShadow,
             ),
             child: Container(

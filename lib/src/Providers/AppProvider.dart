@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:nofacezone/src/Services/PreferencesService.dart';
+import 'package:nofacezone/src/Custom/AppColors.dart';
+import 'package:nofacezone/src/Custom/AppFonts.dart';
 
 /// Provider para manejar el estado global de la aplicación
 class AppProvider extends ChangeNotifier {
@@ -14,6 +16,14 @@ class AppProvider extends ChangeNotifier {
   // Tema de la aplicación
   ThemeMode _themeMode = ThemeMode.system;
   ThemeMode get themeMode => _themeMode;
+
+  // Tema de colores de la aplicación
+  String _colorTheme = 'ocean';
+  String get colorTheme => _colorTheme;
+
+  // Fuente de la aplicación
+  String _fontFamily = 'default';
+  String get fontFamily => _fontFamily;
 
   // Idioma de la aplicación
   String _language = 'es';
@@ -63,6 +73,14 @@ class AppProvider extends ChangeNotifier {
       // Cargar idioma
       _language = PreferencesService.getLanguage();
       
+      // Cargar tema de colores
+      _colorTheme = PreferencesService.getColorTheme();
+      AppColors.setTheme(_colorTheme);
+      
+      // Cargar fuente
+      _fontFamily = PreferencesService.getFontFamily();
+      AppFonts.setFont(_fontFamily);
+      
       // Cargar configuraciones adicionales
       _notificationsEnabled = PreferencesService.areNotificationsEnabled();
       _notificationInterval = PreferencesService.getNotificationInterval();
@@ -107,6 +125,29 @@ class AppProvider extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       debugPrint('Error setting language: $e');
+    }
+  }
+
+  /// Cambiar tema de colores de la aplicación
+  Future<void> setColorTheme(String themeId) async {
+    try {
+      await PreferencesService.setColorTheme(themeId);
+      _colorTheme = themeId;
+      AppColors.setTheme(themeId);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error setting color theme: $e');
+    }
+  }
+
+  /// Cambiar fuente de la aplicación
+  Future<void> setFontFamily(String fontId) async {
+    try {
+      await PreferencesService.setFontFamily(fontId);
+      _fontFamily = fontId;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error setting font family: $e');
     }
   }
 
