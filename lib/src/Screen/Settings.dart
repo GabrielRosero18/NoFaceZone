@@ -4,6 +4,7 @@ import 'package:nofacezone/src/Custom/AppColors.dart';
 import 'package:nofacezone/src/Custom/Library.dart';
 import 'package:nofacezone/src/Providers/AppProvider.dart';
 import 'package:nofacezone/src/Providers/UserProvider.dart';
+import 'package:nofacezone/src/Screen/EditProfileScreen.dart';
 
 class Settings extends StatefulWidget {
   const Settings({super.key});
@@ -109,11 +110,25 @@ class _SettingsState extends State<Settings> {
                     shape: BoxShape.circle,
                     color: AppColors.darkSurface,
                   ),
-                  child: const Icon(
-                    Icons.person,
-                    color: AppColors.textLight,
-                    size: 32,
-                  ),
+                  child: user?.profileImage != null && user!.profileImage!.isNotEmpty
+                      ? ClipOval(
+                          child: Image.network(
+                            user!.profileImage!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return const Icon(
+                                Icons.person,
+                                color: AppColors.textLight,
+                                size: 32,
+                              );
+                            },
+                          ),
+                        )
+                      : const Icon(
+                          Icons.person,
+                          color: AppColors.textLight,
+                          size: 32,
+                        ),
                 ),
               ),
               const SizedBox(width: 16),
@@ -142,10 +157,16 @@ class _SettingsState extends State<Settings> {
               ),
               IconButton(
                 icon: const Icon(Icons.edit, color: AppColors.textLight),
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Función en desarrollo')),
+                onPressed: () async {
+                  await Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const EditProfileScreen(),
+                    ),
                   );
+                  // Actualizar la pantalla cuando se regrese
+                  if (mounted) {
+                    setState(() {});
+                  }
                 },
               ),
             ],
