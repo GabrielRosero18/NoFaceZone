@@ -54,20 +54,37 @@ class _LoginScreenState extends State<LoginScreen> {
       if (result['success'] == true) {
         if (!mounted) return;
         
-        // Actualizar el UserProvider con los datos del usuario
+        // Actualizar el UserProvider con los datos del usuario desde Supabase
         final userProvider = Provider.of<UserProvider>(context, listen: false);
-        await userProvider.login(
+        final loginSuccess = await userProvider.login(
           _emailController.text.trim(),
           _passwordController.text,
+          userData: result['user'],
+          authUser: result['authUser'] != null 
+              ? {
+                  'id': result['authUser'].id,
+                  'email': result['authUser'].email,
+                  'email_confirmed_at': result['authUser'].emailConfirmedAt != null 
+                      ? result['authUser'].emailConfirmedAt.toString() 
+                      : null,
+                }
+              : null,
         );
+        
+        if (!loginSuccess) {
+          if (!mounted) return;
+          _showErrorDialog('Error al cargar los datos del usuario');
+          return;
+        }
         
         // Verificar que el widget sigue montado antes de usar context
         if (!mounted) return;
         
-        // Mostrar mensaje de éxito
+        // Mostrar mensaje de éxito con el nombre real del usuario
+        final userName = result['user']['nombre'] ?? 'Usuario';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('¡Bienvenido ${result['user']['nombre']}!'),
+            content: Text('¡Bienvenido $userName!'),
             backgroundColor: Colors.green,
             duration: const Duration(seconds: 2),
           ),

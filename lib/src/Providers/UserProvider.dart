@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:nofacezone/src/Custom/Constans.dart';
+import 'package:nofacezone/src/Services/UserService.dart';
 
 /// Modelo de usuario
 class User {
@@ -22,14 +24,26 @@ class User {
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
-      id: json['id'] ?? '',
+      id: json['id']?.toString() ?? json['id_usuario']?.toString() ?? '',
       email: json['email'] ?? '',
-      name: json['name'] ?? '',
-      profileImage: json['profileImage'],
+      name: json['name'] ?? json['nombre'] ?? '',
+      profileImage: json['profileImage'] ?? json['foto_perfil'],
       lastLogin: json['lastLogin'] != null 
           ? DateTime.parse(json['lastLogin']) 
           : null,
-      isEmailVerified: json['isEmailVerified'] ?? false,
+      isEmailVerified: json['isEmailVerified'] ?? json['email_verificado'] ?? false,
+    );
+  }
+
+  /// Crear User desde datos de Supabase
+  factory User.fromSupabaseData(Map<String, dynamic> userData, Map<String, dynamic>? authUser) {
+    return User(
+      id: userData['id_usuario']?.toString() ?? authUser?['id']?.toString() ?? '',
+      email: userData['email'] ?? authUser?['email'] ?? '',
+      name: userData['nombre'] ?? '',
+      profileImage: userData['foto_perfil'],
+      lastLogin: DateTime.now(),
+      isEmailVerified: authUser?['email_confirmed_at'] != null,
     );
   }
 
@@ -74,9 +88,19 @@ class UserProvider extends ChangeNotifier {
       // Cargar datos del usuario
       String? userDataString = prefs.getString(Constants.userDataKey);
       if (userDataString != null && _token != null) {
-        // Aquí podrías parsear el JSON del usuario
-        // Por ahora simulamos que está logueado si hay token
-        _isLoggedIn = true;
+        try {
+          // Parsear el JSON del usuario
+          final Map<String, dynamic> userJson = jsonDecode(userDataString);
+          _user = User.fromJson(userJson);
+          _isLoggedIn = true;
+        } catch (e) {
+          debugPrint('Error parsing user data: $e');
+          // Si hay error al parsear, intentar cargar desde Supabase
+          await _loadUserFromSupabase();
+        }
+      } else {
+        // Si no hay datos guardados, verificar si hay sesión activa en Supabase
+        await _loadUserFromSupabase();
       }
       
     } catch (e) {
@@ -86,32 +110,74 @@ class UserProvider extends ChangeNotifier {
     }
   }
 
+  /// Cargar usuario desde Supabase si hay sesión activa
+  Future<void> _loadUserFromSupabase() async {
+    try {
+      if (UserService.isUserLoggedIn()) {
+        final authUser = UserService.getCurrentUser();
+        if (authUser != null && authUser.email != null) {
+          // Obtener datos del usuario desde la base de datos
+          final userData = await UserService.getUserByEmail(authUser.email!);
+          if (userData != null) {
+            _user = User.fromSupabaseData(userData, {
+              'id': authUser.id,
+              'email': authUser.email,
+              'email_confirmed_at': authUser.emailConfirmedAt != null ? authUser.emailConfirmedAt.toString() : null,
+            });
+            _token = authUser.id;
+            _isLoggedIn = true;
+            await _saveUserData();
+            notifyListeners();
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading user from Supabase: $e');
+    }
+  }
+
   /// Iniciar sesión
-  Future<bool> login(String email, String password) async {
+  Future<bool> login(String email, String password, {Map<String, dynamic>? userData, Map<String, dynamic>? authUser}) async {
     _setLoading(true);
     
     try {
-      // Aquí harías la llamada a tu API
-      // Simulamos un login exitoso
-      await Future.delayed(const Duration(seconds: 2));
+      // Si se proporcionan los datos del usuario desde Supabase, usarlos
+      if (userData != null && authUser != null) {
+        _user = User.fromSupabaseData(userData, authUser);
+        _token = authUser['id']?.toString() ?? authUser['user']?['id']?.toString() ?? '';
+        _isLoggedIn = true;
+        
+        // Guardar en SharedPreferences
+        await _saveUserData();
+        
+        notifyListeners();
+        return true;
+      }
       
-      // Datos simulados del usuario
-      _user = User(
-        id: '1',
-        email: email,
-        name: 'Usuario Demo',
-        lastLogin: DateTime.now(),
-        isEmailVerified: true,
-      );
+      // Si no se proporcionan datos, intentar obtenerlos desde Supabase
+      if (UserService.isUserLoggedIn()) {
+        final currentAuthUser = UserService.getCurrentUser();
+        if (currentAuthUser != null && currentAuthUser.email != null) {
+          final dbUserData = await UserService.getUserByEmail(currentAuthUser.email!);
+          if (dbUserData != null) {
+            _user = User.fromSupabaseData(dbUserData, {
+              'id': currentAuthUser.id,
+              'email': currentAuthUser.email,
+              'email_confirmed_at': currentAuthUser.emailConfirmedAt != null ? currentAuthUser.emailConfirmedAt.toString() : null,
+            });
+            _token = currentAuthUser.id;
+            _isLoggedIn = true;
+            
+            // Guardar en SharedPreferences
+            await _saveUserData();
+            
+            notifyListeners();
+            return true;
+          }
+        }
+      }
       
-      _token = 'demo_token_123';
-      _isLoggedIn = true;
-      
-      // Guardar en SharedPreferences
-      await _saveUserData();
-      
-      notifyListeners();
-      return true;
+      return false;
       
     } catch (e) {
       debugPrint('Error during login: $e');
@@ -122,31 +188,37 @@ class UserProvider extends ChangeNotifier {
   }
 
   /// Registrar nuevo usuario
-  Future<bool> register(String email, String password, String name) async {
+  Future<bool> register(String email, String password, String name, {Map<String, dynamic>? userData, Map<String, dynamic>? authUser}) async {
     _setLoading(true);
     
     try {
-      // Aquí harías la llamada a tu API
-      // Simulamos un registro exitoso
-      await Future.delayed(const Duration(seconds: 2));
+      // Si se proporcionan los datos del usuario desde Supabase, usarlos
+      if (userData != null && authUser != null) {
+        _user = User.fromSupabaseData(userData, authUser);
+        _token = authUser['id']?.toString() ?? authUser['user']?['id']?.toString() ?? '';
+        _isLoggedIn = true;
+        
+        // Guardar en SharedPreferences
+        await _saveUserData();
+        
+        notifyListeners();
+        return true;
+      }
       
-      // Datos del nuevo usuario
+      // Si no se proporcionan datos, crear usuario básico (fallback)
       _user = User(
-        id: '2',
+        id: '',
         email: email,
         name: name,
         lastLogin: DateTime.now(),
         isEmailVerified: false,
       );
       
-      _token = 'demo_token_456';
-      _isLoggedIn = true;
-      
-      // Guardar en SharedPreferences
-      await _saveUserData();
+      _token = '';
+      _isLoggedIn = false;
       
       notifyListeners();
-      return true;
+      return false;
       
     } catch (e) {
       debugPrint('Error during registration: $e');
@@ -217,7 +289,7 @@ class UserProvider extends ChangeNotifier {
       }
       
       if (_user != null) {
-        await prefs.setString(Constants.userDataKey, _user!.toJson().toString());
+        await prefs.setString(Constants.userDataKey, jsonEncode(_user!.toJson()));
       }
       
     } catch (e) {
