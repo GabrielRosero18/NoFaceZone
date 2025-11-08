@@ -156,26 +156,43 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
             ),
             // Avatar del usuario
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(colors: AppColors.accentGradient),
-                boxShadow: AppColors.cardShadow,
-              ),
-              child: Container(
-                margin: const EdgeInsets.all(2),
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.darkSurface,
-                ),
-                child: const Icon(
-                  Icons.person,
-                  color: AppColors.textLight,
-                  size: 28,
-                ),
-              ),
+            Consumer<UserProvider>(
+              builder: (context, userProvider, child) {
+                final user = userProvider.user;
+                return Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(colors: AppColors.accentGradient),
+                    boxShadow: AppColors.cardShadow,
+                  ),
+                  child: Container(
+                    margin: const EdgeInsets.all(2),
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.darkSurface,
+                    ),
+                    child: user?.profileImage != null && user!.profileImage!.isNotEmpty
+                        ? Container(
+                            width: 52,
+                            height: 52,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              image: DecorationImage(
+                                image: NetworkImage(user.profileImage!),
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                          )
+                        : const Icon(
+                            Icons.person,
+                            color: AppColors.textLight,
+                            size: 28,
+                          ),
+                  ),
+                );
+              },
             ),
           ],
         );

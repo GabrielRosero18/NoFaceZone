@@ -120,11 +120,13 @@ class UserProvider extends ChangeNotifier {
           // que intenta primero por auth_user_id y luego por email
           final userData = await UserService.getCurrentUserData();
           if (userData != null) {
+            debugPrint('📥 Cargando usuario desde Supabase. Foto: ${userData['foto_perfil']}');
             _user = User.fromSupabaseData(userData, {
               'id': authUser.id,
               'email': authUser.email,
               'email_confirmed_at': authUser.emailConfirmedAt != null ? authUser.emailConfirmedAt.toString() : null,
             });
+            debugPrint('👤 Usuario cargado. Foto en User: ${_user?.profileImage}');
             _token = authUser.id;
             _isLoggedIn = true;
             await _saveUserData();
@@ -303,5 +305,10 @@ class UserProvider extends ChangeNotifier {
   void _setLoading(bool loading) {
     _isLoading = loading;
     notifyListeners();
+  }
+
+  /// Recargar datos del usuario desde Supabase
+  Future<void> reloadUser() async {
+    await _loadUserFromSupabase();
   }
 }

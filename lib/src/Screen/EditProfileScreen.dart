@@ -367,10 +367,24 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       // Subir imagen si hay una nueva
       String? imageUrl = _profileImageUrl;
       if (_profileImage != null) {
-        // Aquí deberías subir la imagen a Supabase Storage
-        // Por ahora, guardamos la ruta local temporalmente
-        imageUrl = _profileImage!.path;
-        // TODO: Implementar subida a Supabase Storage
+        // Subir la imagen a Supabase Storage
+        final uploadResult = await UserService.uploadProfileImage(_profileImage!);
+        
+        if (!uploadResult['success']) {
+          if (mounted) {
+            final localizations = AppLocalizations.of(context)!;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(uploadResult['error'] ?? localizations.errorUpdatingProfile),
+                backgroundColor: Colors.red,
+              ),
+            );
+            return;
+          }
+        }
+        
+        imageUrl = uploadResult['url'];
+        debugPrint('📸 URL de la foto obtenida: $imageUrl');
       }
 
       // Actualizar perfil en UserProvider
@@ -378,6 +392,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         name: _nameController.text.trim(),
         profileImage: imageUrl,
       );
+      
+      debugPrint('👤 UserProvider actualizado con foto: ${userProvider.user?.profileImage}');
 
       // Actualizar datos adicionales en la base de datos
       // El método updateUser ahora usa automáticamente auth_user_id del usuario autenticado
@@ -390,6 +406,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         gender: _selectedGender, // Ya está mapeado a la traducción actual
         language: _selectedLanguage, // Ya está como código (es/en)
         frequency: _selectedFrequency, // Ya está mapeado a la traducción actual
+        fotoPerfil: imageUrl, // Actualizar la foto de perfil en la base de datos
       );
 
       if (!updateResult['success']) {
@@ -403,6 +420,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           );
           return;
         }
+      }
+
+      // Recargar datos del usuario desde Supabase para sincronizar
+      if (updateResult['success']) {
+        // Esperar un momento para que Supabase procese la actualización
+        await Future.delayed(const Duration(milliseconds: 500));
+        
+        // Recargar el usuario desde Supabase para obtener los datos más recientes
+        await userProvider.reloadUser();
+        
+        debugPrint('✅ Usuario recargado. Foto actual: ${userProvider.user?.profileImage}');
       }
 
       if (mounted) {
@@ -528,24 +556,27 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               color: AppColors.darkSurface,
                             ),
                             child: _profileImage != null
-                                ? ClipOval(
-                                    child: Image.file(
-                                      _profileImage!,
-                                      fit: BoxFit.cover,
+                                ? Container(
+                                    width: 112,
+                                    height: 112,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      image: DecorationImage(
+                                        image: FileImage(_profileImage!),
+                                        fit: BoxFit.cover,
+                                      ),
                                     ),
                                   )
                                 : _profileImageUrl != null
-                                    ? ClipOval(
-                                        child: Image.network(
-                                          _profileImageUrl!,
-                                          fit: BoxFit.cover,
-                                          errorBuilder: (context, error, stackTrace) {
-                                            return const Icon(
-                                              Icons.person,
-                                              color: AppColors.textLight,
-                                              size: 60,
-                                            );
-                                          },
+                                    ? Container(
+                                        width: 112,
+                                        height: 112,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          image: DecorationImage(
+                                            image: NetworkImage(_profileImageUrl!),
+                                            fit: BoxFit.cover,
+                                          ),
                                         ),
                                       )
                                     : const Icon(

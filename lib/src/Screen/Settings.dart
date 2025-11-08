@@ -118,17 +118,15 @@ class _SettingsState extends State<Settings> {
                     color: AppColors.darkSurface,
                   ),
                   child: user?.profileImage != null && user!.profileImage!.isNotEmpty
-                      ? ClipOval(
-                          child: Image.network(
-                            user!.profileImage!,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return const Icon(
-                                Icons.person,
-                                color: AppColors.textLight,
-                                size: 32,
-                              );
-                            },
+                      ? Container(
+                          width: 60,
+                          height: 60,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            image: DecorationImage(
+                              image: NetworkImage(user.profileImage!),
+                              fit: BoxFit.cover,
+                            ),
                           ),
                         )
                       : const Icon(

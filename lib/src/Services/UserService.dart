@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as path;
 
 /// Servicio para manejar operaciones de usuarios con Supabase
 class UserService {
@@ -436,6 +438,91 @@ class UserService {
       return {
         'success': false,
         'error': 'Error al verificar credenciales.',
+      };
+    }
+  }
+
+  /// Subir foto de perfil a Supabase Storage
+  static Future<Map<String, dynamic>> uploadProfileImage(File imageFile) async {
+    try {
+      final currentUser = getCurrentUser();
+      if (currentUser == null) {
+        return {
+          'success': false,
+          'error': 'Debes iniciar sesión para subir una foto.',
+        };
+      }
+
+      // Obtener la extensión del archivo
+      final fileExtension = path.extension(imageFile.path);
+      final fileName = '${currentUser.id}_${DateTime.now().millisecondsSinceEpoch}$fileExtension';
+      final filePath = 'profile-pictures/$fileName';
+
+      // Leer el archivo como bytes
+      final imageBytes = await imageFile.readAsBytes();
+
+      // Determinar el content type basado en la extensión
+      String contentType = 'image/jpeg';
+      if (fileExtension.toLowerCase() == '.png') {
+        contentType = 'image/png';
+      } else if (fileExtension.toLowerCase() == '.gif') {
+        contentType = 'image/gif';
+      } else if (fileExtension.toLowerCase() == '.webp') {
+        contentType = 'image/webp';
+      }
+
+      // Subir la imagen al bucket 'avatars' (o el bucket que tengas configurado)
+      // Si no existe el bucket, puedes usar 'public' o crear uno llamado 'avatars'
+      await _supabase.storage
+          .from('avatars')
+          .uploadBinary(
+            filePath,
+            imageBytes,
+            fileOptions: FileOptions(
+              upsert: true, // Si ya existe, lo reemplaza
+              contentType: contentType,
+            ),
+          );
+
+      // Obtener la URL pública de la imagen
+      final imageUrl = _supabase.storage
+          .from('avatars')
+          .getPublicUrl(filePath);
+
+      debugPrint('✅ Imagen subida exitosamente');
+      debugPrint('📁 Ruta del archivo: $filePath');
+      debugPrint('🔗 URL de la imagen: $imageUrl');
+
+      return {
+        'success': true,
+        'url': imageUrl,
+      };
+    } on StorageException catch (e) {
+      debugPrint('Error de Storage al subir imagen: ${e.message}');
+      String errorMessage = 'Error al subir la imagen.';
+      
+      // Mensajes más específicos según el tipo de error
+      if (e.message.contains('new row violates row-level security policy') || 
+          e.message.contains('permission denied') ||
+          e.message.contains('policy')) {
+        errorMessage = 'No tienes permisos para subir imágenes. Verifica las políticas de Storage en Supabase.';
+      } else if (e.message.contains('Bucket not found') || e.message.contains('does not exist')) {
+        errorMessage = 'El bucket "avatars" no existe. Crea el bucket en Supabase Storage.';
+      } else if (e.message.contains('The resource already exists')) {
+        errorMessage = 'La imagen ya existe. Inténtalo de nuevo.';
+      } else {
+        errorMessage = 'Error al subir la imagen: ${e.message}';
+      }
+      
+      return {
+        'success': false,
+        'error': errorMessage,
+      };
+    } catch (e) {
+      debugPrint('Error inesperado al subir imagen: $e');
+      return {
+        'success': false,
+        'error': 'Error al subir la imagen. Inténtalo de nuevo.',
       };
     }
   }
