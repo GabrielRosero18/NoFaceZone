@@ -6,6 +6,7 @@ import 'package:nofacezone/src/Custom/AppColors.dart';
 import 'package:nofacezone/src/Custom/Library.dart';
 import 'package:nofacezone/src/Custom/Config.dart';
 import 'package:nofacezone/src/Custom/AppLocalizations.dart';
+import 'package:nofacezone/src/Custom/TimeLimitSlider.dart';
 import 'package:nofacezone/src/Providers/AppProvider.dart';
 import 'package:nofacezone/src/Providers/UserProvider.dart';
 import 'package:nofacezone/src/Screen/EditProfileScreen.dart';
@@ -223,6 +224,27 @@ class _SettingsState extends State<Settings> {
     return Consumer<AppProvider>(
       builder: (context, appProvider, child) {
         final localizations = AppLocalizations.of(context)!;
+        
+        // Función para formatear el límite diario en formato abreviado
+        String formatDailyLimit(int minutes) {
+          final hours = minutes ~/ 60;
+          final mins = minutes % 60;
+          
+          if (hours == 0) {
+            return '$mins ${localizations.minutesShort}';
+          } else if (mins == 0) {
+            return '$hours ${localizations.hoursShort}';
+          } else {
+            final connector = ' ${localizations.timeConnector} ';
+            return '$hours ${localizations.hoursShort}$connector$mins ${localizations.minutesShort}';
+          }
+        }
+        
+        // Función para formatear la meta semanal (solo horas)
+        String formatWeeklyGoal(int hours) {
+          return '$hours ${localizations.hoursShort}';
+        }
+        
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -239,7 +261,7 @@ class _SettingsState extends State<Settings> {
               localizations.dailyLimitTitle,
               localizations.dailyLimitDescription,
               Icons.access_time,
-              '${appProvider.dailyUsageLimit} ${localizations.minutes}',
+              formatDailyLimit(appProvider.dailyUsageLimit),
               () => _showDailyLimitDialog(appProvider),
             ),
             const SizedBox(height: 12),
@@ -247,7 +269,7 @@ class _SettingsState extends State<Settings> {
               localizations.weeklyGoalTitle,
               localizations.weeklyGoalDescription,
               Icons.track_changes,
-              '${appProvider.weeklyGoal} ${localizations.hours}',
+              formatWeeklyGoal(appProvider.weeklyGoal),
               () => _showWeeklyGoalDialog(appProvider),
             ),
           ],
@@ -595,49 +617,149 @@ class _SettingsState extends State<Settings> {
 
   Future<void> _showDailyLimitDialog(AppProvider appProvider) async {
     final localizations = AppLocalizations.of(context)!;
-    final limit = await showDialog<int>(
+    
+    // Convertir minutos a incrementos de 10 minutos
+    // Redondear al incremento de 10 minutos más cercano
+    final currentMinutes = appProvider.dailyUsageLimit;
+    final currentTenMinBlocks = (currentMinutes / 10.0).round();
+    double selectedTenMinBlocks = currentTenMinBlocks.clamp(1, 144).toDouble(); // 10 min a 24 horas (144 bloques de 10 min)
+    
+    // Función para formatear el tiempo (formato abreviado)
+    String formatTime(double tenMinBlocks) {
+      final totalMinutes = (tenMinBlocks * 10).round();
+      final hours = totalMinutes ~/ 60;
+      final minutes = totalMinutes % 60;
+      
+      // Usar formato abreviado (h/min) para que quepa en una línea
+      if (hours == 0) {
+        return '$minutes ${localizations.minutesShort}';
+      } else if (minutes == 0) {
+        return '$hours ${localizations.hoursShort}';
+      } else {
+        // Usar el conector localizado
+        final connector = ' ${localizations.timeConnector} ';
+        return '$hours ${localizations.hoursShort}$connector$minutes ${localizations.minutesShort}';
+      }
+    }
+    
+    final result = await showDialog<double>(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1F3A),
-        title: Text(
-          localizations.dailyLimitDialogTitle,
-          style: const TextStyle(color: AppColors.textLight),
-        ),
-        content: TextField(
-          keyboardType: TextInputType.number,
-          style: const TextStyle(color: AppColors.textLight),
-          decoration: InputDecoration(
-            hintText: localizations.enterMinutes,
-            hintStyle: TextStyle(color: AppColors.textLight.withValues(alpha: 0.5)),
-            filled: true,
-            fillColor: AppColors.textLight.withValues(alpha: 0.1),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          backgroundColor: const Color(0xFF1A1F3A),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                localizations.timeLimitsTitle,
+                style: const TextStyle(
+                  color: AppColors.textLight,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                localizations.timeLimitsSubtitle,
+                style: TextStyle(
+                  color: AppColors.textLight.withValues(alpha: 0.7),
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 8),
+                Text(
+                  '${localizations.dailyLimitTitle}: ${formatTime(selectedTenMinBlocks)}',
+                  style: const TextStyle(
+                    color: AppColors.textLight,
+                    fontSize: 15, // Reducido para que quepa en una línea
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                TimeLimitSlider(
+                  value: selectedTenMinBlocks,
+                  minValue: 1.0, // 10 minutos
+                  maxValue: 144.0, // 24 horas (144 bloques de 10 min)
+                  divisions: 143, // 144 valores (10 min, 20 min, 30 min, ..., 24h)
+                  leftLabel: localizations.workLimitLabel,
+                  rightLabel: localizations.personalLimitLabel,
+                  onChanged: (value) {
+                    setState(() {
+                      selectedTenMinBlocks = value.roundToDouble(); // Redondear al bloque de 10 min más cercano
+                    });
+                  },
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  localizations.alertMessage,
+                  style: TextStyle(
+                    color: AppColors.textLight.withValues(alpha: 0.7),
+                    fontSize: 13,
+                  ),
+                ),
+              ],
             ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                localizations.cancel,
+                style: TextStyle(color: AppColors.textLight.withValues(alpha: 0.7)),
+              ),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, selectedTenMinBlocks),
+              child: Text(
+                localizations.save,
+                style: TextStyle(
+                  color: AppColors.accentBlue,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(localizations.cancel),
-          ),
-          TextButton(
-            onPressed: () {
-              // Por simplicidad, usar un valor por defecto
-              Navigator.pop(context, 60);
-            },
-            child: Text(localizations.save),
-          ),
-        ],
       ),
     );
 
-    if (limit != null) {
-      appProvider.setDailyUsageLimit(limit);
+    if (result != null) {
+      // Convertir bloques de 10 minutos a minutos
+      final limitInMinutes = (result * 10).round();
+      await appProvider.setDailyUsageLimit(limitInMinutes);
       if (mounted) {
         final updatedLocalizations = AppLocalizations.of(context)!;
+        final totalMinutes = limitInMinutes;
+        final hours = totalMinutes ~/ 60;
+        final minutes = totalMinutes % 60;
+        
+        String timeText;
+        // Usar formato abreviado para el mensaje también
+        if (hours == 0) {
+          timeText = '$minutes ${updatedLocalizations.minutesShort}';
+        } else if (minutes == 0) {
+          timeText = '$hours ${updatedLocalizations.hoursShort}';
+        } else {
+          final connector = ' ${updatedLocalizations.timeConnector} ';
+          timeText = '$hours ${updatedLocalizations.hoursShort}$connector$minutes ${updatedLocalizations.minutesShort}';
+        }
+        
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${updatedLocalizations.dailyLimitUpdated}: $limit ${updatedLocalizations.minutes}')),
+          SnackBar(
+            content: Text('${updatedLocalizations.dailyLimitUpdated}: $timeText'),
+            backgroundColor: AppColors.accentBlue.withValues(alpha: 0.9),
+          ),
         );
       }
     }
@@ -645,48 +767,111 @@ class _SettingsState extends State<Settings> {
 
   Future<void> _showWeeklyGoalDialog(AppProvider appProvider) async {
     final localizations = AppLocalizations.of(context)!;
-    final goal = await showDialog<int>(
+    
+    // Obtener el valor actual de la meta semanal (en horas)
+    int selectedHours = appProvider.weeklyGoal.clamp(1, 168); // 1 hora a 1 semana (168 horas)
+    
+    final result = await showDialog<int>(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1F3A),
-        title: Text(
-          localizations.weeklyGoalDialogTitle,
-          style: const TextStyle(color: AppColors.textLight),
-        ),
-        content: TextField(
-          keyboardType: TextInputType.number,
-          style: const TextStyle(color: AppColors.textLight),
-          decoration: InputDecoration(
-            hintText: localizations.enterHours,
-            hintStyle: TextStyle(color: AppColors.textLight.withValues(alpha: 0.5)),
-            filled: true,
-            fillColor: AppColors.textLight.withValues(alpha: 0.1),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          backgroundColor: const Color(0xFF1A1F3A),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                localizations.weeklyGoalDialogTitle,
+                style: const TextStyle(
+                  color: AppColors.textLight,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                localizations.weeklyGoalDescription,
+                style: TextStyle(
+                  color: AppColors.textLight.withValues(alpha: 0.7),
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 8),
+                Text(
+                  '${localizations.weeklyGoalTitle}: $selectedHours ${localizations.hoursShort}',
+                  style: const TextStyle(
+                    color: AppColors.textLight,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                TimeLimitSlider(
+                  value: selectedHours.toDouble(),
+                  minValue: 1.0, // 1 hora
+                  maxValue: 168.0, // 1 semana (168 horas)
+                  divisions: 167, // 168 valores (1, 2, 3, ..., 168 horas)
+                  leftLabel: localizations.workLimitLabel,
+                  rightLabel: localizations.personalLimitLabel,
+                  onChanged: (value) {
+                    setState(() {
+                      selectedHours = value.round(); // Redondear al entero más cercano
+                    });
+                  },
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  localizations.alertMessage,
+                  style: TextStyle(
+                    color: AppColors.textLight.withValues(alpha: 0.7),
+                    fontSize: 13,
+                  ),
+                ),
+              ],
             ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                localizations.cancel,
+                style: TextStyle(color: AppColors.textLight.withValues(alpha: 0.7)),
+              ),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, selectedHours),
+              child: Text(
+                localizations.save,
+                style: TextStyle(
+                  color: AppColors.accentBlue,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(localizations.cancel),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context, 10);
-            },
-            child: Text(localizations.save),
-          ),
-        ],
       ),
     );
 
-    if (goal != null) {
-      appProvider.setWeeklyGoal(goal);
+    if (result != null) {
+      await appProvider.setWeeklyGoal(result);
       if (mounted) {
         final updatedLocalizations = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${updatedLocalizations.weeklyGoalUpdated}: $goal ${updatedLocalizations.hours}')),
+          SnackBar(
+            content: Text('${updatedLocalizations.weeklyGoalUpdated}: $result ${updatedLocalizations.hoursShort}'),
+            backgroundColor: AppColors.accentBlue.withValues(alpha: 0.9),
+          ),
         );
       }
     }

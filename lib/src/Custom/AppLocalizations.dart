@@ -57,12 +57,15 @@ class AppLocalizations {
       'enable_notifications': 'Activar notificaciones',
       'notification_interval': 'Intervalo de notificaciones',
       'minutes': 'minutos',
+      'minute': 'minuto',
+      'time_connector': 'y',
       
       // Usage Limits
       'usage_limits': 'Límites de uso',
       'daily_limit': 'Límite diario',
       'weekly_goal': 'Meta semanal',
       'hours': 'horas',
+      'hour': 'hora',
       
       // Advanced
       'advanced': 'Configuración avanzada',
@@ -154,13 +157,19 @@ class AppLocalizations {
       
       // Settings - Usage Limits
       'usage_limits_title': 'Límites de uso',
+      'time_limits_title': 'Límites de Tiempo',
+      'time_limits_subtitle': 'Configura tus objetivos de uso diario',
       'daily_limit_title': 'Límite diario',
       'daily_limit_description': 'Tiempo máximo de uso por día',
       'weekly_goal_title': 'Meta semanal',
       'weekly_goal_description': 'Objetivo de horas por semana',
-      'daily_limit_dialog_title': 'Límite diario (minutos)',
+      'daily_limit_dialog_title': 'Límite diario',
       'enter_minutes': 'Ingrese minutos',
       'daily_limit_updated': 'Límite diario actualizado',
+      'work_limit_label': 'Límite Trabajo',
+      'personal_limit_label': 'Límite Personal',
+      'alert_message': 'Recibirás una alerta cuando alcances este límite',
+      'configure_daily_goals': 'Configura tus objetivos de uso diario',
       'weekly_goal_dialog_title': 'Meta semanal (horas)',
       'enter_hours': 'Ingrese horas',
       'weekly_goal_updated': 'Meta semanal actualizada',
@@ -527,12 +536,15 @@ class AppLocalizations {
       'enable_notifications': 'Enable notifications',
       'notification_interval': 'Notification interval',
       'minutes': 'minutes',
+      'minute': 'minute',
+      'time_connector': 'and',
       
       // Usage Limits
       'usage_limits': 'Usage limits',
       'daily_limit': 'Daily limit',
       'weekly_goal': 'Weekly goal',
       'hours': 'hours',
+      'hour': 'hour',
       
       // Advanced
       'advanced': 'Advanced settings',
@@ -624,13 +636,19 @@ class AppLocalizations {
       
       // Settings - Usage Limits
       'usage_limits_title': 'Usage limits',
+      'time_limits_title': 'Time Limits',
+      'time_limits_subtitle': 'Configure your daily usage goals',
       'daily_limit_title': 'Daily limit',
       'daily_limit_description': 'Maximum usage time per day',
       'weekly_goal_title': 'Weekly goal',
       'weekly_goal_description': 'Goal of hours per week',
-      'daily_limit_dialog_title': 'Daily limit (minutes)',
+      'daily_limit_dialog_title': 'Daily limit',
       'enter_minutes': 'Enter minutes',
       'daily_limit_updated': 'Daily limit updated',
+      'work_limit_label': 'Work Limit',
+      'personal_limit_label': 'Personal Limit',
+      'alert_message': 'You will receive an alert when you reach this limit',
+      'configure_daily_goals': 'Configure your daily usage goals',
       'weekly_goal_dialog_title': 'Weekly goal (hours)',
       'enter_hours': 'Enter hours',
       'weekly_goal_updated': 'Weekly goal updated',
@@ -997,10 +1015,13 @@ class AppLocalizations {
   String get enableNotifications => translate('enable_notifications');
   String get notificationInterval => translate('notification_interval');
   String get minutes => translate('minutes');
+  String get minute => translate('minute');
+  String get timeConnector => translate('time_connector');
   String get usageLimits => translate('usage_limits');
   String get dailyLimit => translate('daily_limit');
   String get weeklyGoal => translate('weekly_goal');
   String get hours => translate('hours');
+  String get hour => translate('hour');
   String get advanced => translate('advanced');
   String get exportData => translate('export_data');
   String get resetApp => translate('reset_app');
@@ -1071,6 +1092,8 @@ class AppLocalizations {
   String get forgotPasswordText => translate('forgot_password_text');
   String get passwordRecoveryNotImplemented => translate('password_recovery_not_implemented');
   String get usageLimitsTitle => translate('usage_limits_title');
+  String get timeLimitsTitle => translate('time_limits_title');
+  String get timeLimitsSubtitle => translate('time_limits_subtitle');
   String get dailyLimitTitle => translate('daily_limit_title');
   String get dailyLimitDescription => translate('daily_limit_description');
   String get weeklyGoalTitle => translate('weekly_goal_title');
@@ -1078,6 +1101,10 @@ class AppLocalizations {
   String get dailyLimitDialogTitle => translate('daily_limit_dialog_title');
   String get enterMinutes => translate('enter_minutes');
   String get dailyLimitUpdated => translate('daily_limit_updated');
+  String get workLimitLabel => translate('work_limit_label');
+  String get personalLimitLabel => translate('personal_limit_label');
+  String get alertMessage => translate('alert_message');
+  String get configureDailyGoals => translate('configure_daily_goals');
   String get weeklyGoalDialogTitle => translate('weekly_goal_dialog_title');
   String get enterHours => translate('enter_hours');
   String get weeklyGoalUpdated => translate('weekly_goal_updated');
