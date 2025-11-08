@@ -6,6 +6,7 @@ import 'package:nofacezone/src/Custom/AppColors.dart';
 import 'package:nofacezone/src/Custom/Library.dart';
 import 'package:nofacezone/src/Custom/Config.dart';
 import 'package:nofacezone/src/Custom/AppLocalizations.dart';
+import 'package:nofacezone/src/Custom/CustomSnackBar.dart';
 import 'package:nofacezone/src/Custom/TimeLimitSlider.dart';
 import 'package:nofacezone/src/Providers/AppProvider.dart';
 import 'package:nofacezone/src/Providers/UserProvider.dart';
@@ -606,8 +607,10 @@ class _SettingsState extends State<Settings> {
       appProvider.setNotificationInterval(selectedInterval);
       if (mounted) {
         final updatedLocalizations = AppLocalizations.of(context)!;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${updatedLocalizations.notificationIntervalTitle} ${updatedLocalizations.languageUpdated.toLowerCase()}: $selectedInterval ${updatedLocalizations.minutes}')),
+        CustomSnackBar.showInfo(
+          context,
+          '${updatedLocalizations.notificationIntervalTitle} ${updatedLocalizations.languageUpdated.toLowerCase()}: $selectedInterval ${updatedLocalizations.minutes}',
+          icon: Icons.notifications_active_rounded,
         );
       }
     }
@@ -753,11 +756,10 @@ class _SettingsState extends State<Settings> {
           timeText = '$hours ${updatedLocalizations.hoursShort}$connector$minutes ${updatedLocalizations.minutesShort}';
         }
         
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${updatedLocalizations.dailyLimitUpdated}: $timeText'),
-            backgroundColor: AppColors.accentBlue.withValues(alpha: 0.9),
-          ),
+        CustomSnackBar.showInfo(
+          context,
+          '${updatedLocalizations.dailyLimitUpdated}: $timeText',
+          icon: Icons.timer_rounded,
         );
       }
     }
@@ -865,11 +867,10 @@ class _SettingsState extends State<Settings> {
       await appProvider.setWeeklyGoal(result);
       if (mounted) {
         final updatedLocalizations = AppLocalizations.of(context)!;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${updatedLocalizations.weeklyGoalUpdated}: $result ${updatedLocalizations.hoursShort}'),
-            backgroundColor: AppColors.accentBlue.withValues(alpha: 0.9),
-          ),
+        CustomSnackBar.showInfo(
+          context,
+          '${updatedLocalizations.weeklyGoalUpdated}: $result ${updatedLocalizations.hoursShort}',
+          icon: Icons.flag_rounded,
         );
       }
     }
@@ -918,8 +919,10 @@ class _SettingsState extends State<Settings> {
       appProvider.setThemeMode(theme);
       if (mounted) {
         final localizations = AppLocalizations.of(context)!;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${localizations.theme} ${localizations.languageUpdated.toLowerCase()}: ${_getThemeName(theme, localizations)}')),
+        CustomSnackBar.showInfo(
+          context,
+          '${localizations.theme} ${localizations.languageUpdated.toLowerCase()}: ${_getThemeName(theme, localizations)}',
+          icon: Icons.brightness_6_rounded,
         );
       }
     }
@@ -966,8 +969,10 @@ class _SettingsState extends State<Settings> {
         await Future.delayed(const Duration(milliseconds: 100));
         if (mounted) {
           final updatedLocalizations = AppLocalizations.of(context)!;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('${updatedLocalizations.languageUpdated}: ${_getLanguageName(language, updatedLocalizations)}')),
+          CustomSnackBar.showSuccess(
+            context,
+            '${updatedLocalizations.languageUpdated}: ${_getLanguageName(language, updatedLocalizations)}',
+            icon: Icons.language_rounded,
           );
         }
       }
@@ -1073,8 +1078,10 @@ class _SettingsState extends State<Settings> {
       final user = userProvider.user;
       if (user == null) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('No hay datos de usuario para exportar')),
+          CustomSnackBar.showWarning(
+            context,
+            'No hay datos de usuario para exportar',
+            icon: Icons.info_outline_rounded,
           );
         }
         return;
@@ -1151,8 +1158,10 @@ class _SettingsState extends State<Settings> {
                 onPressed: () {
                   Clipboard.setData(ClipboardData(text: jsonString));
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(localizations.dataCopied)),
+                  CustomSnackBar.showSuccess(
+                    context,
+                    localizations.dataCopied,
+                    icon: Icons.copy_rounded,
                   );
                 },
                 child: Text(localizations.copy, style: TextStyle(color: AppColors.accentBlue)),
@@ -1164,8 +1173,10 @@ class _SettingsState extends State<Settings> {
     } catch (e) {
       if (mounted) {
         final localizations = AppLocalizations.of(context)!;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${localizations.exportError}: $e')),
+        CustomSnackBar.showError(
+          context,
+          '${localizations.exportError}: $e',
+          icon: Icons.error_outline_rounded,
         );
       }
     }
@@ -1272,15 +1283,19 @@ class _SettingsState extends State<Settings> {
 
           if (mounted) {
             final localizations = AppLocalizations.of(context)!;
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(localizations.dataImportedSuccessfully)),
+            CustomSnackBar.showSuccess(
+              context,
+              localizations.dataImportedSuccessfully,
+              icon: Icons.download_done_rounded,
             );
           }
         } catch (e) {
           if (mounted) {
             final localizations = AppLocalizations.of(context)!;
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(localizations.invalidJson)),
+            CustomSnackBar.showError(
+              context,
+              localizations.invalidJson,
+              icon: Icons.error_outline_rounded,
             );
           }
         }
@@ -1288,8 +1303,10 @@ class _SettingsState extends State<Settings> {
     } catch (e) {
       if (mounted) {
         final localizations = AppLocalizations.of(context)!;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${localizations.importError}: $e')),
+        CustomSnackBar.showError(
+          context,
+          '${localizations.importError}: $e',
+          icon: Icons.error_outline_rounded,
         );
       }
     }
@@ -1315,14 +1332,18 @@ class _SettingsState extends State<Settings> {
       await PreferencesService.setRecordTimeWithoutFacebook(0);
       
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Configuración reiniciada correctamente')),
+        CustomSnackBar.showSuccess(
+          context,
+          'Configuración reiniciada correctamente',
+          icon: Icons.refresh_rounded,
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al reiniciar configuración: $e')),
+        CustomSnackBar.showError(
+          context,
+          'Error al reiniciar configuración: $e',
+          icon: Icons.error_outline_rounded,
         );
       }
     }
@@ -1369,8 +1390,10 @@ class _SettingsState extends State<Settings> {
     } catch (e) {
       if (mounted) {
         final localizations = AppLocalizations.of(context)!;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${localizations.errorGettingInfo}: $e')),
+        CustomSnackBar.showError(
+          context,
+          '${localizations.errorGettingInfo}: $e',
+          icon: Icons.error_outline_rounded,
         );
       }
     }
@@ -1675,8 +1698,10 @@ class _SettingsState extends State<Settings> {
                   // Aquí podrías abrir el cliente de email si tienes url_launcher
                   Clipboard.setData(const ClipboardData(text: 'soporte@nofacezone.com'));
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(localizations.emailCopied)),
+                  CustomSnackBar.showSuccess(
+                    context,
+                    localizations.emailCopied,
+                    icon: Icons.email_rounded,
                   );
                 },
               ),
@@ -1687,8 +1712,10 @@ class _SettingsState extends State<Settings> {
                 localizations.helpCenter,
                 () {
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('${localizations.helpCenter} ${localizations.loading}')),
+                  CustomSnackBar.showInfo(
+                    context,
+                    '${localizations.helpCenter} ${localizations.loading}',
+                    icon: Icons.help_outline_rounded,
                   );
                 },
               ),
@@ -1699,8 +1726,10 @@ class _SettingsState extends State<Settings> {
                 'Envíanos tus comentarios',
                 () {
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Gracias por tu interés en mejorar NoFaceZone')),
+                  CustomSnackBar.showSuccess(
+                    context,
+                    'Gracias por tu interés en mejorar NoFaceZone',
+                    icon: Icons.favorite_rounded,
                   );
                 },
               ),

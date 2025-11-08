@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:nofacezone/src/Custom/AppColors.dart';
 import 'package:nofacezone/src/Custom/AppLocalizations.dart';
+import 'package:nofacezone/src/Custom/CustomSnackBar.dart';
 import 'package:nofacezone/src/Providers/AppProvider.dart';
 import 'package:nofacezone/src/Services/EmotionService.dart';
 import 'package:nofacezone/src/Models/EmotionModel.dart';
@@ -97,11 +98,10 @@ class _EmotionTrackingScreenState extends State<EmotionTrackingScreen> {
       });
       if (mounted) {
         final localizations = AppLocalizations.of(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(localizations?.errorLoadingEmotions ?? 'Error al cargar emociones: $e'),
-            backgroundColor: AppColors.error,
-          ),
+        CustomSnackBar.showError(
+          context,
+          localizations?.errorLoadingEmotions ?? 'Error al cargar emociones: $e',
+          icon: Icons.error_outline_rounded,
         );
       }
     }
@@ -110,11 +110,10 @@ class _EmotionTrackingScreenState extends State<EmotionTrackingScreen> {
   Future<void> _registerEmotion() async {
     final localizations = AppLocalizations.of(context);
     if (_selectedEmotion == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(localizations?.pleaseSelectEmotion ?? 'Por favor selecciona una emoción'),
-          backgroundColor: AppColors.error,
-        ),
+      CustomSnackBar.showWarning(
+        context,
+        localizations?.pleaseSelectEmotion ?? 'Por favor selecciona una emoción',
+        icon: Icons.emoji_emotions_outlined,
       );
       return;
     }
@@ -142,30 +141,27 @@ class _EmotionTrackingScreenState extends State<EmotionTrackingScreen> {
         await _loadRecentEmotions();
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(localizations?.emotionRegisteredSuccessfully ?? 'Emoción registrada exitosamente'),
-              backgroundColor: AppColors.success,
-            ),
+          CustomSnackBar.showSuccess(
+            context,
+            localizations?.emotionRegisteredSuccessfully ?? 'Emoción registrada exitosamente',
+            icon: Icons.mood_rounded,
           );
         }
       } else {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(result['error'] ?? (localizations?.errorRegisteringEmotion ?? 'Error al registrar emoción')),
-              backgroundColor: AppColors.error,
-            ),
+          CustomSnackBar.showError(
+            context,
+            result['error'] ?? (localizations?.errorRegisteringEmotion ?? 'Error al registrar emoción'),
+            icon: Icons.error_outline_rounded,
           );
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${localizations?.errorRegisteringEmotion ?? 'Error inesperado'}: $e'),
-            backgroundColor: AppColors.error,
-          ),
+        CustomSnackBar.showError(
+          context,
+          '${localizations?.errorRegisteringEmotion ?? 'Error inesperado'}: $e',
+          icon: Icons.error_outline_rounded,
         );
       }
     } finally {
@@ -813,30 +809,27 @@ class _EmotionTrackingScreenState extends State<EmotionTrackingScreen> {
         await _loadRecentEmotions();
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(localizations?.emotionDeletedSuccessfully ?? 'Emoción eliminada exitosamente'),
-              backgroundColor: AppColors.success,
-            ),
+          CustomSnackBar.showSuccess(
+            context,
+            localizations?.emotionDeletedSuccessfully ?? 'Emoción eliminada exitosamente',
+            icon: Icons.delete_sweep_rounded,
           );
         }
       } else {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(result['error'] ?? (localizations?.errorDeletingEmotion ?? 'Error al eliminar emoción')),
-              backgroundColor: AppColors.error,
-            ),
+          CustomSnackBar.showError(
+            context,
+            result['error'] ?? (localizations?.errorDeletingEmotion ?? 'Error al eliminar emoción'),
+            icon: Icons.error_outline_rounded,
           );
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${localizations?.errorDeletingEmotion ?? 'Error inesperado'}: $e'),
-            backgroundColor: AppColors.error,
-          ),
+        CustomSnackBar.showError(
+          context,
+          '${localizations?.errorDeletingEmotion ?? 'Error inesperado'}: $e',
+          icon: Icons.error_outline_rounded,
         );
       }
     }

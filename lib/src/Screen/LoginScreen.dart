@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'RegisterScreen.dart';
 import 'package:nofacezone/src/Custom/AppColors.dart';
 import 'package:nofacezone/src/Custom/AppLocalizations.dart';
+import 'package:nofacezone/src/Custom/CustomSnackBar.dart';
 import 'package:nofacezone/src/Services/UserService.dart';
 import 'package:nofacezone/src/Custom/Library.dart';
 import 'package:nofacezone/src/Providers/UserProvider.dart';
@@ -83,12 +84,11 @@ class _LoginScreenState extends State<LoginScreen> {
         
         // Mostrar mensaje de éxito con el nombre real del usuario
         final userName = result['user']['nombre'] ?? 'Usuario';
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('¡Bienvenido $userName!'),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 2),
-          ),
+        CustomSnackBar.showSuccess(
+          context,
+          '¡Bienvenido $userName!',
+          icon: Icons.celebration_rounded,
+          duration: const Duration(milliseconds: 2000),
         );
         
         // Navegar a la pantalla principal (Home)

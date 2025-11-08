@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:nofacezone/src/Custom/AppColors.dart';
 import 'package:nofacezone/src/Custom/AppLocalizations.dart';
+import 'package:nofacezone/src/Custom/CustomSnackBar.dart';
 import 'package:nofacezone/src/Providers/AppProvider.dart';
 
 class RewardsScreen extends StatefulWidget {
@@ -282,11 +283,12 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
               ? () async {
                   await appProvider.setColorTheme(theme.id);
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(localizations.themeApplied(theme.name)),
-                        backgroundColor: Colors.green,
-                      ),
+                    CustomSnackBar.showTheme(
+                      context,
+                      localizations.themeApplied(theme.name),
+                      icon: Icons.palette_rounded,
+                      gradientColors: theme.colors,
+                      duration: const Duration(milliseconds: 1000),
                     );
                   }
                 }
@@ -520,11 +522,11 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
               ? () async {
                   await appProvider.setFontFamily(font.id);
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(localizations.fontApplied(font.name)),
-                        backgroundColor: Colors.green,
-                      ),
+                    CustomSnackBar.showSuccess(
+                      context,
+                      localizations.fontApplied(font.name),
+                      icon: Icons.text_fields_rounded,
+                      duration: const Duration(milliseconds: 1000),
                     );
                   }
                 }
@@ -754,16 +756,19 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
               ? () async {
                   await appProvider.toggleMessageCollection(message.id);
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          isActive
-                              ? localizations.collectionDeactivated(message.title)
-                              : localizations.collectionActivated(message.title),
-                        ),
-                        backgroundColor: isActive ? Colors.orange : Colors.green,
-                      ),
-                    );
+                    if (isActive) {
+                      CustomSnackBar.showWarning(
+                        context,
+                        localizations.collectionDeactivated(message.title),
+                        icon: Icons.toggle_off_rounded,
+                      );
+                    } else {
+                      CustomSnackBar.showSuccess(
+                        context,
+                        localizations.collectionActivated(message.title),
+                        icon: Icons.toggle_on_rounded,
+                      );
+                    }
                   }
                 }
               : null,

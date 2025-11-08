@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:nofacezone/src/Custom/AppColors.dart';
 import 'package:nofacezone/src/Custom/AppLocalizations.dart';
+import 'package:nofacezone/src/Custom/CustomSnackBar.dart';
 import 'package:nofacezone/src/Providers/UserProvider.dart';
 import 'package:nofacezone/src/Providers/AppProvider.dart';
 import 'package:nofacezone/src/Services/UserService.dart';
@@ -218,8 +219,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     } catch (e) {
       if (mounted) {
         final localizations = AppLocalizations.of(context)!;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${localizations.errorSelectingImage}: $e')),
+        CustomSnackBar.showError(
+          context,
+          '${localizations.errorSelectingImage}: $e',
+          icon: Icons.image_not_supported_rounded,
         );
       }
     }
@@ -268,6 +271,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             _profileImage = null;
                             _profileImageUrl = null;
                           });
+                          CustomSnackBar.showInfo(
+                            context,
+                            localizations.deletePhoto,
+                            icon: Icons.delete_outline_rounded,
+                          );
                         },
                       ),
                   ],
@@ -373,11 +381,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         if (!uploadResult['success']) {
           if (mounted) {
             final localizations = AppLocalizations.of(context)!;
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(uploadResult['error'] ?? localizations.errorUpdatingProfile),
-                backgroundColor: Colors.red,
-              ),
+            CustomSnackBar.showError(
+              context,
+              uploadResult['error'] ?? localizations.errorUpdatingProfile,
+              icon: Icons.cloud_upload_outlined,
             );
             return;
           }
@@ -412,11 +419,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       if (!updateResult['success']) {
         if (mounted) {
           final localizations = AppLocalizations.of(context)!;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(updateResult['error'] ?? localizations.errorUpdatingProfile),
-              backgroundColor: Colors.red,
-            ),
+          CustomSnackBar.showError(
+            context,
+            updateResult['error'] ?? localizations.errorUpdatingProfile,
+            icon: Icons.error_outline_rounded,
           );
           return;
         }
@@ -435,22 +441,20 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
       if (mounted) {
         final localizations = AppLocalizations.of(context)!;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(localizations.profileUpdatedSuccessfully),
-            backgroundColor: Colors.green,
-          ),
+        CustomSnackBar.showSuccess(
+          context,
+          localizations.profileUpdatedSuccessfully,
+          icon: Icons.check_circle_rounded,
         );
         Navigator.of(context).pop();
       }
     } catch (e) {
       if (mounted) {
         final localizations = AppLocalizations.of(context)!;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${localizations.errorUpdatingProfile}: $e'),
-            backgroundColor: Colors.red,
-          ),
+        CustomSnackBar.showError(
+          context,
+          '${localizations.errorUpdatingProfile}: $e',
+          icon: Icons.error_outline_rounded,
         );
       }
     } finally {

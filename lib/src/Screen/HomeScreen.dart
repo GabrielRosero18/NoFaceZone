@@ -1,8 +1,10 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:nofacezone/src/Custom/AppColors.dart';
 import 'package:nofacezone/src/Custom/AppLocalizations.dart';
 import 'package:nofacezone/src/Custom/AppMessages.dart';
+import 'package:nofacezone/src/Custom/CustomSnackBar.dart';
 import 'package:nofacezone/src/Providers/UserProvider.dart';
 import 'package:nofacezone/src/Providers/AppProvider.dart';
 import 'package:nofacezone/src/Custom/Library.dart';
@@ -44,6 +46,48 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     ));
     
     _animationController.forward();
+    
+    // Mostrar mensaje motivacional después de que la pantalla se construya
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _showWelcomeMessage();
+    });
+  }
+
+  /// Mostrar mensaje motivacional al entrar a la app
+  void _showWelcomeMessage() {
+    if (!mounted) return;
+    
+    final localizations = AppLocalizations.of(context);
+    if (localizations == null) return;
+    
+    // Lista de mensajes motivacionales para cuando entra a la app
+    final welcomeMessages = [
+      '¡Sigue así! Cada día es una nueva oportunidad 🌟',
+      'Estás haciendo un gran trabajo 💪',
+      'Tu progreso es increíble, ¡continúa! 🎯',
+      'Cada momento sin redes sociales te hace más fuerte ⚡',
+      'Estás construyendo hábitos increíbles 🚀',
+      'Tu futuro yo te lo agradecerá 🌈',
+      '¡Eres más fuerte de lo que piensas! 💎',
+      'Cada paso cuenta, sigue adelante 🎉',
+      'Tu bienestar es tu prioridad ✨',
+      'Estás tomando el control de tu vida 🎊',
+    ];
+    
+    final random = Random();
+    final message = welcomeMessages[random.nextInt(welcomeMessages.length)];
+    
+    // Esperar un poco para que la animación termine
+    Future.delayed(const Duration(milliseconds: 1200), () {
+      if (mounted) {
+        CustomSnackBar.showTheme(
+          context,
+          message,
+          icon: Icons.auto_awesome_rounded,
+          duration: const Duration(milliseconds: 2500),
+        );
+      }
+    });
   }
 
   @override
