@@ -380,22 +380,29 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       );
 
       // Actualizar datos adicionales en la base de datos
-      // Necesitamos el ID del usuario de la base de datos
-      final userData = await UserService.getUserByEmail(user.email);
-      if (userData != null) {
-        final userId = userData['id_usuario'] as int;
-        
-        // Mapear valores traducidos de vuelta a valores para la BD
-        // El género y frecuencia se guardan como están (ya están en el idioma actual)
-        // El idioma se guarda como código (es/en)
-        await UserService.updateUser(
-          userId: userId,
-          name: _nameController.text.trim(),
-          age: _extractMinAgeFromRange(_selectedAge),
-          gender: _selectedGender, // Ya está mapeado a la traducción actual
-          language: _selectedLanguage, // Ya está como código (es/en)
-          frequency: _selectedFrequency, // Ya está mapeado a la traducción actual
-        );
+      // El método updateUser ahora usa automáticamente auth_user_id del usuario autenticado
+      // Mapear valores traducidos de vuelta a valores para la BD
+      // El género y frecuencia se guardan como están (ya están en el idioma actual)
+      // El idioma se guarda como código (es/en)
+      final updateResult = await UserService.updateUser(
+        name: _nameController.text.trim(),
+        age: _extractMinAgeFromRange(_selectedAge),
+        gender: _selectedGender, // Ya está mapeado a la traducción actual
+        language: _selectedLanguage, // Ya está como código (es/en)
+        frequency: _selectedFrequency, // Ya está mapeado a la traducción actual
+      );
+
+      if (!updateResult['success']) {
+        if (mounted) {
+          final localizations = AppLocalizations.of(context)!;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(updateResult['error'] ?? localizations.errorUpdatingProfile),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
       }
 
       if (mounted) {

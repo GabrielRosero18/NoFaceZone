@@ -2,9 +2,9 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 /// Configuración global de la aplicación NoFaceZone
 class Config {
-  // URLs del servidor
-  static const String mSupabaseUrl = "https://jjxiobpjcpdktvdjypvf.supabase.co";
-  static const String mSupabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpqeGlvYnBqY3Bka3R2ZGp5cHZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg2ODQ3OTAsImV4cCI6MjA3NDI2MDc5MH0.FGVQserXI236SMhk8lMwXPrCFs0HxJhYhdP9uCbbBv4";
+  // URLs del servidor - Proyecto: NoFaceZone_
+  static const String mSupabaseUrl = "https://agpqnbzmnqvtyxasegni.supabase.co";
+  static const String mSupabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFncHFuYnptbnF2dHl4YXNlZ25pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI1NjQyMzMsImV4cCI6MjA3ODE0MDIzM30.otiN38phJJiW9iSLW_LqXAhNjsm1DjiTHMSJV3Sdt7g";
   
   // Configuración de la aplicación
   static const String appName = "NoFaceZone";

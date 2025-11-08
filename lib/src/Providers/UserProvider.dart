@@ -115,9 +115,10 @@ class UserProvider extends ChangeNotifier {
     try {
       if (UserService.isUserLoggedIn()) {
         final authUser = UserService.getCurrentUser();
-        if (authUser != null && authUser.email != null) {
-          // Obtener datos del usuario desde la base de datos
-          final userData = await UserService.getUserByEmail(authUser.email!);
+        if (authUser != null) {
+          // Obtener datos del usuario desde la base de datos usando getCurrentUserData
+          // que intenta primero por auth_user_id y luego por email
+          final userData = await UserService.getCurrentUserData();
           if (userData != null) {
             _user = User.fromSupabaseData(userData, {
               'id': authUser.id,
@@ -157,8 +158,9 @@ class UserProvider extends ChangeNotifier {
       // Si no se proporcionan datos, intentar obtenerlos desde Supabase
       if (UserService.isUserLoggedIn()) {
         final currentAuthUser = UserService.getCurrentUser();
-        if (currentAuthUser != null && currentAuthUser.email != null) {
-          final dbUserData = await UserService.getUserByEmail(currentAuthUser.email!);
+        if (currentAuthUser != null) {
+          // Usar getCurrentUserData que es más eficiente con RLS
+          final dbUserData = await UserService.getCurrentUserData();
           if (dbUserData != null) {
             _user = User.fromSupabaseData(dbUserData, {
               'id': currentAuthUser.id,

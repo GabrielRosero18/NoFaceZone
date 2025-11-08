@@ -35,6 +35,7 @@ class UserService {
       final response = await _supabase
           .from('usuarios')
           .insert({
+            'auth_user_id': authResponse.user!.id, // ID del usuario en Supabase Auth
             'nombre': name,
             'edad': age,
             'genero': gender,
@@ -105,15 +106,58 @@ class UserService {
     }
   }
 
+  /// Obtener información de un usuario por auth_user_id (UUID de Supabase Auth)
+  static Future<Map<String, dynamic>?> getUserByAuthId(String authUserId) async {
+    try {
+      final response = await _supabase
+          .from('usuarios')
+          .select()
+          .eq('auth_user_id', authUserId)
+          .maybeSingle();
+
+      return response;
+    } catch (e) {
+      debugPrint('Error al obtener usuario por auth_user_id: $e');
+      return null;
+    }
+  }
+
+  /// Obtener información del usuario actual autenticado
+  static Future<Map<String, dynamic>?> getCurrentUserData() async {
+    try {
+      final currentUser = getCurrentUser();
+      if (currentUser == null) {
+        return null;
+      }
+
+      // Primero intentar obtener por auth_user_id (más eficiente con RLS)
+      final userByAuthId = await getUserByAuthId(currentUser.id);
+      if (userByAuthId != null) {
+        return userByAuthId;
+      }
+
+      // Si no se encuentra, intentar por email (fallback)
+      if (currentUser.email != null) {
+        return await getUserByEmail(currentUser.email!);
+      }
+
+      return null;
+    } catch (e) {
+      debugPrint('Error al obtener datos del usuario actual: $e');
+      return null;
+    }
+  }
+
   /// Actualizar información de un usuario
   static Future<Map<String, dynamic>> updateUser({
-    required int userId,
+    int? userId,
     String? name,
     int? age,
     String? gender,
     String? language,
     String? frequency,
     String? facebookUser,
+    String? fotoPerfil,
   }) async {
     try {
       final Map<String, dynamic> updateData = {};
@@ -124,20 +168,114 @@ class UserService {
       if (language != null) updateData['idioma_preferido'] = language;
       if (frequency != null) updateData['frecuencia_uso_facebook'] = frequency;
       if (facebookUser != null) updateData['usuario_facebook'] = facebookUser;
+      if (fotoPerfil != null) updateData['foto_perfil'] = fotoPerfil;
 
-      final response = await _supabase
-          .from('usuarios')
-          .update(updateData)
-          .eq('id_usuario', userId)
-          .select()
-          .single();
+      // Si no hay datos para actualizar, retornar éxito
+      if (updateData.isEmpty) {
+        return {
+          'success': true,
+          'user': null,
+        };
+      }
+
+      final currentUser = getCurrentUser();
+      if (currentUser == null) {
+        return {
+          'success': false,
+          'error': 'Debes iniciar sesión para actualizar tu perfil.',
+        };
+      }
+
+      // Estrategia 1: Intentar actualizar usando auth_user_id
+      try {
+        final response = await _supabase
+            .from('usuarios')
+            .update(updateData)
+            .eq('auth_user_id', currentUser.id)
+            .select()
+            .maybeSingle();
+
+        if (response != null) {
+          return {
+            'success': true,
+            'user': response,
+          };
+        }
+      } catch (e) {
+        debugPrint('Error al actualizar por auth_user_id: $e');
+      }
+
+      // Estrategia 2: Intentar actualizar usando email (más confiable)
+      if (currentUser.email != null) {
+        try {
+          final response = await _supabase
+              .from('usuarios')
+              .update(updateData)
+              .eq('email', currentUser.email!)
+              .select()
+              .maybeSingle();
+
+          if (response != null) {
+            return {
+              'success': true,
+              'user': response,
+            };
+          }
+        } catch (e) {
+          debugPrint('Error al actualizar por email: $e');
+        }
+      }
+
+      // Estrategia 3: Usar id_usuario si se proporciona
+      if (userId != null) {
+        try {
+          final response = await _supabase
+              .from('usuarios')
+              .update(updateData)
+              .eq('id_usuario', userId)
+              .select()
+              .maybeSingle();
+
+          if (response != null) {
+            return {
+              'success': true,
+              'user': response,
+            };
+          }
+        } catch (e) {
+          debugPrint('Error al actualizar por id_usuario: $e');
+        }
+      }
+
+      // Si ninguna estrategia funcionó, intentar obtener el usuario primero
+      final userData = await getCurrentUserData();
+      if (userData != null && userData['id_usuario'] != null) {
+        try {
+          final response = await _supabase
+              .from('usuarios')
+              .update(updateData)
+              .eq('id_usuario', userData['id_usuario'])
+              .select()
+              .maybeSingle();
+
+          if (response != null) {
+            return {
+              'success': true,
+              'user': response,
+            };
+          }
+        } catch (e) {
+          debugPrint('Error al actualizar por id_usuario obtenido: $e');
+        }
+      }
 
       return {
-        'success': true,
-        'user': response,
+        'success': false,
+        'error': 'No se encontró el usuario en la base de datos. Por favor, cierra sesión y vuelve a iniciar sesión.',
       };
     } on PostgrestException catch (e) {
-      debugPrint('Error al actualizar usuario: ${e.message}');
+      debugPrint('Error de base de datos al actualizar usuario: ${e.message}');
+      debugPrint('Código de error: ${e.code}');
       return {
         'success': false,
         'error': _handleDatabaseError(e),
