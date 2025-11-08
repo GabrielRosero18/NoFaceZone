@@ -9,6 +9,7 @@ import 'package:nofacezone/src/Custom/AppLocalizations.dart';
 import 'package:nofacezone/src/Providers/AppProvider.dart';
 import 'package:nofacezone/src/Providers/UserProvider.dart';
 import 'package:nofacezone/src/Screen/EditProfileScreen.dart';
+import 'package:nofacezone/src/Screen/ReportsScreen.dart';
 import 'package:nofacezone/src/Services/PreferencesService.dart';
 
 class Settings extends StatefulWidget {
@@ -306,6 +307,18 @@ class _SettingsState extends State<Settings> {
           ),
         ),
         const SizedBox(height: 16),
+        _buildSettingItemWithValue(
+          localizations.reportsAndExportation,
+          localizations.reportsAndExportationDescription,
+          Icons.assessment,
+          null,
+          () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => const ReportsScreen(),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
         _buildSettingItemWithValue(
           localizations.exportDataTitle,
           localizations.exportDataDescription,

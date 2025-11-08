@@ -255,6 +255,40 @@ class AppLocalizations {
       'export_error': 'Error al exportar datos',
       'import_error': 'Error al importar datos',
       
+      // Reports and Exportation
+      'reports_and_exportation': 'Reportes y Exportación',
+      'reports_and_exportation_description': 'Genera y descarga reportes detallados de tu uso',
+      'select_period': 'Seleccionar Período',
+      'select_period_description': 'Elige el rango de fechas para generar el reporte',
+      'from': 'Desde',
+      'to': 'Hasta',
+      'select_date': 'Seleccionar fecha',
+      'reports_last_week': 'Última semana',
+      'reports_last_month': 'Último mes',
+      'generate_report': 'Generar Reporte',
+      'report_generated': 'Reporte generado exitosamente',
+      'report_error': 'Error al generar el reporte',
+      'select_date_range': 'Por favor selecciona un rango de fechas',
+      'invalid_date_range': 'La fecha de inicio debe ser anterior a la fecha de fin',
+      'report_title': 'Reporte de Uso - NoFaceZone',
+      'report_period': 'Período del reporte',
+      'total_time_free': 'Tiempo total libre',
+      'blocked_sessions_count': 'Sesiones bloqueadas',
+      'time_saved_total': 'Tiempo ahorrado',
+      'consecutive_days_count': 'Días consecutivos',
+      'daily_average_time': 'Promedio diario',
+      'generated_on': 'Generado el',
+      'user_label': 'Usuario',
+      'email_label_report': 'Email',
+      'day': 'día',
+      'days': 'días',
+      'configuration': 'Configuración',
+      'daily_limit_label': 'Límite diario',
+      'weekly_goal_label': 'Meta semanal',
+      'record_free_time': 'Récord de tiempo libre',
+      'hours_short': 'h',
+      'minutes_short': 'm',
+      
       // Terms and Conditions
       'terms_title': 'Términos y Condiciones',
       'last_update': 'Última actualización',
@@ -691,6 +725,40 @@ class AppLocalizations {
       'export_error': 'Error exporting data',
       'import_error': 'Error importing data',
       
+      // Reports and Exportation
+      'reports_and_exportation': 'Reports and Exportation',
+      'reports_and_exportation_description': 'Generate and download detailed reports of your usage',
+      'select_period': 'Select Period',
+      'select_period_description': 'Choose the date range to generate the report',
+      'from': 'From',
+      'to': 'To',
+      'select_date': 'Select date',
+      'reports_last_week': 'Last week',
+      'reports_last_month': 'Last month',
+      'generate_report': 'Generate Report',
+      'report_generated': 'Report generated successfully',
+      'report_error': 'Error generating report',
+      'select_date_range': 'Please select a date range',
+      'invalid_date_range': 'Start date must be before end date',
+      'report_title': 'Usage Report - NoFaceZone',
+      'report_period': 'Report period',
+      'total_time_free': 'Total free time',
+      'blocked_sessions_count': 'Blocked sessions',
+      'time_saved_total': 'Time saved',
+      'consecutive_days_count': 'Consecutive days',
+      'daily_average_time': 'Daily average',
+      'generated_on': 'Generated on',
+      'user_label': 'User',
+      'email_label_report': 'Email',
+      'day': 'day',
+      'days': 'days',
+      'configuration': 'Configuration',
+      'daily_limit_label': 'Daily limit',
+      'weekly_goal_label': 'Weekly goal',
+      'record_free_time': 'Free time record',
+      'hours_short': 'h',
+      'minutes_short': 'm',
+      
       // Terms and Conditions
       'terms_title': 'Terms and Conditions',
       'last_update': 'Last update',
@@ -1068,6 +1136,38 @@ class AppLocalizations {
   String get invalidJson => translate('invalid_json');
   String get exportError => translate('export_error');
   String get importError => translate('import_error');
+  String get reportsAndExportation => translate('reports_and_exportation');
+  String get reportsAndExportationDescription => translate('reports_and_exportation_description');
+  String get selectPeriod => translate('select_period');
+  String get selectPeriodDescription => translate('select_period_description');
+  String get from => translate('from');
+  String get to => translate('to');
+  String get selectDate => translate('select_date');
+  String get reportsLastWeek => translate('reports_last_week');
+  String get reportsLastMonth => translate('reports_last_month');
+  String get generateReport => translate('generate_report');
+  String get reportGenerated => translate('report_generated');
+  String get reportError => translate('report_error');
+  String get selectDateRange => translate('select_date_range');
+  String get invalidDateRange => translate('invalid_date_range');
+  String get reportTitle => translate('report_title');
+  String get reportPeriod => translate('report_period');
+  String get totalTimeFree => translate('total_time_free');
+  String get blockedSessionsCount => translate('blocked_sessions_count');
+  String get timeSavedTotal => translate('time_saved_total');
+  String get consecutiveDaysCount => translate('consecutive_days_count');
+  String get dailyAverageTime => translate('daily_average_time');
+  String get generatedOn => translate('generated_on');
+  String get userLabel => translate('user_label');
+  String get emailLabelReport => translate('email_label_report');
+  String get day => translate('day');
+  String get days => translate('days');
+  String get configuration => translate('configuration');
+  String get dailyLimitLabel => translate('daily_limit_label');
+  String get weeklyGoalLabel => translate('weekly_goal_label');
+  String get recordFreeTime => translate('record_free_time');
+  String get hoursShort => translate('hours_short');
+  String get minutesShort => translate('minutes_short');
   String get termsTitle => translate('terms_title');
   String get lastUpdate => translate('last_update');
   String get termsSection1Title => translate('terms_section_1_title');
