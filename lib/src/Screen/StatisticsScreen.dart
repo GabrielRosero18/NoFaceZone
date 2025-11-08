@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:nofacezone/src/Custom/AppColors.dart';
+import 'package:nofacezone/src/Custom/AppLocalizations.dart';
 import 'package:nofacezone/src/Providers/AppProvider.dart';
 
 class StatisticsScreen extends StatefulWidget {
@@ -27,13 +28,16 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
 
   @override
   Widget build(BuildContext context) {
-    // Escuchar cambios del AppProvider para actualizar el tema
-    final appProvider = Provider.of<AppProvider>(context);
-    AppColors.setTheme(appProvider.colorTheme);
-    
-    return Scaffold(
+    // Escuchar cambios del AppProvider para actualizar el tema e idioma
+    return Consumer<AppProvider>(
+      builder: (context, appProvider, child) {
+        AppColors.setTheme(appProvider.colorTheme);
+        
+        return Scaffold(
       appBar: AppBar(
-        title: const Text('Estadísticas'),
+        title: Builder(
+          builder: (context) => Text(AppLocalizations.of(context)!.statistics),
+        ),
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
@@ -46,10 +50,16 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
           unselectedLabelColor: AppColors.textLight.withValues(alpha: 0.6),
           indicatorColor: AppColors.accentBlue,
           indicatorWeight: 3,
-          tabs: const [
-            Tab(text: 'Hoy'),
-            Tab(text: 'Semana'),
-            Tab(text: 'Mes'),
+          tabs: [
+            Builder(
+              builder: (context) => Tab(text: AppLocalizations.of(context)!.today),
+            ),
+            Builder(
+              builder: (context) => Tab(text: AppLocalizations.of(context)!.week),
+            ),
+            Builder(
+              builder: (context) => Tab(text: AppLocalizations.of(context)!.month),
+            ),
           ],
         ),
       ),
@@ -75,6 +85,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
         ),
       ),
     );
+      },
+    );
   }
 
   Widget _buildTodayTab() {
@@ -84,13 +96,18 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Resumen del día
-          _buildSummaryCard(
-            '📊 Resumen del día',
-            [
-              _buildStatItem('Tiempo libre de Facebook', '4h 32m', Icons.access_time, Colors.blue),
-              _buildStatItem('Sesiones bloqueadas', '7', Icons.block, Colors.red),
-              _buildStatItem('Tiempo ahorrado', '2h 15m', Icons.savings, Colors.green),
-            ],
+          Builder(
+            builder: (context) {
+              final localizations = AppLocalizations.of(context)!;
+              return _buildSummaryCard(
+                '📊 ${localizations.daySummary}',
+                [
+                  _buildStatItem(localizations.freeTimeFromFacebook, '4h 32m', Icons.access_time, Colors.blue),
+                  _buildStatItem(localizations.blockedSessions, '7', Icons.block, Colors.red),
+                  _buildStatItem(localizations.timeSaved, '2h 15m', Icons.savings, Colors.green),
+                ],
+              );
+            },
           ),
           const SizedBox(height: 24),
           
@@ -113,13 +130,18 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Resumen semanal
-          _buildSummaryCard(
-            '📈 Resumen semanal',
-            [
-              _buildStatItem('Total tiempo libre', '28h 45m', Icons.calendar_today, Colors.blue),
-              _buildStatItem('Días consecutivos', '7', Icons.calendar_view_week, Colors.orange),
-              _buildStatItem('Promedio diario', '4h 6m', Icons.trending_up, Colors.green),
-            ],
+          Builder(
+            builder: (context) {
+              final localizations = AppLocalizations.of(context)!;
+              return _buildSummaryCard(
+                '📈 ${localizations.weeklySummary}',
+                [
+                  _buildStatItem(localizations.totalFreeTime, '28h 45m', Icons.calendar_today, Colors.blue),
+                  _buildStatItem(localizations.consecutiveDays, '7', Icons.calendar_view_week, Colors.orange),
+                  _buildStatItem(localizations.dailyAverage, '4h 6m', Icons.trending_up, Colors.green),
+                ],
+              );
+            },
           ),
           const SizedBox(height: 24),
           
@@ -141,13 +163,18 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Resumen mensual
-          _buildSummaryCard(
-            '🏆 Resumen mensual',
-            [
-              _buildStatItem('Total tiempo libre', '124h 32m', Icons.calendar_month, Colors.purple),
-              _buildStatItem('Mejor racha', '15 días', Icons.local_fire_department, Colors.orange),
-              _buildStatItem('Tasa de éxito', '87%', Icons.check_circle, Colors.green),
-            ],
+          Builder(
+            builder: (context) {
+              final localizations = AppLocalizations.of(context)!;
+              return _buildSummaryCard(
+                '🏆 ${localizations.monthlySummary}',
+                [
+                  _buildStatItem(localizations.totalFreeTime, '124h 32m', Icons.calendar_month, Colors.purple),
+                  _buildStatItem(localizations.bestStreak, '15 días', Icons.local_fire_department, Colors.orange),
+                  _buildStatItem(localizations.successRate, '87%', Icons.check_circle, Colors.green),
+                ],
+              );
+            },
           ),
           const SizedBox(height: 24),
           
@@ -254,12 +281,14 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            '📅 Actividad horaria',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textLight,
+          Builder(
+            builder: (context) => Text(
+              '📅 ${AppLocalizations.of(context)!.hourlyActivity}',
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textLight,
+              ),
             ),
           ),
           const SizedBox(height: 20),
@@ -317,10 +346,30 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
       crossAxisSpacing: 12,
       childAspectRatio: 1.3,
       children: [
-        _buildMetricCard('🎯 Efectividad', '85%', Icons.track_changes, Colors.orange),
-        _buildMetricCard('💪 Motivación', 'Alta', Icons.emoji_events, Colors.yellow),
-        _buildMetricCard('😊 Estado de ánimo', 'Bueno', Icons.mood, Colors.blue),
-        _buildMetricCard('🧠 Fuerza mental', 'Fuerte', Icons.fitness_center, Colors.green),
+        Builder(
+          builder: (context) {
+            final localizations = AppLocalizations.of(context)!;
+            return _buildMetricCard('🎯 ${localizations.effectiveness}', '85%', Icons.track_changes, Colors.orange);
+          },
+        ),
+        Builder(
+          builder: (context) {
+            final localizations = AppLocalizations.of(context)!;
+            return _buildMetricCard('💪 ${localizations.motivation}', localizations.high, Icons.emoji_events, Colors.yellow);
+          },
+        ),
+        Builder(
+          builder: (context) {
+            final localizations = AppLocalizations.of(context)!;
+            return _buildMetricCard('😊 ${localizations.mood}', localizations.good, Icons.mood, Colors.blue);
+          },
+        ),
+        Builder(
+          builder: (context) {
+            final localizations = AppLocalizations.of(context)!;
+            return _buildMetricCard('🧠 ${localizations.mentalStrength}', localizations.strong, Icons.fitness_center, Colors.green);
+          },
+        ),
       ],
     );
   }
@@ -376,27 +425,37 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            '📊 Actividad semanal',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textLight,
-            ),
-          ),
-          const SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              _buildDayBar('Lun', 0.6),
-              _buildDayBar('Mar', 0.8),
-              _buildDayBar('Mié', 0.7),
-              _buildDayBar('Jue', 0.9),
-              _buildDayBar('Vie', 0.5),
-              _buildDayBar('Sáb', 0.4),
-              _buildDayBar('Dom', 0.6),
-            ],
+          Builder(
+            builder: (context) {
+              final localizations = AppLocalizations.of(context)!;
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '📊 ${localizations.weeklyActivity}',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textLight,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      _buildDayBar(localizations.monday, 0.6),
+                      _buildDayBar(localizations.tuesday, 0.8),
+                      _buildDayBar(localizations.wednesday, 0.7),
+                      _buildDayBar(localizations.thursday, 0.9),
+                      _buildDayBar(localizations.friday, 0.5),
+                      _buildDayBar(localizations.saturday, 0.4),
+                      _buildDayBar(localizations.sunday, 0.6),
+                    ],
+                  ),
+                ],
+              );
+            },
           ),
         ],
       ),
@@ -441,26 +500,41 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            '📉 Comparación semanal',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textLight,
-            ),
+          Builder(
+            builder: (context) {
+              final localizations = AppLocalizations.of(context)!;
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '📉 ${localizations.weeklyComparison}',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textLight,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildComparisonRow(localizations.lastWeek, '22h 30m', 0.75, Colors.red),
+                  const SizedBox(height: 12),
+                  _buildComparisonRow(localizations.thisWeek, '28h 45m', 0.95, Colors.green),
+                ],
+              );
+            },
           ),
-          const SizedBox(height: 16),
-          _buildComparisonRow('Semana pasada', '22h 30m', 0.75, Colors.red),
-          const SizedBox(height: 12),
-          _buildComparisonRow('Esta semana', '28h 45m', 0.95, Colors.green),
           const SizedBox(height: 8),
-          Text(
-            '➕ Mejora del 27%',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              color: Colors.green,
-            ),
+          Builder(
+            builder: (context) {
+              final localizations = AppLocalizations.of(context)!;
+              return Text(
+                '➕ ${localizations.improvement} 27%',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.green,
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -524,19 +598,30 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            '📅 Progreso mensual',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textLight,
+          Builder(
+            builder: (context) => Text(
+              '📅 ${AppLocalizations.of(context)!.monthlyProgress}',
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textLight,
+              ),
             ),
           ),
           const SizedBox(height: 20),
-          _buildWeekRow('Semana 1', 0.6),
-          _buildWeekRow('Semana 2', 0.7),
-          _buildWeekRow('Semana 3', 0.9),
-          _buildWeekRow('Semana 4', 0.85),
+          Builder(
+            builder: (context) {
+              final localizations = AppLocalizations.of(context)!;
+              return Column(
+                children: [
+                  _buildWeekRow('${localizations.weekNumber} 1', 0.6),
+                  _buildWeekRow('${localizations.weekNumber} 2', 0.7),
+                  _buildWeekRow('${localizations.weekNumber} 3', 0.9),
+                  _buildWeekRow('${localizations.weekNumber} 4', 0.85),
+                ],
+              );
+            },
+          ),
         ],
       ),
     );
@@ -602,20 +687,30 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            '🏆 Logros del mes',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textLight,
-            ),
+          Builder(
+            builder: (context) {
+              final localizations = AppLocalizations.of(context)!;
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '🏆 ${localizations.monthlyAchievements}',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textLight,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildAchievementBadge('🔥 ${localizations.streak7Days}', Icons.local_fire_department, Colors.orange, true),
+                  const SizedBox(height: 12),
+                  _buildAchievementBadge('🎯 ${localizations.weeklyGoalAchieved}', Icons.flag, Colors.blue, true),
+                  const SizedBox(height: 12),
+                  _buildAchievementBadge('⚡ ${localizations.hours100Free}', Icons.bolt, Colors.yellow, true),
+                ],
+              );
+            },
           ),
-          const SizedBox(height: 16),
-          _buildAchievementBadge('🔥 Racha de 7 días', Icons.local_fire_department, Colors.orange, true),
-          const SizedBox(height: 12),
-          _buildAchievementBadge('🎯 Meta semanal cumplida', Icons.flag, Colors.blue, true),
-          const SizedBox(height: 12),
-          _buildAchievementBadge('⚡ 100 horas libres', Icons.bolt, Colors.yellow, true),
         ],
       ),
     );

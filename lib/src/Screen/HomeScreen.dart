@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:nofacezone/src/Custom/AppColors.dart';
+import 'package:nofacezone/src/Custom/AppLocalizations.dart';
 import 'package:nofacezone/src/Custom/AppMessages.dart';
 import 'package:nofacezone/src/Providers/UserProvider.dart';
 import 'package:nofacezone/src/Providers/AppProvider.dart';
@@ -54,10 +55,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     // Escuchar cambios del AppProvider para actualizar el tema
-    final appProvider = Provider.of<AppProvider>(context);
-    AppColors.setTheme(appProvider.colorTheme);
-    
-    return Scaffold(
+    return Consumer<AppProvider>(
+      builder: (context, appProvider, child) {
+        AppColors.setTheme(appProvider.colorTheme);
+        
+        return Scaffold(
       body: Container(
         width: double.infinity,
         height: double.infinity,
@@ -108,20 +110,23 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ),
       ),
     );
+      },
+    );
   }
 
   Widget _buildHeader() {
     return Consumer<UserProvider>(
       builder: (context, userProvider, child) {
+        final localizations = AppLocalizations.of(context)!;
         final user = userProvider.user;
-        final userName = user?.name ?? 'Usuario';
+        final userName = user?.name ?? localizations.user;
         final currentHour = DateTime.now().hour;
-        String greeting = 'Buenos días';
+        String greeting = localizations.goodMorning;
         
         if (currentHour >= 12 && currentHour < 18) {
-          greeting = 'Buenas tardes';
+          greeting = localizations.goodAfternoon;
         } else if (currentHour >= 18) {
-          greeting = 'Buenas noches';
+          greeting = localizations.goodEvening;
         }
 
         return Row(
@@ -181,8 +186,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget _buildMotivationalMessage() {
     return Consumer<AppProvider>(
       builder: (context, appProvider, child) {
-        // Obtener un mensaje aleatorio de las colecciones activas
-        final message = AppMessages.getRandomMessage();
+        final localizations = AppLocalizations.of(context)!;
+        // Obtener un mensaje aleatorio de las colecciones activas traducido
+        final message = AppMessages.getRandomMessage(localizations);
         
         return Container(
           padding: const EdgeInsets.all(20),
@@ -228,7 +234,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '💬 Mensaje del día',
+                      '💬 ${localizations.messageOfDay}',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
@@ -257,6 +263,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildUsageSummary() {
+    final localizations = AppLocalizations.of(context)!;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -267,8 +274,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            '📱 Resumen de uso',
+          Text(
+            '📱 ${localizations.usageSummary}',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -280,7 +287,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             children: [
               Expanded(
                 child: _buildUsageCard(
-                  'Tiempo sin Facebook',
+                  localizations.timeWithoutFacebook,
                   '2h 45m',
                   Icons.access_time,
                   AppColors.accentBlue,
@@ -289,7 +296,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               const SizedBox(width: 12),
               Expanded(
                 child: _buildUsageCard(
-                  'Sesiones bloqueadas',
+                  localizations.blockedSessions,
                   '3',
                   Icons.block,
                   AppColors.accentPurple,
@@ -302,7 +309,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             children: [
               Expanded(
                 child: _buildUsageCard(
-                  'Tiempo ahorrado',
+                  localizations.timeSaved,
                   '1h 20m',
                   Icons.savings,
                   Colors.green,
@@ -311,7 +318,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               const SizedBox(width: 12),
               Expanded(
                 child: _buildUsageCard(
-                  'Días consecutivos',
+                  localizations.consecutiveDays,
                   '5',
                   Icons.calendar_today,
                   Colors.orange,
@@ -381,6 +388,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildUsageLimits() {
+    final localizations = AppLocalizations.of(context)!;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -391,8 +399,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            '⏰ Límites de uso',
+          Text(
+            '⏰ ${localizations.usageLimitsTitleHome}',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -401,27 +409,27 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
           const SizedBox(height: 16),
           _buildLimitItem(
-            'Límite diario',
-            '2 horas',
-            '1h 15m restantes',
+            localizations.dailyLimitHome,
+            '2 ${localizations.hours}',
+            '1h 15m ${localizations.remaining}',
             Icons.access_time,
             AppColors.accentBlue,
             0.4, // 40% usado
           ),
           const SizedBox(height: 12),
           _buildLimitItem(
-            'Bloqueo nocturno',
+            localizations.nightBlock,
             '22:00 - 07:00',
-            'Activo',
+            localizations.active,
             Icons.bedtime,
             AppColors.accentPurple,
             1.0, // 100% activo
           ),
           const SizedBox(height: 12),
           _buildLimitItem(
-            'Pausas obligatorias',
+            localizations.mandatoryBreaks,
             'Cada 30 min',
-            'Próxima en 15 min',
+            '${localizations.nextIn} 15 min',
             Icons.pause,
             Colors.orange,
             0.5, // 50% del tiempo transcurrido
@@ -531,6 +539,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildWeeklyProgress() {
+    final localizations = AppLocalizations.of(context)!;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -563,8 +572,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ),
               ),
               const SizedBox(width: 12),
-              const Text(
-                'Progreso semanal',
+              Text(
+                localizations.weeklyProgress,
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
@@ -604,7 +613,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                '5 de 7 días completados',
+                '5 ${localizations.ofWord} 7 ${localizations.daysCompleted}',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
@@ -627,11 +636,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildQuickNavigation() {
+    final localizations = AppLocalizations.of(context)!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          '🚀 Navegación rápida',
+        Text(
+          '🚀 ${localizations.quickNavigation}',
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
@@ -643,7 +653,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           children: [
             Expanded(
               child: _buildNavigationCard(
-                'Estadísticas',
+                localizations.statistics,
                 Icons.analytics,
                 AppColors.accentBlue,
                 () => navigate(context, CustomScreen.statistics),
@@ -652,7 +662,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             const SizedBox(width: 12),
             Expanded(
               child: _buildNavigationCard(
-                'Recompensas',
+                localizations.rewards,
                 Icons.card_giftcard,
                 Colors.orange,
                 () => navigate(context, CustomScreen.rewards),
@@ -665,7 +675,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           children: [
             Expanded(
               child: _buildNavigationCard(
-                'Configuración',
+                localizations.settings,
                 Icons.settings,
                 AppColors.accentPurple,
                 () => navigate(context, CustomScreen.settings),

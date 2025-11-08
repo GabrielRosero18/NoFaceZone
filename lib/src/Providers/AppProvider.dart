@@ -1,8 +1,10 @@
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:nofacezone/src/Services/PreferencesService.dart';
 import 'package:nofacezone/src/Custom/AppColors.dart';
 import 'package:nofacezone/src/Custom/AppFonts.dart';
 import 'package:nofacezone/src/Custom/AppMessages.dart';
+import 'package:nofacezone/src/Custom/Constans.dart';
 
 /// Provider para manejar el estado global de la aplicación
 class AppProvider extends ChangeNotifier {
@@ -75,8 +77,25 @@ class AppProvider extends ChangeNotifier {
         );
       }
       
-      // Cargar idioma
-      _language = PreferencesService.getLanguage();
+      // Cargar idioma (detectar automáticamente si no hay uno guardado)
+      final hasLanguageSaved = PreferencesService.prefs.containsKey(Constants.languageKey);
+      if (!hasLanguageSaved) {
+        // Si no hay idioma guardado, detectar el idioma del dispositivo
+        final deviceLocale = ui.PlatformDispatcher.instance.locale;
+        final deviceLanguage = deviceLocale.languageCode;
+        // Solo usar el idioma del dispositivo si es español o inglés
+        if (deviceLanguage == 'es' || deviceLanguage == 'en') {
+          _language = deviceLanguage;
+          // Guardar el idioma detectado para futuras sesiones
+          await PreferencesService.setLanguage(deviceLanguage);
+        } else {
+          // Si el idioma del dispositivo no es español ni inglés, usar español por defecto
+          _language = 'es';
+          await PreferencesService.setLanguage('es');
+        }
+      } else {
+        _language = PreferencesService.getLanguage();
+      }
       
       // Cargar tema de colores
       _colorTheme = PreferencesService.getColorTheme();

@@ -1,49 +1,14 @@
 import 'dart:math';
+import 'package:nofacezone/src/Custom/AppLocalizations.dart';
 
 /// Sistema de mensajes motivacionales para la aplicación NoFaceZone
 class AppMessages {
-  // Colecciones de mensajes disponibles
-  static final Map<String, List<String>> _messageCollections = {
-    'daily': [
-      '✨ Cada día es una nueva oportunidad',
-      '💪 Eres más fuerte de lo que crees',
-      '🌟 Tus pequeños pasos llevan a grandes cambios',
-      '🌱 El crecimiento viene de la constancia',
-      '💫 Hoy es el mejor día para empezar',
-      '🌈 Cada esfuerzo cuenta',
-      '🎯 La disciplina te llevará lejos',
-      '🔥 Tu determinación es tu superpoder',
-    ],
-    'achievements': [
-      '🎉 ¡Increíble! Lograste tu meta',
-      '🏆 Has superado tus expectativas',
-      '⭐ Eres un ejemplo de perseverancia',
-      '🎊 Cada logro es un paso hacia tu mejor versión',
-      '💎 Tu dedicación brilla',
-      '👑 Eres un verdadero campeón',
-      '🚀 Sigues rompiendo barreras',
-      '💪 Tu fuerza de voluntad es admirable',
-    ],
-    'encouragement': [
-      '🌱 Todo crecimiento requiere tiempo',
-      '💫 Tus esfuerzos no pasan desapercibidos',
-      '🌺 Eres capaz de superar cualquier obstáculo',
-      '🌊 Las olas más grandes forman los mejores surfistas',
-      '🦋 La transformación toma tiempo, pero vale la pena',
-      '🌳 Los árboles más altos tienen las raíces más profundas',
-      '💎 La presión crea diamantes',
-      '🌟 Incluso las estrellas necesitan oscuridad para brillar',
-    ],
-    'wisdom': [
-      '🧘 La paz viene de dentro',
-      '🎯 El éxito es la suma de pequeños esfuerzos',
-      '🌈 La persistencia supera la resistencia',
-      '🌅 Cada amanecer trae nuevas posibilidades',
-      '🦉 La sabiduría viene de la experiencia',
-      '🌿 La paciencia es una virtud poderosa',
-      '🕊️ La serenidad está en aceptar lo que no puedes cambiar',
-      '🎭 La vida es un viaje, no un destino',
-    ],
+  // Índices de mensajes para mapear entre idiomas
+  static final Map<String, List<int>> _messageIndices = {
+    'daily': [0, 1, 2, 3, 4, 5, 6, 7],
+    'achievements': [0, 1, 2, 3, 4, 5, 6, 7],
+    'encouragement': [0, 1, 2, 3, 4, 5, 6, 7],
+    'wisdom': [0, 1, 2, 3, 4, 5, 6, 7],
   };
 
   // Colecciones activas (se actualiza dinámicamente)
@@ -51,7 +16,7 @@ class AppMessages {
 
   /// Establecer las colecciones activas
   static void setActiveCollections(List<String> collectionIds) {
-    _activeCollections = collectionIds.where((id) => _messageCollections.containsKey(id)).toList();
+    _activeCollections = collectionIds.where((id) => _messageIndices.containsKey(id)).toList();
     // Si no hay colecciones activas, usar la predeterminada
     if (_activeCollections.isEmpty) {
       _activeCollections = ['daily'];
@@ -61,50 +26,97 @@ class AppMessages {
   /// Obtener las colecciones activas
   static List<String> get activeCollections => List.from(_activeCollections);
 
-  /// Obtener un mensaje aleatorio de las colecciones activas
-  static String getRandomMessage() {
+  /// Obtener un mensaje aleatorio de las colecciones activas traducido
+  static String getRandomMessage(AppLocalizations localizations) {
     if (_activeCollections.isEmpty) {
       _activeCollections = ['daily'];
     }
 
-    // Recopilar todos los mensajes de las colecciones activas
+    // Recopilar todos los mensajes de todas las colecciones activas
     final allMessages = <String>[];
     for (final collectionId in _activeCollections) {
-      if (_messageCollections.containsKey(collectionId)) {
-        allMessages.addAll(_messageCollections[collectionId]!);
+      if (_messageIndices.containsKey(collectionId)) {
+        final indices = _messageIndices[collectionId]!;
+        for (final index in indices) {
+          allMessages.add(_getMessageByIndex(collectionId, index, localizations));
+        }
       }
     }
 
     if (allMessages.isEmpty) {
-      return '✨ Cada día es una nueva oportunidad'; // Mensaje predeterminado
+      return localizations.messageExample1; // Mensaje predeterminado
     }
 
     final random = Random();
     return allMessages[random.nextInt(allMessages.length)];
   }
+  
+  /// Obtener un mensaje traducido por índice y colección
+  static String _getMessageByIndex(String collectionId, int index, AppLocalizations localizations) {
+    switch (collectionId) {
+      case 'daily':
+        switch (index) {
+          case 0: return localizations.messageExample1;
+          case 1: return localizations.messageExample2;
+          case 2: return localizations.messageExample3;
+          default: return localizations.messageExample1;
+        }
+      case 'achievements':
+        switch (index) {
+          case 0: return localizations.messageExample4;
+          case 1: return localizations.messageExample5;
+          case 2: return localizations.messageExample6;
+          default: return localizations.messageExample4;
+        }
+      case 'encouragement':
+        switch (index) {
+          case 0: return localizations.messageExample7;
+          case 1: return localizations.messageExample8;
+          case 2: return localizations.messageExample9;
+          default: return localizations.messageExample7;
+        }
+      case 'wisdom':
+        switch (index) {
+          case 0: return localizations.messageExample10;
+          case 1: return localizations.messageExample11;
+          case 2: return localizations.messageExample12;
+          default: return localizations.messageExample10;
+        }
+      default:
+        return localizations.messageExample1;
+    }
+  }
 
-  /// Obtener todos los mensajes de una colección específica
-  static List<String>? getMessagesByCollection(String collectionId) {
-    return _messageCollections[collectionId];
+  /// Obtener todos los mensajes de una colección específica traducidos
+  static List<String>? getMessagesByCollection(String collectionId, AppLocalizations localizations) {
+    final indices = _messageIndices[collectionId];
+    if (indices == null) return null;
+    
+    return indices.map((index) => _getMessageByIndex(collectionId, index, localizations)).toList();
   }
 
   /// Obtener todas las colecciones disponibles
-  static Map<String, List<String>> get allCollections => Map.from(_messageCollections);
+  static Map<String, List<int>> get allCollections => _messageIndices;
 
   /// Verificar si una colección está activa
   static bool isCollectionActive(String collectionId) {
     return _activeCollections.contains(collectionId);
   }
 
-  /// Obtener el nombre de la colección
-  static String getCollectionName(String collectionId) {
-    final names = {
-      'daily': 'Mensajes diarios',
-      'achievements': 'Mensajes de logros',
-      'encouragement': 'Mensajes de aliento',
-      'wisdom': 'Sabiduría diaria',
-    };
-    return names[collectionId] ?? collectionId;
+  /// Obtener el nombre de la colección traducido
+  static String getCollectionName(String collectionId, AppLocalizations localizations) {
+    switch (collectionId) {
+      case 'daily':
+        return localizations.dailyMessages;
+      case 'achievements':
+        return localizations.achievementMessages;
+      case 'encouragement':
+        return localizations.encouragementMessages;
+      case 'wisdom':
+        return localizations.wisdomDaily;
+      default:
+        return collectionId;
+    }
   }
 }
 

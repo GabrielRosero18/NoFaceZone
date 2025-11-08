@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:nofacezone/src/Custom/AppColors.dart';
 import 'package:nofacezone/src/Custom/Library.dart';
 import 'package:nofacezone/src/Custom/Config.dart';
+import 'package:nofacezone/src/Custom/AppLocalizations.dart';
 import 'package:nofacezone/src/Providers/AppProvider.dart';
 import 'package:nofacezone/src/Providers/UserProvider.dart';
 import 'package:nofacezone/src/Screen/EditProfileScreen.dart';
@@ -26,7 +27,7 @@ class _SettingsState extends State<Settings> {
     
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Configuración'),
+        title: Text(AppLocalizations.of(context)?.settings ?? 'Configuración'),
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
@@ -183,12 +184,13 @@ class _SettingsState extends State<Settings> {
   Widget _buildNotificationsSection() {
     return Consumer<AppProvider>(
       builder: (context, appProvider, child) {
+        final localizations = AppLocalizations.of(context)!;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              '🔔 Notificaciones',
-              style: TextStyle(
+            Text(
+              '🔔 ${localizations.notificationsTitle}',
+              style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: AppColors.textLight,
@@ -196,18 +198,18 @@ class _SettingsState extends State<Settings> {
             ),
             const SizedBox(height: 16),
             _buildSettingItem(
-              'Habilitar notificaciones',
-              'Recibir alertas y recordatorios',
+              localizations.enableNotificationsTitle,
+              localizations.receiveAlerts,
               Icons.notifications,
               appProvider.notificationsEnabled,
               (value) => appProvider.setNotificationsEnabled(value),
             ),
             const SizedBox(height: 12),
             _buildSettingItemWithValue(
-              'Intervalo de notificaciones',
-              'Frecuencia de recordatorios',
+              localizations.notificationIntervalTitle,
+              localizations.reminderFrequency,
               Icons.timer,
-              '${appProvider.notificationInterval} min',
+              '${appProvider.notificationInterval} ${localizations.minutes}',
               () => _showNotificationIntervalDialog(appProvider),
             ),
           ],
@@ -219,12 +221,13 @@ class _SettingsState extends State<Settings> {
   Widget _buildUsageLimitsSection() {
     return Consumer<AppProvider>(
       builder: (context, appProvider, child) {
+        final localizations = AppLocalizations.of(context)!;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              '⏱️ Límites de uso',
-              style: TextStyle(
+            Text(
+              '⏱️ ${localizations.usageLimitsTitle}',
+              style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: AppColors.textLight,
@@ -232,18 +235,18 @@ class _SettingsState extends State<Settings> {
             ),
             const SizedBox(height: 16),
             _buildSettingItemWithValue(
-              'Límite diario',
-              'Tiempo máximo de uso por día',
+              localizations.dailyLimitTitle,
+              localizations.dailyLimitDescription,
               Icons.access_time,
-              '${appProvider.dailyUsageLimit} minutos',
+              '${appProvider.dailyUsageLimit} ${localizations.minutes}',
               () => _showDailyLimitDialog(appProvider),
             ),
             const SizedBox(height: 12),
             _buildSettingItemWithValue(
-              'Meta semanal',
-              'Objetivo de horas por semana',
+              localizations.weeklyGoalTitle,
+              localizations.weeklyGoalDescription,
               Icons.track_changes,
-              '${appProvider.weeklyGoal} horas',
+              '${appProvider.weeklyGoal} ${localizations.hours}',
               () => _showWeeklyGoalDialog(appProvider),
             ),
           ],
@@ -255,12 +258,13 @@ class _SettingsState extends State<Settings> {
   Widget _buildAppearanceSection() {
     return Consumer<AppProvider>(
       builder: (context, appProvider, child) {
+        final localizations = AppLocalizations.of(context)!;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              '🎨 Apariencia',
-              style: TextStyle(
+            Text(
+              '🎨 ${localizations.appearance}',
+              style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: AppColors.textLight,
@@ -268,18 +272,18 @@ class _SettingsState extends State<Settings> {
             ),
             const SizedBox(height: 16),
             _buildSettingItemWithValue(
-              'Tema',
-              'Apariencia de la aplicación',
+              localizations.theme,
+              localizations.appearanceDescription,
               Icons.palette,
-              _getThemeName(appProvider.themeMode),
+              _getThemeName(appProvider.themeMode, localizations),
               () => _showThemeDialog(appProvider),
             ),
             const SizedBox(height: 12),
             _buildSettingItemWithValue(
-              'Idioma',
-              'Seleccionar idioma',
+              localizations.language,
+              localizations.selectLanguageDescription,
               Icons.language,
-              _getLanguageName(appProvider.language),
+              _getLanguageName(appProvider.language, localizations),
               () => _showLanguageDialog(appProvider),
             ),
           ],
@@ -289,12 +293,13 @@ class _SettingsState extends State<Settings> {
   }
 
   Widget _buildAdvancedSection() {
+    final localizations = AppLocalizations.of(context)!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          '⚙️ Configuración avanzada',
-          style: TextStyle(
+        Text(
+          '⚙️ ${localizations.advancedSettingsTitle}',
+          style: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
             color: AppColors.textLight,
@@ -302,24 +307,24 @@ class _SettingsState extends State<Settings> {
         ),
         const SizedBox(height: 16),
         _buildSettingItemWithValue(
-          'Exportar datos',
-          'Guardar tu progreso',
+          localizations.exportDataTitle,
+          localizations.exportDataDescription,
           Icons.file_download,
           null,
           () => _exportData(),
         ),
         const SizedBox(height: 12),
         _buildSettingItemWithValue(
-          'Importar datos',
-          'Restaurar tu progreso',
+          localizations.importDataTitle,
+          localizations.importDataDescription,
           Icons.file_upload,
           null,
           () => _importData(),
         ),
         const SizedBox(height: 12),
         _buildSettingItemWithValue(
-          'Reiniciar configuración',
-          'Volver a valores por defecto',
+          localizations.resetSettingsTitle,
+          localizations.resetSettingsDescription,
           Icons.restore,
           null,
           () => _showResetDialog(),
@@ -329,12 +334,13 @@ class _SettingsState extends State<Settings> {
   }
 
   Widget _buildAboutSection() {
+    final localizations = AppLocalizations.of(context)!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'ℹ️ Información',
-          style: TextStyle(
+        Text(
+          'ℹ️ ${localizations.aboutTitle}',
+          style: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
             color: AppColors.textLight,
@@ -342,40 +348,40 @@ class _SettingsState extends State<Settings> {
         ),
         const SizedBox(height: 16),
         _buildSettingItemWithValue(
-          'Versión',
-          'Información de la app',
+          localizations.versionTitle,
+          localizations.appInfo,
           Icons.info,
           null,
           () => _showVersionInfo(),
         ),
         const SizedBox(height: 12),
         _buildSettingItemWithValue(
-          'Términos y condiciones',
-          'Leer documentos legales',
+          localizations.termsAndConditions,
+          localizations.readLegalDocuments,
           Icons.description,
           null,
           () => _showTermsAndConditions(),
         ),
         const SizedBox(height: 12),
         _buildSettingItemWithValue(
-          'Política de privacidad',
-          'Cómo protegemos tus datos',
+          localizations.privacyPolicy,
+          localizations.howWeProtectData,
           Icons.privacy_tip,
           null,
           () => _showPrivacyPolicy(),
         ),
         const SizedBox(height: 12),
         _buildSettingItemWithValue(
-          'Contacto',
-          'Soporte y sugerencias',
+          localizations.contact,
+          localizations.supportAndSuggestions,
           Icons.support_agent,
           null,
           () => _showContactInfo(),
         ),
         const SizedBox(height: 24),
         _buildSettingItemWithValue(
-          'Cerrar sesión',
-          'Salir de la aplicación',
+          localizations.logout,
+          localizations.exitApplication,
           Icons.logout,
           null,
           () => _logout(),
@@ -533,21 +539,22 @@ class _SettingsState extends State<Settings> {
   }
 
   Future<void> _showNotificationIntervalDialog(AppProvider appProvider) async {
+    final localizations = AppLocalizations.of(context)!;
     final intervals = [5, 10, 15, 30, 60];
     final selectedInterval = await showDialog<int>(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1A1F3A),
-        title: const Text(
-          'Intervalo de notificaciones',
-          style: TextStyle(color: AppColors.textLight),
+        title: Text(
+          localizations.notificationIntervalTitle,
+          style: const TextStyle(color: AppColors.textLight),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: intervals.map((interval) {
             return RadioListTile<int>(
               title: Text(
-                '$interval minutos',
+                '$interval ${localizations.minutes}',
                 style: const TextStyle(color: AppColors.textLight),
               ),
               value: interval,
@@ -565,27 +572,29 @@ class _SettingsState extends State<Settings> {
     if (selectedInterval != null) {
       appProvider.setNotificationInterval(selectedInterval);
       if (mounted) {
+        final updatedLocalizations = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Intervalo actualizado: $selectedInterval min')),
+          SnackBar(content: Text('${updatedLocalizations.notificationIntervalTitle} ${updatedLocalizations.languageUpdated.toLowerCase()}: $selectedInterval ${updatedLocalizations.minutes}')),
         );
       }
     }
   }
 
   Future<void> _showDailyLimitDialog(AppProvider appProvider) async {
+    final localizations = AppLocalizations.of(context)!;
     final limit = await showDialog<int>(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1A1F3A),
-        title: const Text(
-          'Límite diario (minutos)',
-          style: TextStyle(color: AppColors.textLight),
+        title: Text(
+          localizations.dailyLimitDialogTitle,
+          style: const TextStyle(color: AppColors.textLight),
         ),
         content: TextField(
           keyboardType: TextInputType.number,
           style: const TextStyle(color: AppColors.textLight),
           decoration: InputDecoration(
-            hintText: 'Ingrese minutos',
+            hintText: localizations.enterMinutes,
             hintStyle: TextStyle(color: AppColors.textLight.withValues(alpha: 0.5)),
             filled: true,
             fillColor: AppColors.textLight.withValues(alpha: 0.1),
@@ -597,14 +606,14 @@ class _SettingsState extends State<Settings> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
+            child: Text(localizations.cancel),
           ),
           TextButton(
             onPressed: () {
               // Por simplicidad, usar un valor por defecto
               Navigator.pop(context, 60);
             },
-            child: const Text('Guardar'),
+            child: Text(localizations.save),
           ),
         ],
       ),
@@ -613,27 +622,29 @@ class _SettingsState extends State<Settings> {
     if (limit != null) {
       appProvider.setDailyUsageLimit(limit);
       if (mounted) {
+        final updatedLocalizations = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Límite diario actualizado: $limit min')),
+          SnackBar(content: Text('${updatedLocalizations.dailyLimitUpdated}: $limit ${updatedLocalizations.minutes}')),
         );
       }
     }
   }
 
   Future<void> _showWeeklyGoalDialog(AppProvider appProvider) async {
+    final localizations = AppLocalizations.of(context)!;
     final goal = await showDialog<int>(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1A1F3A),
-        title: const Text(
-          'Meta semanal (horas)',
-          style: TextStyle(color: AppColors.textLight),
+        title: Text(
+          localizations.weeklyGoalDialogTitle,
+          style: const TextStyle(color: AppColors.textLight),
         ),
         content: TextField(
           keyboardType: TextInputType.number,
           style: const TextStyle(color: AppColors.textLight),
           decoration: InputDecoration(
-            hintText: 'Ingrese horas',
+            hintText: localizations.enterHours,
             hintStyle: TextStyle(color: AppColors.textLight.withValues(alpha: 0.5)),
             filled: true,
             fillColor: AppColors.textLight.withValues(alpha: 0.1),
@@ -645,13 +656,13 @@ class _SettingsState extends State<Settings> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
+            child: Text(localizations.cancel),
           ),
           TextButton(
             onPressed: () {
               Navigator.pop(context, 10);
             },
-            child: const Text('Guardar'),
+            child: Text(localizations.save),
           ),
         ],
       ),
@@ -660,41 +671,43 @@ class _SettingsState extends State<Settings> {
     if (goal != null) {
       appProvider.setWeeklyGoal(goal);
       if (mounted) {
+        final updatedLocalizations = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Meta semanal actualizada: $goal horas')),
+          SnackBar(content: Text('${updatedLocalizations.weeklyGoalUpdated}: $goal ${updatedLocalizations.hours}')),
         );
       }
     }
   }
 
   Future<void> _showThemeDialog(AppProvider appProvider) async {
+    final localizations = AppLocalizations.of(context)!;
     final theme = await showDialog<ThemeMode>(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1A1F3A),
-        title: const Text(
-          'Seleccionar tema',
-          style: TextStyle(color: AppColors.textLight),
+        title: Text(
+          localizations.selectTheme,
+          style: const TextStyle(color: AppColors.textLight),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             RadioListTile<ThemeMode>(
-              title: const Text('Sistema', style: TextStyle(color: AppColors.textLight)),
+              title: Text(localizations.system, style: const TextStyle(color: AppColors.textLight)),
               value: ThemeMode.system,
               groupValue: appProvider.themeMode,
               onChanged: (value) => Navigator.pop(context, value),
               activeColor: AppColors.accentBlue,
             ),
             RadioListTile<ThemeMode>(
-              title: const Text('Claro', style: TextStyle(color: AppColors.textLight)),
+              title: Text(localizations.light, style: const TextStyle(color: AppColors.textLight)),
               value: ThemeMode.light,
               groupValue: appProvider.themeMode,
               onChanged: (value) => Navigator.pop(context, value),
               activeColor: AppColors.accentBlue,
             ),
             RadioListTile<ThemeMode>(
-              title: const Text('Oscuro', style: TextStyle(color: AppColors.textLight)),
+              title: Text(localizations.dark, style: const TextStyle(color: AppColors.textLight)),
               value: ThemeMode.dark,
               groupValue: appProvider.themeMode,
               onChanged: (value) => Navigator.pop(context, value),
@@ -708,34 +721,36 @@ class _SettingsState extends State<Settings> {
     if (theme != null) {
       appProvider.setThemeMode(theme);
       if (mounted) {
+        final localizations = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Tema actualizado: ${_getThemeName(theme)}')),
+          SnackBar(content: Text('${localizations.theme} ${localizations.languageUpdated.toLowerCase()}: ${_getThemeName(theme, localizations)}')),
         );
       }
     }
   }
 
   Future<void> _showLanguageDialog(AppProvider appProvider) async {
+    final localizations = AppLocalizations.of(context)!;
     final language = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1A1F3A),
-        title: const Text(
-          'Seleccionar idioma',
-          style: TextStyle(color: AppColors.textLight),
+        title: Text(
+          localizations.selectLanguage,
+          style: const TextStyle(color: AppColors.textLight),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             RadioListTile<String>(
-              title: const Text('Español', style: TextStyle(color: AppColors.textLight)),
+              title: Text(localizations.spanish, style: const TextStyle(color: AppColors.textLight)),
               value: 'es',
               groupValue: appProvider.language,
               onChanged: (value) => Navigator.pop(context, value),
               activeColor: AppColors.accentBlue,
             ),
             RadioListTile<String>(
-              title: const Text('English', style: TextStyle(color: AppColors.textLight)),
+              title: Text(localizations.english, style: const TextStyle(color: AppColors.textLight)),
               value: 'en',
               groupValue: appProvider.language,
               onChanged: (value) => Navigator.pop(context, value),
@@ -747,36 +762,44 @@ class _SettingsState extends State<Settings> {
     );
 
     if (language != null) {
-      appProvider.setLanguage(language);
+      await appProvider.setLanguage(language);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Idioma actualizado: ${_getLanguageName(language)}')),
-        );
+        // Forzar reconstrucción de esta pantalla para actualizar los textos sin navegar
+        setState(() {});
+        // Esperar un frame para que el MaterialApp se actualice
+        await Future.delayed(const Duration(milliseconds: 100));
+        if (mounted) {
+          final updatedLocalizations = AppLocalizations.of(context)!;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${updatedLocalizations.languageUpdated}: ${_getLanguageName(language, updatedLocalizations)}')),
+          );
+        }
       }
     }
   }
 
   Future<void> _showResetDialog() async {
+    final localizations = AppLocalizations.of(context)!;
     final shouldReset = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1A1F3A),
-        title: const Text(
-          'Reiniciar configuración',
-          style: TextStyle(color: AppColors.textLight),
+        title: Text(
+          localizations.resetSettingsTitle,
+          style: const TextStyle(color: AppColors.textLight),
         ),
-        content: const Text(
-          '¿Está seguro de que desea reiniciar toda la configuración a sus valores por defecto?',
-          style: TextStyle(color: AppColors.textLight),
+        content: Text(
+          localizations.resetSettingsConfirm,
+          style: const TextStyle(color: AppColors.textLight),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
+            child: Text(localizations.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Reiniciar', style: TextStyle(color: AppColors.error)),
+            child: Text(localizations.resetApp, style: const TextStyle(color: AppColors.error)),
           ),
         ],
       ),
@@ -823,23 +846,23 @@ class _SettingsState extends State<Settings> {
     }
   }
 
-  String _getThemeName(ThemeMode theme) {
+  String _getThemeName(ThemeMode theme, AppLocalizations localizations) {
     switch (theme) {
       case ThemeMode.system:
-        return 'Sistema';
+        return localizations.system;
       case ThemeMode.light:
-        return 'Claro';
+        return localizations.light;
       case ThemeMode.dark:
-        return 'Oscuro';
+        return localizations.dark;
     }
   }
 
-  String _getLanguageName(String language) {
+  String _getLanguageName(String language, AppLocalizations localizations) {
     switch (language) {
       case 'es':
-        return 'Español';
+        return localizations.spanish;
       case 'en':
-        return 'English';
+        return localizations.english;
       default:
         return language;
     }
@@ -885,22 +908,23 @@ class _SettingsState extends State<Settings> {
       final jsonString = const JsonEncoder.withIndent('  ').convert(exportData);
       
       if (mounted) {
+        final localizations = AppLocalizations.of(context)!;
         await showDialog(
           context: context,
           builder: (context) => AlertDialog(
             backgroundColor: const Color(0xFF1A1F3A),
-            title: const Text(
-              'Datos exportados',
-              style: TextStyle(color: AppColors.textLight),
+            title: Text(
+              localizations.dataExportedTitle,
+              style: const TextStyle(color: AppColors.textLight),
             ),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Tus datos han sido preparados para exportar. Copia el siguiente JSON:',
-                    style: TextStyle(color: AppColors.textLight),
+                  Text(
+                    localizations.dataPreparedForExport,
+                    style: const TextStyle(color: AppColors.textLight),
                   ),
                   const SizedBox(height: 16),
                   Container(
@@ -925,17 +949,17 @@ class _SettingsState extends State<Settings> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text('Cerrar'),
+                child: Text(localizations.close),
               ),
               TextButton(
                 onPressed: () {
                   Clipboard.setData(ClipboardData(text: jsonString));
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Datos copiados al portapapeles')),
+                    SnackBar(content: Text(localizations.dataCopied)),
                   );
                 },
-                child: Text('Copiar', style: TextStyle(color: AppColors.accentBlue)),
+                child: Text(localizations.copy, style: TextStyle(color: AppColors.accentBlue)),
               ),
             ],
           ),
@@ -943,8 +967,9 @@ class _SettingsState extends State<Settings> {
       }
     } catch (e) {
       if (mounted) {
+        final localizations = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al exportar datos: $e')),
+          SnackBar(content: Text('${localizations.exportError}: $e')),
         );
       }
     }
@@ -955,22 +980,23 @@ class _SettingsState extends State<Settings> {
     try {
       final TextEditingController jsonController = TextEditingController();
       
+      final localizations = AppLocalizations.of(context)!;
       final shouldImport = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
           backgroundColor: const Color(0xFF1A1F3A),
-          title: const Text(
-            'Importar datos',
-            style: TextStyle(color: AppColors.textLight),
+          title: Text(
+            localizations.importDataTitleDialog,
+            style: const TextStyle(color: AppColors.textLight),
           ),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Pega el JSON con tus datos exportados:',
-                  style: TextStyle(color: AppColors.textLight),
+                Text(
+                  localizations.pasteJson,
+                  style: const TextStyle(color: AppColors.textLight),
                 ),
                 const SizedBox(height: 16),
                 TextField(
@@ -978,7 +1004,7 @@ class _SettingsState extends State<Settings> {
                   maxLines: 10,
                   style: const TextStyle(color: AppColors.textLight),
                   decoration: InputDecoration(
-                    hintText: 'Pega el JSON aquí...',
+                    hintText: localizations.pasteJsonHere,
                     hintStyle: TextStyle(color: AppColors.textLight.withValues(alpha: 0.5)),
                     filled: true,
                     fillColor: AppColors.darkSurface,
@@ -994,11 +1020,11 @@ class _SettingsState extends State<Settings> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancelar'),
+              child: Text(localizations.cancel),
             ),
             TextButton(
               onPressed: () => Navigator.pop(context, true),
-              child: Text('Importar', style: TextStyle(color: AppColors.accentBlue)),
+              child: Text(localizations.import, style: TextStyle(color: AppColors.accentBlue)),
             ),
           ],
         ),
@@ -1049,22 +1075,25 @@ class _SettingsState extends State<Settings> {
           }
 
           if (mounted) {
+            final localizations = AppLocalizations.of(context)!;
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Datos importados correctamente')),
+              SnackBar(content: Text(localizations.dataImportedSuccessfully)),
             );
           }
         } catch (e) {
           if (mounted) {
+            final localizations = AppLocalizations.of(context)!;
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Error al importar datos: JSON inválido')),
+              SnackBar(content: Text(localizations.invalidJson)),
             );
           }
         }
       }
     } catch (e) {
       if (mounted) {
+        final localizations = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al importar datos: $e')),
+          SnackBar(content: Text('${localizations.importError}: $e')),
         );
       }
     }
@@ -1106,6 +1135,7 @@ class _SettingsState extends State<Settings> {
   // Mostrar información de versión
   Future<void> _showVersionInfo() async {
     try {
+      final localizations = AppLocalizations.of(context)!;
       final version = await Config.getAppVersion();
       final packageInfo = await Config.getPackageInfo();
       
@@ -1114,27 +1144,27 @@ class _SettingsState extends State<Settings> {
           context: context,
           builder: (context) => AlertDialog(
             backgroundColor: const Color(0xFF1A1F3A),
-            title: const Text(
-              'Información de la aplicación',
-              style: TextStyle(color: AppColors.textLight),
+            title: Text(
+              localizations.appInfoTitle,
+              style: const TextStyle(color: AppColors.textLight),
             ),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildInfoRow('Nombre', Config.appName),
+                _buildInfoRow(localizations.nameLabel, Config.appName),
                 const SizedBox(height: 8),
-                _buildInfoRow('Versión', version),
+                _buildInfoRow(localizations.versionLabel, version),
                 const SizedBox(height: 8),
-                _buildInfoRow('Build', packageInfo.buildNumber),
+                _buildInfoRow(localizations.buildLabel, packageInfo.buildNumber),
                 const SizedBox(height: 8),
-                _buildInfoRow('Descripción', Config.appDescription),
+                _buildInfoRow(localizations.descriptionLabel, Config.appDescription),
               ],
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text('Cerrar'),
+                child: Text(localizations.close),
               ),
             ],
           ),
@@ -1142,8 +1172,9 @@ class _SettingsState extends State<Settings> {
       }
     } catch (e) {
       if (mounted) {
+        final localizations = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al obtener información: $e')),
+          SnackBar(content: Text('${localizations.errorGettingInfo}: $e')),
         );
       }
     }
@@ -1176,13 +1207,14 @@ class _SettingsState extends State<Settings> {
   // Mostrar términos y condiciones
   Future<void> _showTermsAndConditions() async {
     if (mounted) {
+      final localizations = AppLocalizations.of(context)!;
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
           backgroundColor: const Color(0xFF1A1F3A),
-          title: const Text(
-            'Términos y Condiciones',
-            style: TextStyle(color: AppColors.textLight),
+          title: Text(
+            localizations.termsTitle,
+            style: const TextStyle(color: AppColors.textLight),
           ),
           content: SingleChildScrollView(
             child: Column(
@@ -1190,7 +1222,7 @@ class _SettingsState extends State<Settings> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Última actualización: ${DateTime.now().toString().split(' ')[0]}',
+                  '${localizations.lastUpdate}: ${DateTime.now().toString().split(' ')[0]}',
                   style: const TextStyle(
                     color: AppColors.textLight,
                     fontSize: 12,
@@ -1198,74 +1230,74 @@ class _SettingsState extends State<Settings> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  '1. Aceptación de los Términos',
-                  style: TextStyle(
+                Text(
+                  localizations.termsSection1Title,
+                  style: const TextStyle(
                     color: AppColors.textLight,
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'Al usar NoFaceZone, aceptas estos términos y condiciones. Si no estás de acuerdo, no uses la aplicación.',
-                  style: TextStyle(color: AppColors.textLight),
+                Text(
+                  localizations.termsSection1Text,
+                  style: const TextStyle(color: AppColors.textLight),
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  '2. Uso de la Aplicación',
-                  style: TextStyle(
+                Text(
+                  localizations.termsSection2Title,
+                  style: const TextStyle(
                     color: AppColors.textLight,
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'NoFaceZone está diseñada para ayudarte a controlar tu uso de redes sociales. Debes usar la aplicación de manera responsable y legal.',
-                  style: TextStyle(color: AppColors.textLight),
+                Text(
+                  localizations.termsSection2Text,
+                  style: const TextStyle(color: AppColors.textLight),
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  '3. Privacidad',
-                  style: TextStyle(
+                Text(
+                  localizations.termsSection3Title,
+                  style: const TextStyle(
                     color: AppColors.textLight,
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'Respetamos tu privacidad. Los datos que recopilamos se utilizan únicamente para mejorar tu experiencia en la aplicación. Consulta nuestra Política de Privacidad para más detalles.',
-                  style: TextStyle(color: AppColors.textLight),
+                Text(
+                  localizations.termsSection3Text,
+                  style: const TextStyle(color: AppColors.textLight),
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  '4. Limitación de Responsabilidad',
-                  style: TextStyle(
+                Text(
+                  localizations.termsSection4Title,
+                  style: const TextStyle(
                     color: AppColors.textLight,
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'NoFaceZone se proporciona "tal cual" sin garantías. No nos hacemos responsables de ningún daño derivado del uso de la aplicación.',
-                  style: TextStyle(color: AppColors.textLight),
+                Text(
+                  localizations.termsSection4Text,
+                  style: const TextStyle(color: AppColors.textLight),
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  '5. Modificaciones',
-                  style: TextStyle(
+                Text(
+                  localizations.termsSection5Title,
+                  style: const TextStyle(
                     color: AppColors.textLight,
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'Nos reservamos el derecho de modificar estos términos en cualquier momento. Te notificaremos sobre cambios importantes.',
-                  style: TextStyle(color: AppColors.textLight),
+                Text(
+                  localizations.termsSection5Text,
+                  style: const TextStyle(color: AppColors.textLight),
                 ),
               ],
             ),
@@ -1273,7 +1305,7 @@ class _SettingsState extends State<Settings> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cerrar'),
+              child: Text(localizations.close),
             ),
           ],
         ),
@@ -1284,13 +1316,14 @@ class _SettingsState extends State<Settings> {
   // Mostrar política de privacidad
   Future<void> _showPrivacyPolicy() async {
     if (mounted) {
+      final localizations = AppLocalizations.of(context)!;
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
           backgroundColor: const Color(0xFF1A1F3A),
-          title: const Text(
-            'Política de Privacidad',
-            style: TextStyle(color: AppColors.textLight),
+          title: Text(
+            localizations.privacyTitle,
+            style: const TextStyle(color: AppColors.textLight),
           ),
           content: SingleChildScrollView(
             child: Column(
@@ -1298,7 +1331,7 @@ class _SettingsState extends State<Settings> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Última actualización: ${DateTime.now().toString().split(' ')[0]}',
+                  '${localizations.lastUpdate}: ${DateTime.now().toString().split(' ')[0]}',
                   style: const TextStyle(
                     color: AppColors.textLight,
                     fontSize: 12,
@@ -1306,102 +1339,102 @@ class _SettingsState extends State<Settings> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  '1. Sobre NoFaceZone',
-                  style: TextStyle(
+                Text(
+                  localizations.privacySection1Title,
+                  style: const TextStyle(
                     color: AppColors.textLight,
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'NoFaceZone es una aplicación de autocontrol diseñada para ayudarte a gestionar y reducir tu tiempo de uso en redes sociales, especialmente Facebook. Nuestro objetivo es proporcionarte herramientas para desarrollar hábitos más saludables y conscientes en el uso de tecnología.',
-                  style: TextStyle(color: AppColors.textLight),
+                Text(
+                  localizations.privacySection1Text,
+                  style: const TextStyle(color: AppColors.textLight),
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  '2. Información que Recopilamos',
-                  style: TextStyle(
+                Text(
+                  localizations.privacySection2Title,
+                  style: const TextStyle(
                     color: AppColors.textLight,
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'Para brindarte un servicio de autocontrol efectivo, recopilamos: información de tu cuenta (nombre, email), datos de uso de la aplicación (tiempo de uso, límites establecidos, metas alcanzadas), preferencias de configuración (notificaciones, temas, idioma), y estadísticas de autocontrol (tiempo sin usar Facebook, progreso semanal). Todos estos datos se almacenan de forma segura y se utilizan exclusivamente para tu beneficio personal.',
-                  style: TextStyle(color: AppColors.textLight),
+                Text(
+                  localizations.privacySection2Text,
+                  style: const TextStyle(color: AppColors.textLight),
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  '3. Cómo Usamos tu Información para el Autocontrol',
-                  style: TextStyle(
+                Text(
+                  localizations.privacySection3Title,
+                  style: const TextStyle(
                     color: AppColors.textLight,
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'Utilizamos tu información únicamente para: generar estadísticas personalizadas sobre tu uso de redes sociales, enviarte recordatorios y notificaciones que te ayuden a mantener tus límites de autocontrol, crear gráficos y reportes de tu progreso, personalizar tu experiencia según tus objetivos de autocontrol, y mejorar las funcionalidades de la aplicación para mejorarte en tu proceso de autocontrol.',
-                  style: TextStyle(color: AppColors.textLight),
+                Text(
+                  localizations.privacySection3Text,
+                  style: const TextStyle(color: AppColors.textLight),
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  '4. Privacidad y Confidencialidad',
-                  style: TextStyle(
+                Text(
+                  localizations.privacySection4Title,
+                  style: const TextStyle(
                     color: AppColors.textLight,
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'Entendemos que el autocontrol es un proceso personal y privado. Por ello, NO vendemos, compartimos ni divulgamos tu información personal con terceros. Tus datos de autocontrol son completamente confidenciales y solo tú tienes acceso a ellos. Solo utilizamos datos agregados y completamente anónimos para análisis generales que nos ayudan a mejorar la aplicación.',
-                  style: TextStyle(color: AppColors.textLight),
+                Text(
+                  localizations.privacySection4Text,
+                  style: const TextStyle(color: AppColors.textLight),
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  '5. Seguridad de tus Datos',
-                  style: TextStyle(
+                Text(
+                  localizations.privacySection5Title,
+                  style: const TextStyle(
                     color: AppColors.textLight,
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'Implementamos medidas de seguridad técnicas y organizativas para proteger tu información personal y tus datos de autocontrol. Utilizamos encriptación y almacenamiento seguro. Sin embargo, ningún método de transmisión por Internet es 100% seguro, por lo que te recomendamos mantener tu cuenta segura con una contraseña fuerte.',
-                  style: TextStyle(color: AppColors.textLight),
+                Text(
+                  localizations.privacySection5Text,
+                  style: const TextStyle(color: AppColors.textLight),
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  '6. Tus Derechos de Autocontrol',
-                  style: TextStyle(
+                Text(
+                  localizations.privacySection6Title,
+                  style: const TextStyle(
                     color: AppColors.textLight,
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'Tienes control total sobre tus datos: puedes acceder, modificar, exportar o eliminar tu información personal y datos de autocontrol en cualquier momento a través de la configuración de la aplicación. También puedes reiniciar tus estadísticas o ajustar tus límites de autocontrol cuando lo desees. Tu autonomía y control sobre tus datos es nuestra prioridad.',
-                  style: TextStyle(color: AppColors.textLight),
+                Text(
+                  localizations.privacySection6Text,
+                  style: const TextStyle(color: AppColors.textLight),
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  '7. Datos de Autocontrol y Estadísticas',
-                  style: TextStyle(
+                Text(
+                  localizations.privacySection7Title,
+                  style: const TextStyle(
                     color: AppColors.textLight,
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'Los datos de autocontrol (tiempo de uso, límites, metas, progreso) se almacenan localmente en tu dispositivo y de forma segura en nuestros servidores para permitir sincronización entre dispositivos. Estos datos son esenciales para que la aplicación funcione correctamente y te proporcione las herramientas de autocontrol que necesitas. Puedes eliminar estos datos en cualquier momento desde la configuración.',
-                  style: TextStyle(color: AppColors.textLight),
+                Text(
+                  localizations.privacySection7Text,
+                  style: const TextStyle(color: AppColors.textLight),
                 ),
               ],
             ),
@@ -1409,7 +1442,7 @@ class _SettingsState extends State<Settings> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cerrar'),
+              child: Text(localizations.close),
             ),
           ],
         ),
@@ -1420,45 +1453,46 @@ class _SettingsState extends State<Settings> {
   // Mostrar información de contacto
   Future<void> _showContactInfo() async {
     if (mounted) {
+      final localizations = AppLocalizations.of(context)!;
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
           backgroundColor: const Color(0xFF1A1F3A),
-          title: const Text(
-            'Contacto',
-            style: TextStyle(color: AppColors.textLight),
+          title: Text(
+            localizations.contactTitle,
+            style: const TextStyle(color: AppColors.textLight),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                '¿Necesitas ayuda o tienes sugerencias?',
-                style: TextStyle(color: AppColors.textLight),
+              Text(
+                localizations.needHelp,
+                style: const TextStyle(color: AppColors.textLight),
               ),
               const SizedBox(height: 24),
               _buildContactRow(
                 Icons.email,
-                'Email',
+                localizations.emailLabel,
                 'soporte@nofacezone.com',
                 () {
                   // Aquí podrías abrir el cliente de email si tienes url_launcher
                   Clipboard.setData(const ClipboardData(text: 'soporte@nofacezone.com'));
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Email copiado al portapapeles')),
+                    SnackBar(content: Text(localizations.emailCopied)),
                   );
                 },
               ),
               const SizedBox(height: 16),
               _buildContactRow(
                 Icons.help_outline,
-                'Soporte',
-                'Centro de ayuda',
+                localizations.supportLabel,
+                localizations.helpCenter,
                 () {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Centro de ayuda próximamente disponible')),
+                    SnackBar(content: Text('${localizations.helpCenter} ${localizations.loading}')),
                   );
                 },
               ),

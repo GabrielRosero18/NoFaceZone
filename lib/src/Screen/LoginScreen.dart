@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'RegisterScreen.dart';
 import 'package:nofacezone/src/Custom/AppColors.dart';
+import 'package:nofacezone/src/Custom/AppLocalizations.dart';
 import 'package:nofacezone/src/Services/UserService.dart';
 import 'package:nofacezone/src/Custom/Library.dart';
 import 'package:nofacezone/src/Providers/UserProvider.dart';
@@ -260,11 +261,11 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: TextButton(
                     onPressed: () {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Recuperación de contraseña no implementada')),
+                        SnackBar(content: Text(AppLocalizations.of(context)!.passwordRecoveryNotImplemented)),
                       );
                     },
                     child: Text(
-                      '¿Olvidaste tu contraseña?',
+                      AppLocalizations.of(context)!.forgotPasswordText,
                       style: TextStyle(color: AppColors.textLight.withValues(alpha: 0.8)),
                     ),
                   ),

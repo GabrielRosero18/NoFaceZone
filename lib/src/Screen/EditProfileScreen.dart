@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:nofacezone/src/Custom/AppColors.dart';
+import 'package:nofacezone/src/Custom/AppLocalizations.dart';
 import 'package:nofacezone/src/Providers/UserProvider.dart';
 import 'package:nofacezone/src/Providers/AppProvider.dart';
 import 'package:nofacezone/src/Services/UserService.dart';
@@ -54,15 +55,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   String? _profileImageUrl;
   bool _isLoading = false;
   bool _autoValidate = false;
-
-  final List<String> genders = ['Masculino', 'Femenino', 'No binario', 'Prefiero no decirlo'];
-  final List<String> languages = ['Español', 'English'];
-  final List<String> frequencies = [
-    'Muy frecuente (más de 4 horas)',
-    'Frecuente (2-4 horas)',
-    'Moderado (1-2 horas)',
-    'Poco frecuente (menos de 1 hora)'
-  ];
   final List<String> ageRanges = [
     '18-25',
     '26-35',
@@ -105,6 +97,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       final userData = await UserService.getUserByEmail(user.email);
       
       if (userData != null && mounted) {
+        final localizations = AppLocalizations.of(context)!;
+        
         setState(() {
           // Mapear edad a rango
           final age = userData['edad'] as int?;
@@ -113,14 +107,76 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             _ageController.text = _selectedAge ?? '';
           }
           
-          _selectedGender = userData['genero'] as String?;
-          _selectedLanguage = userData['idioma_preferido'] as String?;
-          _selectedFrequency = userData['frecuencia_uso_facebook'] as String?;
+          // Mapear género de la BD a la traducción actual
+          final genderFromDb = userData['genero'] as String?;
+          if (genderFromDb != null) {
+            _selectedGender = _mapGenderFromDatabase(genderFromDb, localizations);
+          }
+          
+          // Mapear idioma - si viene como código, usarlo directamente
+          final languageFromDb = userData['idioma_preferido'] as String?;
+          if (languageFromDb != null) {
+            // Si es un código de idioma (es/en), usarlo directamente
+            if (languageFromDb == 'es' || languageFromDb == 'en') {
+              _selectedLanguage = languageFromDb;
+            } else {
+              // Si viene como texto, mapearlo
+              _selectedLanguage = languageFromDb.toLowerCase().contains('español') || languageFromDb.toLowerCase().contains('spanish') ? 'es' : 'en';
+            }
+          }
+          
+          // Mapear frecuencia de la BD a la traducción actual
+          final frequencyFromDb = userData['frecuencia_uso_facebook'] as String?;
+          if (frequencyFromDb != null) {
+            _selectedFrequency = _mapFrequencyFromDatabase(frequencyFromDb, localizations);
+          }
         });
       }
     } catch (e) {
       debugPrint('Error loading user details: $e');
     }
+  }
+  
+  /// Mapear género de la base de datos a la traducción actual
+  String? _mapGenderFromDatabase(String genderFromDb, AppLocalizations localizations) {
+    final genderLower = genderFromDb.toLowerCase();
+    // Mapear valores comunes de la BD a las traducciones actuales
+    if (genderLower.contains('masculino') || genderLower.contains('male')) {
+      return localizations.male;
+    } else if (genderLower.contains('femenino') || genderLower.contains('female')) {
+      return localizations.female;
+    } else if (genderLower.contains('no binario') || genderLower.contains('non-binary') || genderLower.contains('non binary')) {
+      return localizations.nonBinary;
+    } else if (genderLower.contains('prefiero no') || genderLower.contains('prefer not')) {
+      return localizations.preferNotSay;
+    }
+    // Si no coincide, verificar si ya es una de las traducciones actuales
+    final currentGenders = [localizations.male, localizations.female, localizations.nonBinary, localizations.preferNotSay];
+    if (currentGenders.contains(genderFromDb)) {
+      return genderFromDb;
+    }
+    return null;
+  }
+  
+  /// Mapear frecuencia de la base de datos a la traducción actual
+  String? _mapFrequencyFromDatabase(String frequencyFromDb, AppLocalizations localizations) {
+    final freqLower = frequencyFromDb.toLowerCase();
+    // Mapear valores comunes de la BD a las traducciones actuales
+    if (freqLower.contains('muy frecuente') || freqLower.contains('very frequent') || freqLower.contains('más de 4')) {
+      return localizations.veryFrequent;
+    } else if (freqLower.contains('frecuente') && !freqLower.contains('muy') || freqLower.contains('frequent') && !freqLower.contains('very') || freqLower.contains('2-4')) {
+      return localizations.frequent;
+    } else if (freqLower.contains('moderado') || freqLower.contains('moderate') || freqLower.contains('1-2')) {
+      return localizations.moderate;
+    } else if (freqLower.contains('poco frecuente') || freqLower.contains('low frequency') || freqLower.contains('menos de 1')) {
+      return localizations.lowFrequency;
+    }
+    // Si no coincide, verificar si ya es una de las traducciones actuales
+    final currentFrequencies = [localizations.veryFrequent, localizations.frequent, localizations.moderate, localizations.lowFrequency];
+    if (currentFrequencies.contains(frequencyFromDb)) {
+      return frequencyFromDb;
+    }
+    return null;
   }
 
   String? _getAgeRange(int age) {
@@ -161,8 +217,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       }
     } catch (e) {
       if (mounted) {
+        final localizations = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al seleccionar imagen: $e')),
+          SnackBar(content: Text('${localizations.errorSelectingImage}: $e')),
         );
       }
     }
@@ -179,34 +236,44 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(
-              leading: const Icon(Icons.photo_library, color: AppColors.textLight),
-              title: const Text('Galería', style: TextStyle(color: AppColors.textLight)),
-              onTap: () {
-                Navigator.pop(context);
-                _pickImage(ImageSource.gallery);
+            Builder(
+              builder: (context) {
+                final localizations = AppLocalizations.of(context)!;
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ListTile(
+                      leading: const Icon(Icons.photo_library, color: AppColors.textLight),
+                      title: Text(localizations.gallery, style: const TextStyle(color: AppColors.textLight)),
+                      onTap: () {
+                        Navigator.pop(context);
+                        _pickImage(ImageSource.gallery);
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.camera_alt, color: AppColors.textLight),
+                      title: Text(localizations.camera, style: const TextStyle(color: AppColors.textLight)),
+                      onTap: () {
+                        Navigator.pop(context);
+                        _pickImage(ImageSource.camera);
+                      },
+                    ),
+                    if (_profileImage != null || _profileImageUrl != null)
+                      ListTile(
+                        leading: const Icon(Icons.delete, color: Colors.red),
+                        title: Text(localizations.deletePhoto, style: const TextStyle(color: Colors.red)),
+                        onTap: () {
+                          Navigator.pop(context);
+                          setState(() {
+                            _profileImage = null;
+                            _profileImageUrl = null;
+                          });
+                        },
+                      ),
+                  ],
+                );
               },
             ),
-            ListTile(
-              leading: const Icon(Icons.camera_alt, color: AppColors.textLight),
-              title: const Text('Cámara', style: TextStyle(color: AppColors.textLight)),
-              onTap: () {
-                Navigator.pop(context);
-                _pickImage(ImageSource.camera);
-              },
-            ),
-            if (_profileImage != null || _profileImageUrl != null)
-              ListTile(
-                leading: const Icon(Icons.delete, color: Colors.red),
-                title: const Text('Eliminar foto', style: TextStyle(color: Colors.red)),
-                onTap: () {
-                  Navigator.pop(context);
-                  setState(() {
-                    _profileImage = null;
-                    _profileImageUrl = null;
-                  });
-                },
-              ),
           ],
         ),
       ),
@@ -235,43 +302,43 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
-  String? _validateName(String? value) {
+  String? _validateName(String? value, AppLocalizations localizations) {
     final String v = value?.trim() ?? '';
-    if (v.isEmpty) return 'El nombre es obligatorio';
-    if (v.length < 3) return 'El nombre debe tener al menos 3 caracteres';
-    if (v.length > 50) return 'El nombre no puede exceder 50 caracteres';
+    if (v.isEmpty) return localizations.nameRequired;
+    if (v.length < 3) return localizations.nameMinLength;
+    if (v.length > 50) return localizations.nameMaxLength;
     final RegExp allowed = RegExp(r'^[A-Za-zÀ-ÿ]+( [A-Za-zÀ-ÿ]+)*$');
     if (!allowed.hasMatch(v)) {
-      return 'Solo letras y espacios, sin números ni símbolos';
+      return localizations.nameInvalid;
     }
     if (v.contains('  ')) return 'Usa un solo espacio entre nombres';
     return null;
   }
 
-  String? _validateAge(String? value) {
+  String? _validateAge(String? value, AppLocalizations localizations) {
     final String v = (value ?? '').trim();
-    if (v.isEmpty) return 'La edad es obligatoria';
+    if (v.isEmpty) return localizations.ageRequired;
     final RegExp rangeRegex = RegExp(r'^(\d+)-(\d+)$|^(\d+)\+$');
     if (!rangeRegex.hasMatch(v)) {
-      return 'Selecciona un rango de edad válido';
+      return localizations.ageInvalid;
     }
     final Match? match = rangeRegex.firstMatch(v);
-    if (match == null) return 'Rango de edad inválido';
+    if (match == null) return localizations.invalidAgeRange;
     final int minAge = match.group(1) != null 
         ? int.parse(match.group(1)!) 
         : int.parse(match.group(3)!);
     if (minAge < 18) {
-      return 'Debes ser mayor de 18 años';
+      return localizations.ageMin18;
     }
     return null;
   }
 
-  String? _validateEmail(String? value) {
+  String? _validateEmail(String? value, AppLocalizations localizations) {
     final String v = (value ?? '').trim();
-    if (v.isEmpty) return 'El email es obligatorio';
-    if (v.contains(' ')) return 'El email no puede contener espacios';
+    if (v.isEmpty) return localizations.emailRequired;
+    if (v.contains(' ')) return localizations.emailNoSpaces;
     final RegExp emailRegex = RegExp(r'^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$');
-    if (!emailRegex.hasMatch(v)) return 'Formato de email no válido';
+    if (!emailRegex.hasMatch(v)) return localizations.emailInvalid;
     return null;
   }
 
@@ -293,7 +360,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       final user = userProvider.user;
       
       if (user == null) {
-        throw Exception('Usuario no encontrado');
+        final localizations = AppLocalizations.of(context)!;
+        throw Exception(localizations.userNotFound);
       }
 
       // Subir imagen si hay una nueva
@@ -317,20 +385,24 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       if (userData != null) {
         final userId = userData['id_usuario'] as int;
         
+        // Mapear valores traducidos de vuelta a valores para la BD
+        // El género y frecuencia se guardan como están (ya están en el idioma actual)
+        // El idioma se guarda como código (es/en)
         await UserService.updateUser(
           userId: userId,
           name: _nameController.text.trim(),
           age: _extractMinAgeFromRange(_selectedAge),
-          gender: _selectedGender,
-          language: _selectedLanguage,
-          frequency: _selectedFrequency,
+          gender: _selectedGender, // Ya está mapeado a la traducción actual
+          language: _selectedLanguage, // Ya está como código (es/en)
+          frequency: _selectedFrequency, // Ya está mapeado a la traducción actual
         );
       }
 
       if (mounted) {
+        final localizations = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Perfil actualizado exitosamente'),
+          SnackBar(
+            content: Text(localizations.profileUpdatedSuccessfully),
             backgroundColor: Colors.green,
           ),
         );
@@ -338,9 +410,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       }
     } catch (e) {
       if (mounted) {
+        final localizations = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error al actualizar perfil: $e'),
+            content: Text('${localizations.errorUpdatingProfile}: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -364,12 +437,45 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final appProvider = Provider.of<AppProvider>(context);
-    AppColors.setTheme(appProvider.colorTheme);
+    return Consumer<AppProvider>(
+      builder: (context, appProvider, child) {
+        final localizations = AppLocalizations.of(context)!;
+        AppColors.setTheme(appProvider.colorTheme);
+    
+    // Obtener traducciones dinámicamente según el idioma actual
+    final List<String> genders = <String>[
+      localizations.male,
+      localizations.female,
+      localizations.nonBinary,
+      localizations.preferNotSay
+    ];
+    // Usar códigos de idioma para el valor del dropdown, pero mostrar las traducciones
+    final Map<String, String> languageMap = {
+      'es': localizations.spanish,
+      'en': localizations.english,
+    };
+    final List<String> languageCodes = ['es', 'en'];
+    final List<String> frequencies = <String>[
+      localizations.veryFrequent,
+      localizations.frequent,
+      localizations.moderate,
+      localizations.lowFrequency
+    ];
+    // Rangos de edad para mayores de 18 años (autocontrol)
+    final List<String> ageRanges = <String>[
+      '18-25',
+      '26-35',
+      '36-45',
+      '46-55',
+      '56-65',
+      '66-75',
+      '76-85',
+      '86+'
+    ];
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Editar perfil'),
+        title: Text(localizations.editProfileTitle),
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
@@ -469,9 +575,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   TextFormField(
                     controller: _nameController,
                     style: const TextStyle(color: AppColors.textLight),
-                    decoration: _getInputDecoration('Nombre completo'),
+                    decoration: _getInputDecoration(localizations.fullName),
                     textInputAction: TextInputAction.next,
-                    validator: _validateName,
+                    validator: (value) => _validateName(value, localizations),
                     inputFormatters: [NameCapitalizationFormatter()],
                   ),
                   const SizedBox(height: 16),
@@ -485,7 +591,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         .map((String e) => DropdownMenuItem<String>(
                               value: e,
                               child: Text(
-                                '$e años',
+                                '$e ${localizations.years}',
                                 style: const TextStyle(color: AppColors.textLight),
                               ),
                             ))
@@ -496,14 +602,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         _ageController.text = v ?? '';
                       });
                     },
-                    decoration: _getInputDecoration('Edad (mayor de 18 años)'),
-                    validator: (String? v) => _validateAge(v ?? ''),
+                    decoration: _getInputDecoration(localizations.ageOver18),
+                    validator: (String? v) => _validateAge(v ?? '', localizations),
                   ),
                   const SizedBox(height: 16),
                   
                   // Género
                   DropdownButtonFormField<String>(
-                    value: _selectedGender,
+                    value: _selectedGender != null && genders.contains(_selectedGender) ? _selectedGender : null,
                     dropdownColor: AppColors.darkSurface,
                     style: const TextStyle(color: AppColors.textLight),
                     items: genders
@@ -513,8 +619,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             ))
                         .toList(),
                     onChanged: (String? v) => setState(() => _selectedGender = v),
-                    decoration: _getInputDecoration('Género'),
-                    validator: (String? v) => v == null || v.isEmpty ? 'Selecciona un género' : null,
+                    decoration: _getInputDecoration(localizations.gender),
+                    validator: (String? v) => v == null || v.isEmpty ? localizations.selectGender : null,
                   ),
                   const SizedBox(height: 16),
                   
@@ -522,25 +628,35 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   TextFormField(
                     controller: _emailController,
                     style: TextStyle(color: AppColors.textLight.withValues(alpha: 0.6)),
-                    decoration: _getInputDecoration('Email (no se puede cambiar)'),
+                    decoration: _getInputDecoration(localizations.emailCannotChange),
                     enabled: false,
                   ),
                   const SizedBox(height: 16),
                   
                   // Idioma
                   DropdownButtonFormField<String>(
-                    value: _selectedLanguage,
+                    value: _selectedLanguage ?? (appProvider.language == 'es' ? 'es' : 'en'),
                     dropdownColor: AppColors.darkSurface,
                     style: const TextStyle(color: AppColors.textLight),
-                    items: languages
-                        .map((String e) => DropdownMenuItem<String>(
-                              value: e,
-                              child: Text(e, style: const TextStyle(color: AppColors.textLight)),
+                    items: languageCodes
+                        .map((String code) => DropdownMenuItem<String>(
+                              value: code,
+                              child: Text(languageMap[code]!, style: const TextStyle(color: AppColors.textLight)),
                             ))
                         .toList(),
-                    onChanged: (String? v) => setState(() => _selectedLanguage = v),
-                    decoration: _getInputDecoration('Idioma'),
-                    validator: (String? v) => v == null || v.isEmpty ? 'Selecciona un idioma' : null,
+                    onChanged: (String? v) async {
+                      if (v != null) {
+                        setState(() => _selectedLanguage = v);
+                        // Cambiar el idioma de la app cuando se selecciona
+                        await appProvider.setLanguage(v);
+                        // Forzar reconstrucción de la pantalla para actualizar todos los textos
+                        if (mounted) {
+                          setState(() {});
+                        }
+                      }
+                    },
+                    decoration: _getInputDecoration(localizations.language),
+                    validator: (String? v) => v == null || v.isEmpty ? localizations.selectLanguageField : null,
                   ),
                   const SizedBox(height: 16),
                   
@@ -556,8 +672,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             ))
                         .toList(),
                     onChanged: (String? v) => setState(() => _selectedFrequency = v),
-                    decoration: _getInputDecoration('Frecuencia de uso de Facebook'),
-                    validator: (String? v) => v == null || v.isEmpty ? 'Selecciona tu frecuencia de uso' : null,
+                    decoration: _getInputDecoration(localizations.facebookUsageFrequency),
+                    validator: (String? v) => v == null || v.isEmpty ? localizations.selectFrequency : null,
                   ),
                   const SizedBox(height: 32),
                   
@@ -587,9 +703,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                 valueColor: AlwaysStoppedAnimation<Color>(AppColors.textLight),
                               ),
                             )
-                          : const Text(
-                              'Guardar cambios',
-                              style: TextStyle(
+                          : Text(
+                              localizations.saveChanges,
+                              style: const TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w600,
                                 color: AppColors.textLight,
@@ -603,6 +719,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           ),
         ),
       ),
+    );
+      },
     );
   }
 }

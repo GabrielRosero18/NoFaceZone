@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:nofacezone/src/Custom/AppColors.dart';
+import 'package:nofacezone/src/Custom/AppLocalizations.dart';
 import 'package:nofacezone/src/Providers/AppProvider.dart';
 
 class RewardsScreen extends StatefulWidget {
@@ -28,9 +29,15 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return Consumer<AppProvider>(
+      builder: (context, appProvider, child) {
+        AppColors.setTheme(appProvider.colorTheme);
+        
+        return Scaffold(
       appBar: AppBar(
-        title: const Text('Recompensas'),
+        title: Builder(
+          builder: (context) => Text(AppLocalizations.of(context)!.rewards),
+        ),
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
@@ -44,11 +51,19 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
           indicatorColor: AppColors.accentBlue,
           indicatorWeight: 3,
           isScrollable: true,
-          tabs: const [
-            Tab(text: 'Temas'),
-            Tab(text: 'Fuentes'),
-            Tab(text: 'Mensajes'),
-            Tab(text: 'Badges'),
+          tabs: [
+            Builder(
+              builder: (context) => Tab(text: AppLocalizations.of(context)!.themes),
+            ),
+            Builder(
+              builder: (context) => Tab(text: AppLocalizations.of(context)!.fonts),
+            ),
+            Builder(
+              builder: (context) => Tab(text: AppLocalizations.of(context)!.messages),
+            ),
+            Builder(
+              builder: (context) => Tab(text: AppLocalizations.of(context)!.badges),
+            ),
           ],
         ),
       ),
@@ -84,6 +99,8 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
         ),
       ),
     );
+      },
+    );
   }
 
   Widget _buildPointsBar() {
@@ -110,20 +127,30 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Tus puntos',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: AppColors.textLight,
-                  ),
-                ),
-                Text(
-                  '$userPoints puntos',
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textLight,
-                  ),
+                Builder(
+                  builder: (context) {
+                    final localizations = AppLocalizations.of(context)!;
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          localizations.yourPoints,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: AppColors.textLight,
+                          ),
+                        ),
+                        Text(
+                          '$userPoints ${localizations.pointsText}',
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textLight,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ],
             ),
@@ -134,14 +161,15 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
   }
 
   Widget _buildThemesTab() {
-    // Obtener el tema actual para mostrar los colores correctos
-    final currentColorTheme = AppColors.getTheme(Provider.of<AppProvider>(context, listen: false).colorTheme) ?? AppColors.currentTheme;
-    
-    final themes = [
-      _RewardTheme(
-        id: 'ocean',
-        name: 'Océano Azul',
-        description: 'Un tema relajante inspirado en el mar',
+    return Builder(
+      builder: (context) {
+        final localizations = AppLocalizations.of(context)!;
+        
+        final themes = [
+          _RewardTheme(
+            id: 'ocean',
+            name: localizations.themeOceanBlue,
+            description: localizations.themeOceanDescription,
         colors: const [
           Color(0xFF7F53AC), // primaryPurple
           Color(0xFF647DEE), // primaryBlue
@@ -151,113 +179,118 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
         unlocked: true,
         icon: Icons.water_drop,
       ),
-      _RewardTheme(
-        id: 'sunset',
-        name: 'Atardecer',
-        description: 'Colores cálidos del atardecer',
+          _RewardTheme(
+            id: 'sunset',
+            name: localizations.themeSunset,
+            description: localizations.themeSunsetDescription,
         colors: [Colors.orange[800]!, Colors.pink[400]!, Colors.purple[300]!],
         price: 100,
         unlocked: userPoints >= 100,
         icon: Icons.wb_twilight,
       ),
-      _RewardTheme(
-        id: 'forest',
-        name: 'Bosque Verde',
-        description: 'Tema natural y relajante',
+          _RewardTheme(
+            id: 'forest',
+            name: localizations.themeForest,
+            description: localizations.themeForestDescription,
         colors: [Colors.green[800]!, Colors.lightGreen[400]!, Colors.lime[300]!],
         price: 150,
         unlocked: userPoints >= 150,
         icon: Icons.park,
       ),
-      _RewardTheme(
-        id: 'lavender',
-        name: 'Lavanda',
-        description: 'Suave y relajante',
+          _RewardTheme(
+            id: 'lavender',
+            name: localizations.themeLavender,
+            description: localizations.themeLavenderDescription,
         colors: [Colors.purple[800]!, Colors.deepPurple[400]!, Colors.indigo[300]!],
         price: 200,
         unlocked: userPoints >= 200,
         icon: Icons.local_florist,
       ),
-      _RewardTheme(
-        id: 'coral',
-        name: 'Coral',
-        description: 'Vibrante y energético',
+          _RewardTheme(
+            id: 'coral',
+            name: localizations.themeCoral,
+            description: localizations.themeCoralDescription,
         colors: [Colors.red[700]!, Colors.orange[400]!, Colors.yellow[300]!],
         price: 250,
         unlocked: userPoints >= 250,
         icon: Icons.whatshot,
       ),
-      _RewardTheme(
-        id: 'midnight',
-        name: 'Medianoche',
-        description: 'Elegante y sofisticado',
+          _RewardTheme(
+            id: 'midnight',
+            name: localizations.themeMidnight,
+            description: localizations.themeMidnightDescription,
         colors: [Colors.grey[900]!, Colors.blueGrey[800]!, Colors.grey[700]!],
         price: 300,
         unlocked: userPoints >= 300,
         icon: Icons.nights_stay,
       ),
-    ];
+        ];
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            '🎨 Temas de colores',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textLight,
-            ),
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                localizations.colorThemes,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textLight,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                localizations.unlockThemesDescription,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textLight.withValues(alpha: 0.8),
+                ),
+              ),
+              const SizedBox(height: 20),
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  childAspectRatio: 0.85,
+                ),
+                itemCount: themes.length,
+                itemBuilder: (context, index) {
+                  return _buildThemeCard(themes[index]);
+                },
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Desbloquea nuevos temas personalizando tu experiencia',
-            style: TextStyle(
-              fontSize: 14,
-              color: AppColors.textLight.withValues(alpha: 0.8),
-            ),
-          ),
-          const SizedBox(height: 20),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              childAspectRatio: 0.85,
-            ),
-            itemCount: themes.length,
-            itemBuilder: (context, index) {
-              return _buildThemeCard(themes[index]);
-            },
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
   Widget _buildThemeCard(_RewardTheme theme) {
-    final appProvider = Provider.of<AppProvider>(context, listen: false);
-    final currentTheme = Provider.of<AppProvider>(context).colorTheme;
-    final isSelected = currentTheme == theme.id;
+    return Builder(
+      builder: (context) {
+        final localizations = AppLocalizations.of(context)!;
+        final appProvider = Provider.of<AppProvider>(context, listen: false);
+        final currentTheme = Provider.of<AppProvider>(context).colorTheme;
+        final isSelected = currentTheme == theme.id;
 
-    return GestureDetector(
-      onTap: theme.unlocked
-          ? () async {
-              await appProvider.setColorTheme(theme.id);
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Tema "${theme.name}" aplicado ✨'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-              }
-            }
-          : null,
+        return GestureDetector(
+          onTap: theme.unlocked
+              ? () async {
+                  await appProvider.setColorTheme(theme.id);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(localizations.themeApplied(theme.name)),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  }
+                }
+              : null,
         child: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -378,7 +411,7 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            isSelected ? 'Activo' : 'Disponible',
+                            isSelected ? localizations.active : localizations.available,
                             style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
@@ -395,97 +428,107 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
         ),
       ),
     );
+      },
+    );
   }
 
   Widget _buildFontsTab() {
-    final fonts = [
-      _RewardFont(
-        id: 'default',
-        name: 'Roboto',
-        description: 'Fuente estándar y legible',
+    return Builder(
+      builder: (context) {
+        final localizations = AppLocalizations.of(context)!;
+        final fonts = [
+          _RewardFont(
+            id: 'default',
+            name: 'Roboto',
+            description: localizations.fontRobotoDescription,
         unlocked: true,
         price: 0,
       ),
-      _RewardFont(
-        id: 'elegant',
-        name: 'Playfair Display',
-        description: 'Elegante y sofisticada',
+          _RewardFont(
+            id: 'elegant',
+            name: 'Playfair Display',
+            description: localizations.fontPlayfairDescription,
         unlocked: userPoints >= 100,
         price: 100,
       ),
-      _RewardFont(
-        id: 'modern',
-        name: 'Poppins',
-        description: 'Moderna y minimalista',
+          _RewardFont(
+            id: 'modern',
+            name: 'Poppins',
+            description: localizations.fontPoppinsDescription,
         unlocked: userPoints >= 150,
         price: 150,
       ),
-      _RewardFont(
-        id: 'friendly',
-        name: 'Comfortaa',
-        description: 'Amigable y redondeada',
+          _RewardFont(
+            id: 'friendly',
+            name: 'Comfortaa',
+            description: localizations.fontComfortaaDescription,
         unlocked: userPoints >= 200,
         price: 200,
       ),
-      _RewardFont(
-        id: 'bold',
-        name: 'Montserrat',
-        description: 'Audaz y llamativa',
+          _RewardFont(
+            id: 'bold',
+            name: 'Montserrat',
+            description: localizations.fontMontserratDescription,
         unlocked: userPoints >= 250,
         price: 250,
       ),
-    ];
+        ];
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            '✍️ Tipos de letra',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textLight,
-            ),
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                localizations.fontTypes,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textLight,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                localizations.customizeFontsDescription,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textLight.withValues(alpha: 0.8),
+                ),
+              ),
+              const SizedBox(height: 20),
+              ...fonts.map((font) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _buildFontCard(font),
+                  )),
+            ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Personaliza la tipografía de la aplicación',
-            style: TextStyle(
-              fontSize: 14,
-              color: AppColors.textLight.withValues(alpha: 0.8),
-            ),
-          ),
-          const SizedBox(height: 20),
-          ...fonts.map((font) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: _buildFontCard(font),
-              )),
-        ],
-      ),
+        );
+      },
     );
   }
 
   Widget _buildFontCard(_RewardFont font) {
-    final appProvider = Provider.of<AppProvider>(context, listen: false);
-    final currentFont = Provider.of<AppProvider>(context).fontFamily;
-    final isSelected = currentFont == font.id;
+    return Builder(
+      builder: (context) {
+        final localizations = AppLocalizations.of(context)!;
+        final appProvider = Provider.of<AppProvider>(context, listen: false);
+        final currentFont = Provider.of<AppProvider>(context).fontFamily;
+        final isSelected = currentFont == font.id;
 
-    return GestureDetector(
-      onTap: font.unlocked
-          ? () async {
-              await appProvider.setFontFamily(font.id);
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Fuente "${font.name}" aplicada ✨'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-              }
-            }
-          : null,
+        return GestureDetector(
+          onTap: font.unlocked
+              ? () async {
+                  await appProvider.setFontFamily(font.id);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(localizations.fontApplied(font.name)),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  }
+                }
+              : null,
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
@@ -590,9 +633,9 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
                     ),
                     if (isSelected) ...[
                       const SizedBox(width: 4),
-                      const Text(
-                        'Activa',
-                        style: TextStyle(
+                      Text(
+                        localizations.active,
+                        style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
@@ -606,114 +649,124 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
         ),
       ),
     );
+      },
+    );
   }
 
   Widget _buildMessagesTab() {
-    final messages = [
-      _MotivationalMessage(
-        id: 'daily',
-        title: 'Mensajes diarios',
-        description: 'Mensajes motivacionales cada día',
-        unlocked: true,
-        price: 0,
-        examples: [
-          '✨ Cada día es una nueva oportunidad',
-          '💪 Eres más fuerte de lo que crees',
-          '🌟 Tus pequeños pasos llevan a grandes cambios',
-        ],
-      ),
-      _MotivationalMessage(
-        id: 'achievements',
-        title: 'Mensajes de logros',
-        description: 'Celebra tus éxitos',
-        unlocked: userPoints >= 100,
-        price: 100,
-        examples: [
-          '🎉 ¡Increíble! Lograste tu meta',
-          '🏆 Has superado tus expectativas',
-          '⭐ Eres un ejemplo de perseverancia',
-        ],
-      ),
-      _MotivationalMessage(
-        id: 'encouragement',
-        title: 'Mensajes de aliento',
-        description: 'Motivación en momentos difíciles',
-        unlocked: userPoints >= 150,
-        price: 150,
-        examples: [
-          '🌱 Todo crecimiento requiere tiempo',
-          '💫 Tus esfuerzos no pasan desapercibidos',
-          '🌺 Eres capaz de superar cualquier obstáculo',
-        ],
-      ),
-      _MotivationalMessage(
-        id: 'wisdom',
-        title: 'Sabiduría diaria',
-        description: 'Frases inspiradoras de grandes pensadores',
-        unlocked: userPoints >= 200,
-        price: 200,
-        examples: [
-          '🧘 La paz viene de dentro',
-          '🎯 El éxito es la suma de pequeños esfuerzos',
-          '🌈 La persistencia supera la resistencia',
-        ],
-      ),
-    ];
+    return Builder(
+      builder: (context) {
+        final localizations = AppLocalizations.of(context)!;
+        final messages = [
+          _MotivationalMessage(
+            id: 'daily',
+            title: localizations.dailyMessages,
+            description: localizations.dailyMessagesDescription,
+            unlocked: true,
+            price: 0,
+            examples: [
+              localizations.messageExample1,
+              localizations.messageExample2,
+              localizations.messageExample3,
+            ],
+          ),
+          _MotivationalMessage(
+            id: 'achievements',
+            title: localizations.achievementMessages,
+            description: localizations.achievementMessagesDescription,
+            unlocked: userPoints >= 100,
+            price: 100,
+            examples: [
+              localizations.messageExample4,
+              localizations.messageExample5,
+              localizations.messageExample6,
+            ],
+          ),
+          _MotivationalMessage(
+            id: 'encouragement',
+            title: localizations.encouragementMessages,
+            description: localizations.motivationDifficultMoments,
+            unlocked: userPoints >= 150,
+            price: 150,
+            examples: [
+              localizations.messageExample7,
+              localizations.messageExample8,
+              localizations.messageExample9,
+            ],
+          ),
+          _MotivationalMessage(
+            id: 'wisdom',
+            title: localizations.wisdomDaily,
+            description: localizations.wisdomDailyDescription,
+            unlocked: userPoints >= 200,
+            price: 200,
+            examples: [
+              localizations.messageExample10,
+              localizations.messageExample11,
+              localizations.messageExample12,
+            ],
+          ),
+        ];
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            '💬 Mensajes motivacionales',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textLight,
-            ),
-          ),
-          const SizedBox(height: 8),
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               Text(
-            'Desbloquea colecciones de mensajes inspiradores',
+                localizations.motivationalMessages,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textLight,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                localizations.unlockMessagesDescription,
                 style: TextStyle(
-              fontSize: 14,
-              color: AppColors.textLight.withValues(alpha: 0.8),
-            ),
+                  fontSize: 14,
+                  color: AppColors.textLight.withValues(alpha: 0.8),
+                ),
+              ),
+              const SizedBox(height: 20),
+              ...messages.map((message) => Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: _buildMessageCard(message),
+                  )),
+            ],
           ),
-          const SizedBox(height: 20),
-          ...messages.map((message) => Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: _buildMessageCard(message),
-              )),
-        ],
-      ),
+        );
+      },
     );
   }
 
   Widget _buildMessageCard(_MotivationalMessage message) {
-    final appProvider = Provider.of<AppProvider>(context, listen: false);
-    final activeCollections = Provider.of<AppProvider>(context).activeMessageCollections;
-    final isActive = activeCollections.contains(message.id);
+    return Builder(
+      builder: (context) {
+        final localizations = AppLocalizations.of(context)!;
+        final appProvider = Provider.of<AppProvider>(context, listen: false);
+        final activeCollections = Provider.of<AppProvider>(context).activeMessageCollections;
+        final isActive = activeCollections.contains(message.id);
 
-    return GestureDetector(
-      onTap: message.unlocked
-          ? () async {
-              await appProvider.toggleMessageCollection(message.id);
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      isActive
-                          ? 'Colección "${message.title}" desactivada'
-                          : 'Colección "${message.title}" activada ✨',
-                    ),
-                    backgroundColor: isActive ? Colors.orange : Colors.green,
-                  ),
-                );
-              }
-            }
-          : null,
+        return GestureDetector(
+          onTap: message.unlocked
+              ? () async {
+                  await appProvider.toggleMessageCollection(message.id);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          isActive
+                              ? localizations.collectionDeactivated(message.title)
+                              : localizations.collectionActivated(message.title),
+                        ),
+                        backgroundColor: isActive ? Colors.orange : Colors.green,
+                      ),
+                    );
+                  }
+                }
+              : null,
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
@@ -728,9 +781,9 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
             width: isActive ? 2.5 : 1.5,
           ),
         ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
           Row(
             children: [
               Container(
@@ -813,9 +866,9 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
                       ),
                       if (isActive) ...[
                         const SizedBox(width: 4),
-                        const Text(
-                          'Activa',
-                          style: TextStyle(
+                        Text(
+                          localizations.active,
+                          style: const TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
@@ -849,142 +902,149 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
                 )),
           ],
         ],
+        ),
       ),
-      ),
+    );
+      },
     );
   }
 
   Widget _buildBadgesTab() {
-    final badges = [
-      _RewardBadge(
-        id: 'first_steps',
-        name: 'Primeros Pasos',
-        description: 'Completa 3 días consecutivos',
-        icon: Icons.directions_walk,
-        color: Colors.blue,
-        unlocked: true,
-        progress: 1.0,
-      ),
-      _RewardBadge(
-        id: 'week_warrior',
-        name: 'Guerrero Semanal',
-        description: 'Completa 7 días consecutivos',
-        icon: Icons.calendar_today,
-        color: Colors.purple,
-        unlocked: userPoints >= 100,
-        progress: 0.6,
-      ),
-      _RewardBadge(
-        id: 'month_master',
-        name: 'Maestro Mensual',
-        description: 'Completa 30 días consecutivos',
-        icon: Icons.star,
-        color: Colors.amber,
-        unlocked: userPoints >= 200,
-        progress: 0.3,
-      ),
-      _RewardBadge(
-        id: 'time_saver',
-        name: 'Ahorrador de Tiempo',
-        description: 'Ahorra 50 horas libres',
-        icon: Icons.access_time,
-        color: Colors.green,
-        unlocked: userPoints >= 150,
-        progress: 0.7,
-      ),
-      _RewardBadge(
-        id: 'early_bird',
-        name: 'Madrugador',
-        description: 'Completa 5 días antes del mediodía',
-        icon: Icons.wb_sunny,
-        color: Colors.yellow,
-        unlocked: userPoints >= 180,
-        progress: 0.4,
-      ),
-      _RewardBadge(
-        id: 'streak_master',
-        name: 'Maestro de Racha',
-        description: 'Mantén 10 días consecutivos',
-        icon: Icons.local_fire_department,
-        color: Colors.red,
-        unlocked: userPoints >= 250,
-        progress: 0.5,
-      ),
-      _RewardBadge(
-        id: 'goal_crusher',
-        name: 'Destructor de Metas',
-        description: 'Cumple todas las metas semanales',
-        icon: Icons.flag,
-        color: Colors.indigo,
-        unlocked: userPoints >= 300,
-        progress: 0.6,
-      ),
-      _RewardBadge(
-        id: 'zen_master',
-        name: 'Maestro Zen',
-        description: '10 horas libres en un día',
-        icon: Icons.spa,
-        color: Colors.teal,
-        unlocked: userPoints >= 200,
-        progress: 0.3,
-      ),
-      _RewardBadge(
-        id: 'night_owl',
-        name: 'Búho Nocturno',
-        description: 'Completa 5 días después de medianoche',
-        icon: Icons.nights_stay,
-        color: Colors.deepPurple,
-        unlocked: userPoints >= 220,
-        progress: 0.2,
-      ),
-      _RewardBadge(
-        id: 'unstoppable',
-        name: 'Imparable',
-        description: '15 días consecutivos sin faltar',
-        icon: Icons.speed,
-        color: Colors.pink,
-        unlocked: userPoints >= 280,
-        progress: 0.8,
-      ),
-      _RewardBadge(
-        id: 'legend',
-        name: 'Leyenda',
-        description: 'Completa 100 días consecutivos',
-        icon: Icons.emoji_events,
-        color: Colors.orange,
-        unlocked: userPoints >= 400,
-        progress: 0.1,
-      ),
-    ];
+    return Builder(
+      builder: (context) {
+        final localizations = AppLocalizations.of(context)!;
+        final badges = [
+          _RewardBadge(
+            id: 'first_steps',
+            name: localizations.badgeFirstSteps,
+            description: localizations.badgeFirstStepsDescription,
+            icon: Icons.directions_walk,
+            color: Colors.blue,
+            unlocked: true,
+            progress: 1.0,
+          ),
+          _RewardBadge(
+            id: 'week_warrior',
+            name: localizations.warriorWeekly,
+            description: localizations.complete7Days,
+            icon: Icons.calendar_today,
+            color: Colors.purple,
+            unlocked: userPoints >= 100,
+            progress: 0.6,
+          ),
+          _RewardBadge(
+            id: 'month_master',
+            name: localizations.badgeMonthMaster,
+            description: localizations.badgeMonthMasterDescription,
+            icon: Icons.star,
+            color: Colors.amber,
+            unlocked: userPoints >= 200,
+            progress: 0.3,
+          ),
+          _RewardBadge(
+            id: 'time_saver',
+            name: localizations.badgeTimeSaver,
+            description: localizations.badgeTimeSaverDescription,
+            icon: Icons.access_time,
+            color: Colors.green,
+            unlocked: userPoints >= 150,
+            progress: 0.7,
+          ),
+          _RewardBadge(
+            id: 'early_bird',
+            name: localizations.badgeEarlyBird,
+            description: localizations.badgeEarlyBirdDescription,
+            icon: Icons.wb_sunny,
+            color: Colors.yellow,
+            unlocked: userPoints >= 180,
+            progress: 0.4,
+          ),
+          _RewardBadge(
+            id: 'streak_master',
+            name: localizations.badgeStreakMaster,
+            description: localizations.badgeStreakMasterDescription,
+            icon: Icons.local_fire_department,
+            color: Colors.red,
+            unlocked: userPoints >= 250,
+            progress: 0.5,
+          ),
+          _RewardBadge(
+            id: 'goal_crusher',
+            name: localizations.badgeGoalCrusher,
+            description: localizations.badgeGoalCrusherDescription,
+            icon: Icons.flag,
+            color: Colors.indigo,
+            unlocked: userPoints >= 300,
+            progress: 0.6,
+          ),
+          _RewardBadge(
+            id: 'zen_master',
+            name: localizations.badgeZenMaster,
+            description: localizations.badgeZenMasterDescription,
+            icon: Icons.spa,
+            color: Colors.teal,
+            unlocked: userPoints >= 200,
+            progress: 0.3,
+          ),
+          _RewardBadge(
+            id: 'night_owl',
+            name: localizations.badgeNightOwl,
+            description: localizations.badgeNightOwlDescription,
+            icon: Icons.nights_stay,
+            color: Colors.deepPurple,
+            unlocked: userPoints >= 220,
+            progress: 0.2,
+          ),
+          _RewardBadge(
+            id: 'unstoppable',
+            name: localizations.badgeUnstoppable,
+            description: localizations.badgeUnstoppableDescription,
+            icon: Icons.speed,
+            color: Colors.pink,
+            unlocked: userPoints >= 280,
+            progress: 0.8,
+          ),
+          _RewardBadge(
+            id: 'legend',
+            name: localizations.badgeLegend,
+            description: localizations.badgeLegendDescription,
+            icon: Icons.emoji_events,
+            color: Colors.orange,
+            unlocked: userPoints >= 400,
+            progress: 0.1,
+          ),
+        ];
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            '🏆 Badges y Logros',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textLight,
-            ),
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                localizations.badgesAndAchievements,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textLight,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                localizations.unlockBadgesDescription,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textLight.withValues(alpha: 0.8),
+                ),
+              ),
+              const SizedBox(height: 20),
+              ...badges.map((badge) => Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: _buildBadgeCard(badge),
+                  )),
+            ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Desbloquea badges especiales por tus logros',
-            style: TextStyle(
-              fontSize: 14,
-              color: AppColors.textLight.withValues(alpha: 0.8),
-            ),
-          ),
-          const SizedBox(height: 20),
-          ...badges.map((badge) => Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: _buildBadgeCard(badge),
-              )),
-        ],
-      ),
+        );
+      },
     );
   }
 

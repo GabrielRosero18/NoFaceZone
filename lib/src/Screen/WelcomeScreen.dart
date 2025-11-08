@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'RegisterScreen.dart';
 import 'LoginScreen.dart';
 import 'package:nofacezone/src/Custom/AppColors.dart';
+import 'package:nofacezone/src/Custom/AppLocalizations.dart';
 import 'package:nofacezone/src/Custom/Config.dart';
 import 'package:nofacezone/src/Custom/Constans.dart';
 import 'package:nofacezone/src/Providers/AppProvider.dart';
@@ -96,7 +97,7 @@ class WelcomeScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Control de Adicción a Facebook',
+                    AppLocalizations.of(context)!.appSubtitle,
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 20,
@@ -106,7 +107,7 @@ class WelcomeScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Toma el control de tu tiempo en redes sociales y mejora tu bienestar digital',
+                    AppLocalizations.of(context)!.appDescriptionText,
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 16,
@@ -138,8 +139,8 @@ class WelcomeScreen extends StatelessWidget {
                                 ),
                                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                               ),
-                              child: const Text(
-                                'Iniciar sesión',
+                              child: Text(
+                                AppLocalizations.of(context)!.signIn,
                                 style: TextStyle(
                                   color: AppColors.textLight,
                                   fontWeight: FontWeight.w600,
@@ -162,7 +163,7 @@ class WelcomeScreen extends StatelessWidget {
                               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                             ),
                             child: Text(
-                              'Registrarse',
+                              AppLocalizations.of(context)!.signUp,
                               style: TextStyle(
                                 color: AppColors.textLight,
                                 fontWeight: FontWeight.w600,
