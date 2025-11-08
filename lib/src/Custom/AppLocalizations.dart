@@ -209,6 +209,31 @@ class AppLocalizations {
       'of_word': 'de',
       'quick_navigation': 'Navegación rápida',
       
+      // Emotion Tracking
+      'emotion_tracking': 'Emociones',
+      'emotion_tracking_title': 'Seguimiento de Emociones',
+      'how_do_you_feel_today': '¿Cómo te sientes hoy?',
+      'select_emotion_description': 'Selecciona la emoción que mejor describe tu estado actual',
+      'comment_optional': 'Comentario (Opcional)',
+      'comment_placeholder': 'Describe brevemente lo que sientes o el contexto...',
+      'register_emotion': 'Registrar Emoción',
+      'recent_log': 'Registro Reciente',
+      'recent_emotions_subtitle': 'Tus últimas emociones registradas',
+      'no_emotions_registered': 'No hay emociones registradas aún',
+      'emotion_registered_successfully': 'Emoción registrada exitosamente',
+      'error_registering_emotion': 'Error al registrar emoción',
+      'please_select_emotion': 'Por favor selecciona una emoción',
+      'delete_emotion': 'Eliminar emoción',
+      'delete_emotion_confirmation': '¿Estás seguro de que deseas eliminar esta emoción?',
+      'emotion_deleted_successfully': 'Emoción eliminada exitosamente',
+      'error_deleting_emotion': 'Error al eliminar emoción',
+      'error_loading_emotions': 'Error al cargar emociones',
+      'emotion_happy': 'Feliz',
+      'emotion_sad': 'Triste',
+      'emotion_neutral': 'Neutro',
+      'emotion_anxious': 'Ansioso',
+      'emotion_angry': 'Enojado',
+      
       // Settings - Notifications
       'notifications_title': 'Notificaciones',
       'enable_notifications_title': 'Habilitar notificaciones',
@@ -619,6 +644,31 @@ class AppLocalizations {
       'days_completed': 'days completed',
       'of_word': 'of',
       'quick_navigation': 'Quick navigation',
+      
+      // Emotion Tracking
+      'emotion_tracking': 'Emotions',
+      'emotion_tracking_title': 'Emotion Tracking',
+      'how_do_you_feel_today': 'How do you feel today?',
+      'select_emotion_description': 'Select the emotion that best describes your current state',
+      'comment_optional': 'Comment (Optional)',
+      'comment_placeholder': 'Briefly describe what you feel or the context...',
+      'register_emotion': 'Register Emotion',
+      'recent_log': 'Recent Log',
+      'recent_emotions_subtitle': 'Your last registered emotions',
+      'no_emotions_registered': 'No emotions registered yet',
+      'emotion_registered_successfully': 'Emotion registered successfully',
+      'error_registering_emotion': 'Error registering emotion',
+      'please_select_emotion': 'Please select an emotion',
+      'delete_emotion': 'Delete emotion',
+      'delete_emotion_confirmation': 'Are you sure you want to delete this emotion?',
+      'emotion_deleted_successfully': 'Emotion deleted successfully',
+      'error_deleting_emotion': 'Error deleting emotion',
+      'error_loading_emotions': 'Error loading emotions',
+      'emotion_happy': 'Happy',
+      'emotion_sad': 'Sad',
+      'emotion_neutral': 'Neutral',
+      'emotion_anxious': 'Anxious',
+      'emotion_angry': 'Angry',
       
       // Settings - Notifications
       'notifications_title': 'Notifications',
@@ -1189,6 +1239,31 @@ class AppLocalizations {
   String get userNotFound => translate('user_not_found');
   String get saveChanges => translate('save_changes');
   String get invalidAgeRange => translate('invalid_age_range');
+  
+  // Emotion Tracking
+  String get emotionTracking => translate('emotion_tracking');
+  String get emotionTrackingTitle => translate('emotion_tracking_title');
+  String get howDoYouFeelToday => translate('how_do_you_feel_today');
+  String get selectEmotionDescription => translate('select_emotion_description');
+  String get commentOptional => translate('comment_optional');
+  String get commentPlaceholder => translate('comment_placeholder');
+  String get registerEmotion => translate('register_emotion');
+  String get recentLog => translate('recent_log');
+  String get recentEmotionsSubtitle => translate('recent_emotions_subtitle');
+  String get noEmotionsRegistered => translate('no_emotions_registered');
+  String get emotionRegisteredSuccessfully => translate('emotion_registered_successfully');
+  String get errorRegisteringEmotion => translate('error_registering_emotion');
+  String get pleaseSelectEmotion => translate('please_select_emotion');
+  String get deleteEmotion => translate('delete_emotion');
+  String get deleteEmotionConfirmation => translate('delete_emotion_confirmation');
+  String get emotionDeletedSuccessfully => translate('emotion_deleted_successfully');
+  String get errorDeletingEmotion => translate('error_deleting_emotion');
+  String get errorLoadingEmotions => translate('error_loading_emotions');
+  String get emotionHappy => translate('emotion_happy');
+  String get emotionSad => translate('emotion_sad');
+  String get emotionNeutral => translate('emotion_neutral');
+  String get emotionAnxious => translate('emotion_anxious');
+  String get emotionAngry => translate('emotion_angry');
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

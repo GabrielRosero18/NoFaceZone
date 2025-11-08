@@ -683,7 +683,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: Container(), // Espacio vacío para mantener el layout
+              child: _buildNavigationCard(
+                localizations.emotionTracking,
+                Icons.sentiment_satisfied_alt,
+                Colors.pink,
+                () => navigate(context, CustomScreen.emotionTracking),
+              ),
             ),
           ],
         ),
