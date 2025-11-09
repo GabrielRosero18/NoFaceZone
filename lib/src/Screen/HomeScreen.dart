@@ -7,6 +7,7 @@ import 'package:nofacezone/src/Custom/AppMessages.dart';
 import 'package:nofacezone/src/Custom/CustomSnackBar.dart';
 import 'package:nofacezone/src/Providers/UserProvider.dart';
 import 'package:nofacezone/src/Providers/AppProvider.dart';
+import 'package:nofacezone/src/Services/PointsService.dart';
 import 'package:nofacezone/src/Custom/Library.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -50,6 +51,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     // Mostrar mensaje motivacional después de que la pantalla se construya
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _showWelcomeMessage();
+      // Otorgar puntos por inicio de sesión diario
+      PointsService.awardDailyLoginPoints();
     });
   }
 

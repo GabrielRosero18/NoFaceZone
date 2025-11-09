@@ -263,4 +263,26 @@ class PreferencesService {
   static int getPreferencesSize() {
     return prefs.getKeys().length;
   }
+
+  // ===== MÉTODOS GENÉRICOS =====
+  
+  /// Guardar un string genérico
+  static Future<bool> setString(String key, String value) async {
+    return await prefs.setString(key, value);
+  }
+  
+  /// Obtener un string genérico
+  static String? getString(String key) {
+    return prefs.getString(key);
+  }
+  
+  /// Guardar un bool genérico
+  static Future<bool> setBool(String key, bool value) async {
+    return await prefs.setBool(key, value);
+  }
+  
+  /// Obtener un bool genérico
+  static bool getBool(String key) {
+    return prefs.getBool(key) ?? false;
+  }
 }

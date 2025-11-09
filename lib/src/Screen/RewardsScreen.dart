@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:nofacezone/src/Custom/AppColors.dart';
 import 'package:nofacezone/src/Custom/AppLocalizations.dart';
+import 'package:nofacezone/src/Custom/AppMessages.dart';
 import 'package:nofacezone/src/Custom/CustomSnackBar.dart';
 import 'package:nofacezone/src/Providers/AppProvider.dart';
+import 'package:nofacezone/src/Services/RewardService.dart';
+import 'package:nofacezone/src/Services/PointsService.dart';
 
 class RewardsScreen extends StatefulWidget {
   const RewardsScreen({super.key});
@@ -14,12 +18,72 @@ class RewardsScreen extends StatefulWidget {
 
 class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  int userPoints = 350; // Puntos del usuario
+  int userPoints = 0; // Puntos del usuario
+  bool _isLoading = true;
+  List<Map<String, dynamic>> _allRewards = [];
+  List<Map<String, dynamic>> _userRewards = [];
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Cargar puntos del usuario
+      final pointsData = await RewardService.getUserPoints();
+      if (pointsData != null) {
+        userPoints = pointsData['puntos_actuales'] ?? 0;
+      }
+
+      // Cargar todas las recompensas
+      _allRewards = await RewardService.getAllRewards();
+
+      // Cargar recompensas del usuario
+      _userRewards = await RewardService.getUserRewards();
+
+      // Verificar si el usuario tiene recompensas por defecto
+      // Si no tiene ninguna, desbloquearlas automáticamente
+      final defaultRewards = _allRewards.where((r) => r['is_default'] == true).toList();
+      bool hasAnyDefaultReward = false;
+      
+      for (final defaultReward in defaultRewards) {
+        final rewardId = defaultReward['id'] as String;
+        if (_isRewardUnlocked(rewardId)) {
+          hasAnyDefaultReward = true;
+          debugPrint('✅ Usuario ya tiene recompensa por defecto: $rewardId');
+          break;
+        }
+      }
+
+      // Si no tiene ninguna recompensa por defecto, desbloquearlas
+      if (!hasAnyDefaultReward && defaultRewards.isNotEmpty) {
+        debugPrint('🔓 Usuario no tiene recompensas por defecto, desbloqueando...');
+        // Obtener el usuario actual
+        final supabase = Supabase.instance.client;
+        final currentUser = supabase.auth.currentUser;
+        if (currentUser != null) {
+          await RewardService.unlockDefaultRewards(currentUser.id);
+          // Recargar recompensas después de desbloquear
+          _userRewards = await RewardService.getUserRewards();
+          debugPrint('✅ Recompensas por defecto desbloqueadas');
+        }
+      } else {
+        debugPrint('ℹ️ Usuario ya tiene recompensas por defecto o no hay recompensas por defecto');
+      }
+    } catch (e) {
+      debugPrint('Error al cargar datos de recompensas: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -161,71 +225,221 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
     );
   }
 
+  // Función auxiliar para verificar si una recompensa está desbloqueada
+  bool _isRewardUnlocked(String rewardId) {
+    // La función obtener_recompensas_usuario devuelve todas las recompensas
+    // con un campo esta_desbloqueada que indica si las tiene
+    try {
+      final userReward = _userRewards.firstWhere(
+        (ur) => ur['recompensa_id'] == rewardId,
+        orElse: () => {},
+      );
+      
+      // Si no está en la lista, no está desbloqueada
+      if (userReward.isEmpty) {
+        debugPrint('🔒 Recompensa $rewardId NO encontrada en recompensas del usuario');
+        return false;
+      }
+      
+      // Verificar si está desbloqueada
+      final isUnlocked = userReward['esta_desbloqueada'] == true;
+      debugPrint('${isUnlocked ? '✅' : '🔒'} Recompensa $rewardId: ${isUnlocked ? 'DESBLOQUEADA' : 'BLOQUEADA'}');
+      return isUnlocked;
+    } catch (e) {
+      debugPrint('❌ Error al verificar recompensa $rewardId: $e');
+      return false;
+    }
+  }
+
+  // Función auxiliar para obtener colores desde metadata
+  List<Color> _getColorsFromMetadata(Map<String, dynamic>? metadata) {
+    if (metadata == null) return [Colors.blue, Colors.purple];
+    
+    final colorsJson = metadata['colors'] as List?;
+    if (colorsJson == null) return [Colors.blue, Colors.purple];
+    
+    return colorsJson.map((c) {
+      final colorStr = c.toString().replaceAll('#', '');
+      return Color(int.parse('FF$colorStr', radix: 16));
+    }).toList();
+  }
+
+  // Función auxiliar para obtener icono desde icon_name
+  IconData _getIconFromName(String? iconName) {
+    if (iconName == null) return Icons.star;
+    
+    switch (iconName) {
+      case 'water_drop': return Icons.water_drop;
+      case 'wb_twilight': return Icons.wb_twilight;
+      case 'park': return Icons.park;
+      case 'local_florist': return Icons.local_florist;
+      case 'whatshot': return Icons.whatshot;
+      case 'nights_stay': return Icons.nights_stay;
+      case 'text_fields': return Icons.text_fields;
+      case 'message': return Icons.message;
+      case 'directions_walk': return Icons.directions_walk;
+      case 'calendar_today': return Icons.calendar_today;
+      case 'star': return Icons.star;
+      case 'access_time': return Icons.access_time;
+      case 'wb_sunny': return Icons.wb_sunny;
+      case 'local_fire_department': return Icons.local_fire_department;
+      case 'flag': return Icons.flag;
+      case 'spa': return Icons.spa;
+      case 'speed': return Icons.speed;
+      case 'emoji_events': return Icons.emoji_events;
+      default: return Icons.star;
+    }
+  }
+
+  // Función auxiliar para mapear ID de fuente de BD a ID de AppFonts
+  String _mapFontId(String dbFontId) {
+    // font_default -> default, font_elegant -> elegant, etc.
+    if (dbFontId.startsWith('font_')) {
+      return dbFontId.substring(5); // Remover 'font_' del inicio
+    }
+    return dbFontId;
+  }
+
+  // Función auxiliar para mapear ID de mensaje de BD a ID de AppMessages
+  String _mapMessageId(String dbMessageId) {
+    // message_daily -> daily, message_achievements -> achievements, etc.
+    if (dbMessageId.startsWith('message_')) {
+      return dbMessageId.substring(8); // Remover 'message_' del inicio
+    }
+    return dbMessageId;
+  }
+
+  // Función auxiliar para obtener mensajes reales desde AppMessages
+  List<String> _getMessagesFromCollection(String collectionId, AppLocalizations localizations) {
+    try {
+      final messages = AppMessages.getMessagesByCollection(collectionId, localizations);
+      if (messages != null && messages.isNotEmpty) {
+        // Tomar solo los primeros 3 mensajes como ejemplos
+        return messages.take(3).toList();
+      }
+    } catch (e) {
+      debugPrint('Error al obtener mensajes de la colección $collectionId: $e');
+    }
+    return [];
+  }
+
+  // Función auxiliar para calcular el progreso real de un badge basado en días consecutivos
+  Future<double> _calculateBadgeProgress(String badgeId, int consecutiveDays) async {
+    // Mapeo de badges a sus objetivos en días (según las descripciones en la BD)
+    final badgeGoals = {
+      'badge_first_steps': 3,        // Completa 3 días consecutivos
+      'badge_week_warrior': 7,       // Completa 7 días consecutivos
+      'badge_month_master': 30,       // Completa 30 días consecutivos
+      'badge_streak_master': 30,     // Mantén 30 días consecutivos
+      'badge_unstoppable': 50,       // Completa 50 días consecutivos
+      'badge_legend': 100,          // Completa 100 días consecutivos
+    };
+
+    final goal = badgeGoals[badgeId];
+    if (goal == null) {
+      // Si no es un badge de días consecutivos, retornar 0
+      return 0.0;
+    }
+
+    // Calcular progreso: min(1.0, días_consecutivos / objetivo)
+    final progress = (consecutiveDays / goal).clamp(0.0, 1.0);
+    debugPrint('📊 Badge $badgeId: $consecutiveDays días / $goal objetivo = ${(progress * 100).toStringAsFixed(1)}%');
+    return progress;
+  }
+
+  // Función auxiliar para obtener días consecutivos del usuario
+  Future<int> _getUserConsecutiveDays() async {
+    try {
+      // Intentar obtener desde PointsService
+      final consecutiveDays = await PointsService.getConsecutiveDays();
+      
+      // Si PointsService retorna 0 (no implementado aún), calcular desde emociones
+      // como aproximación: contar días consecutivos con emociones registradas
+      if (consecutiveDays == 0) {
+        final supabase = Supabase.instance.client;
+        final authUser = supabase.auth.currentUser;
+        if (authUser == null) return 0;
+
+        // Obtener todas las emociones del usuario ordenadas por fecha
+        final emotions = await supabase
+            .from('emociones')
+            .select('created_at')
+            .eq('user_id', authUser.id)
+            .order('created_at', ascending: false);
+
+        if (emotions.isEmpty) return 0;
+
+        // Calcular días consecutivos desde hoy hacia atrás
+        final today = DateTime.now();
+        int streak = 0;
+        DateTime currentDate = DateTime(today.year, today.month, today.day);
+
+        for (final emotion in emotions) {
+          final emotionDate = DateTime.parse(emotion['created_at'] as String);
+          final emotionDay = DateTime(emotionDate.year, emotionDate.month, emotionDate.day);
+          
+          // Si la emoción es del día actual o anterior consecutivo
+          if (emotionDay.isAtSameMomentAs(currentDate) || 
+              emotionDay.isAtSameMomentAs(currentDate.subtract(const Duration(days: 1)))) {
+            if (emotionDay.isAtSameMomentAs(currentDate)) {
+              streak++;
+            } else {
+              streak++;
+              currentDate = emotionDay;
+            }
+          } else {
+            break; // Se rompió la racha
+          }
+        }
+
+        debugPrint('📅 Días consecutivos calculados desde emociones: $streak');
+        return streak;
+      }
+
+      return consecutiveDays;
+    } catch (e) {
+      debugPrint('Error al obtener días consecutivos: $e');
+      return 0;
+    }
+  }
+
   Widget _buildThemesTab() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     return Builder(
       builder: (context) {
         final localizations = AppLocalizations.of(context)!;
         
-        final themes = [
-          _RewardTheme(
-            id: 'ocean',
-            name: localizations.themeOceanBlue,
-            description: localizations.themeOceanDescription,
-        colors: const [
-          Color(0xFF7F53AC), // primaryPurple
-          Color(0xFF647DEE), // primaryBlue
-          Color(0xFFB8C1FF), // lightLavender
-        ],
-        price: 0,
-        unlocked: true,
-        icon: Icons.water_drop,
-      ),
-          _RewardTheme(
-            id: 'sunset',
-            name: localizations.themeSunset,
-            description: localizations.themeSunsetDescription,
-        colors: [Colors.orange[800]!, Colors.pink[400]!, Colors.purple[300]!],
-        price: 100,
-        unlocked: userPoints >= 100,
-        icon: Icons.wb_twilight,
-      ),
-          _RewardTheme(
-            id: 'forest',
-            name: localizations.themeForest,
-            description: localizations.themeForestDescription,
-        colors: [Colors.green[800]!, Colors.lightGreen[400]!, Colors.lime[300]!],
-        price: 150,
-        unlocked: userPoints >= 150,
-        icon: Icons.park,
-      ),
-          _RewardTheme(
-            id: 'lavender',
-            name: localizations.themeLavender,
-            description: localizations.themeLavenderDescription,
-        colors: [Colors.purple[800]!, Colors.deepPurple[400]!, Colors.indigo[300]!],
-        price: 200,
-        unlocked: userPoints >= 200,
-        icon: Icons.local_florist,
-      ),
-          _RewardTheme(
-            id: 'coral',
-            name: localizations.themeCoral,
-            description: localizations.themeCoralDescription,
-        colors: [Colors.red[700]!, Colors.orange[400]!, Colors.yellow[300]!],
-        price: 250,
-        unlocked: userPoints >= 250,
-        icon: Icons.whatshot,
-      ),
-          _RewardTheme(
-            id: 'midnight',
-            name: localizations.themeMidnight,
-            description: localizations.themeMidnightDescription,
-        colors: [Colors.grey[900]!, Colors.blueGrey[800]!, Colors.grey[700]!],
-        price: 300,
-        unlocked: userPoints >= 300,
-        icon: Icons.nights_stay,
-      ),
-        ];
+        // Filtrar solo temas
+        final themeRewards = _allRewards.where((r) => r['tipo_recompensa_id'] == 'theme').toList();
+        
+        final themes = themeRewards.map((reward) {
+          final rewardId = reward['id'] as String;
+          // Solo desbloqueado si realmente lo tiene en recompensas_usuario
+          final isUnlocked = _isRewardUnlocked(rewardId);
+          final colors = _getColorsFromMetadata(reward['metadata']);
+          
+          return _RewardTheme(
+            id: rewardId,
+            name: reward['name_es'] ?? reward['name'] ?? '',
+            description: reward['description_es'] ?? reward['description'] ?? '',
+            colors: colors.isNotEmpty ? colors : [Colors.blue, Colors.purple],
+            price: reward['price'] ?? 0,
+            unlocked: isUnlocked, // Solo desbloqueado si está en recompensas_usuario
+            icon: _getIconFromName(reward['icon_name']),
+          );
+        }).toList();
+        
+        if (themes.isEmpty) {
+          return Center(
+            child: Text(
+              'No hay temas disponibles',
+              style: TextStyle(color: AppColors.textLight),
+            ),
+          );
+        }
 
         return SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -279,9 +493,37 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
         final isSelected = currentTheme == theme.id;
 
         return GestureDetector(
-          onTap: theme.unlocked
-              ? () async {
-                  await appProvider.setColorTheme(theme.id);
+          onTap: () async {
+            // Verificar si está desbloqueada (actualizar verificación en tiempo real)
+            final isUnlocked = _isRewardUnlocked(theme.id);
+            
+            // Si no está desbloqueada, intentar comprarla
+            if (!isUnlocked && !theme.unlocked) {
+              // Si tiene puntos suficientes, comprarla
+              if (userPoints >= theme.price) {
+                final result = await RewardService.purchaseReward(theme.id);
+                if (result['success'] == true) {
+                  // Actualizar puntos inmediatamente
+                  userPoints = (result['puntos_restantes'] ?? userPoints - theme.price) as int;
+                  
+                  // Recargar datos para actualizar el estado de recompensas
+                  await _loadData();
+                  
+                  // Mapear el ID de la base de datos (theme_ocean) al ID de AppColors (ocean)
+                  final themeId = theme.id.startsWith('theme_') 
+                      ? theme.id.substring(6) // Remover 'theme_' del inicio
+                      : theme.id;
+                  
+                  debugPrint('🎨 Aplicando tema comprado: ${theme.id} -> $themeId');
+                  
+                  // Aplicar el tema inmediatamente después de comprarlo
+                  await appProvider.setColorTheme(themeId);
+                  
+                  // Forzar reconstrucción del widget
+                  if (mounted) {
+                    setState(() {});
+                  }
+                  
                   if (context.mounted) {
                     CustomSnackBar.showTheme(
                       context,
@@ -291,8 +533,48 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
                       duration: const Duration(milliseconds: 1000),
                     );
                   }
+                } else {
+                  if (context.mounted) {
+                    CustomSnackBar.showError(
+                      context,
+                      result['error'] ?? 'Error al comprar recompensa',
+                    );
+                  }
                 }
-              : null,
+              } else {
+                // No tiene puntos suficientes
+                if (context.mounted) {
+                  CustomSnackBar.showWarning(
+                    context,
+                    'Necesitas ${theme.price} puntos para desbloquear este tema',
+                    icon: Icons.lock_rounded,
+                  );
+                }
+              }
+              return;
+            }
+            
+            // Si está desbloqueada, aplicarla directamente
+            if (isUnlocked || theme.unlocked) {
+              // Mapear el ID de la base de datos (theme_ocean) al ID de AppColors (ocean)
+              final themeId = theme.id.startsWith('theme_') 
+                  ? theme.id.substring(6) // Remover 'theme_' del inicio
+                  : theme.id;
+              
+              debugPrint('🎨 Aplicando tema: ${theme.id} -> $themeId');
+              await appProvider.setColorTheme(themeId);
+              
+              if (context.mounted) {
+                CustomSnackBar.showTheme(
+                  context,
+                  localizations.themeApplied(theme.name),
+                  icon: Icons.palette_rounded,
+                  gradientColors: theme.colors,
+                  duration: const Duration(milliseconds: 1000),
+                );
+              }
+            }
+          },
         child: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -435,46 +717,39 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
   }
 
   Widget _buildFontsTab() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     return Builder(
       builder: (context) {
         final localizations = AppLocalizations.of(context)!;
-        final fonts = [
-          _RewardFont(
-            id: 'default',
-            name: 'Roboto',
-            description: localizations.fontRobotoDescription,
-        unlocked: true,
-        price: 0,
-      ),
-          _RewardFont(
-            id: 'elegant',
-            name: 'Playfair Display',
-            description: localizations.fontPlayfairDescription,
-        unlocked: userPoints >= 100,
-        price: 100,
-      ),
-          _RewardFont(
-            id: 'modern',
-            name: 'Poppins',
-            description: localizations.fontPoppinsDescription,
-        unlocked: userPoints >= 150,
-        price: 150,
-      ),
-          _RewardFont(
-            id: 'friendly',
-            name: 'Comfortaa',
-            description: localizations.fontComfortaaDescription,
-        unlocked: userPoints >= 200,
-        price: 200,
-      ),
-          _RewardFont(
-            id: 'bold',
-            name: 'Montserrat',
-            description: localizations.fontMontserratDescription,
-        unlocked: userPoints >= 250,
-        price: 250,
-      ),
-        ];
+        
+        // Filtrar solo fuentes
+        final fontRewards = _allRewards.where((r) => r['tipo_recompensa_id'] == 'font').toList();
+        
+        final fonts = fontRewards.map((reward) {
+          final rewardId = reward['id'] as String;
+          final isUnlocked = _isRewardUnlocked(rewardId);
+          final fontId = _mapFontId(rewardId); // Mapear font_default -> default
+          
+          return _RewardFont(
+            id: fontId, // Usar el ID mapeado para AppFonts
+            name: reward['name_es'] ?? reward['name'] ?? '',
+            description: reward['description_es'] ?? reward['description'] ?? '',
+            unlocked: isUnlocked,
+            price: reward['price'] ?? 0,
+          );
+        }).toList();
+        
+        if (fonts.isEmpty) {
+          return Center(
+            child: Text(
+              'No hay fuentes disponibles',
+              style: TextStyle(color: AppColors.textLight),
+            ),
+          );
+        }
 
         return SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -518,9 +793,38 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
         final isSelected = currentFont == font.id;
 
         return GestureDetector(
-          onTap: font.unlocked
-              ? () async {
+          onTap: () async {
+            // Obtener el ID de la BD para verificar/comprar
+            final fontReward = _allRewards.firstWhere(
+              (r) => r['tipo_recompensa_id'] == 'font' && _mapFontId(r['id'] as String) == font.id,
+              orElse: () => <String, dynamic>{},
+            );
+            
+            if (fontReward.isEmpty) return;
+            
+            final dbFontId = fontReward['id'] as String;
+            final isUnlocked = _isRewardUnlocked(dbFontId);
+            
+            // Si no está desbloqueada, intentar comprarla
+            if (!isUnlocked && !font.unlocked) {
+              // Si tiene puntos suficientes, comprarla
+              if (userPoints >= font.price) {
+                final result = await RewardService.purchaseReward(dbFontId);
+                if (result['success'] == true) {
+                  // Actualizar puntos inmediatamente
+                  userPoints = (result['puntos_restantes'] ?? userPoints - font.price) as int;
+                  
+                  // Recargar datos para actualizar el estado
+                  await _loadData();
+                  
+                  // Aplicar la fuente inmediatamente después de comprarla
                   await appProvider.setFontFamily(font.id);
+                  
+                  // Forzar reconstrucción del widget
+                  if (mounted) {
+                    setState(() {});
+                  }
+                  
                   if (context.mounted) {
                     CustomSnackBar.showSuccess(
                       context,
@@ -529,8 +833,40 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
                       duration: const Duration(milliseconds: 1000),
                     );
                   }
+                } else {
+                  if (context.mounted) {
+                    CustomSnackBar.showError(
+                      context,
+                      result['error'] ?? 'Error al comprar fuente',
+                    );
+                  }
                 }
-              : null,
+              } else {
+                // No tiene puntos suficientes
+                if (context.mounted) {
+                  CustomSnackBar.showWarning(
+                    context,
+                    'Necesitas ${font.price} puntos para desbloquear esta fuente',
+                    icon: Icons.lock_rounded,
+                  );
+                }
+              }
+              return;
+            }
+            
+            // Si está desbloqueada, aplicarla directamente
+            if (isUnlocked || font.unlocked) {
+              await appProvider.setFontFamily(font.id);
+              if (context.mounted) {
+                CustomSnackBar.showSuccess(
+                  context,
+                  localizations.fontApplied(font.name),
+                  icon: Icons.text_fields_rounded,
+                  duration: const Duration(milliseconds: 1000),
+                );
+              }
+            }
+          },
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
@@ -656,59 +992,46 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
   }
 
   Widget _buildMessagesTab() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     return Builder(
       builder: (context) {
         final localizations = AppLocalizations.of(context)!;
-        final messages = [
-          _MotivationalMessage(
-            id: 'daily',
-            title: localizations.dailyMessages,
-            description: localizations.dailyMessagesDescription,
-            unlocked: true,
-            price: 0,
-            examples: [
+        
+        // Filtrar solo mensajes
+        final messageRewards = _allRewards.where((r) => r['tipo_recompensa_id'] == 'message').toList();
+        
+        final messages = messageRewards.map((reward) {
+          final rewardId = reward['id'] as String;
+          final isUnlocked = _isRewardUnlocked(rewardId);
+          final messageId = _mapMessageId(rewardId); // Mapear message_daily -> daily
+          // Obtener mensajes reales desde AppMessages en lugar de metadata
+          final examples = _getMessagesFromCollection(messageId, localizations);
+          
+          return _MotivationalMessage(
+            id: messageId, // Usar el ID mapeado para AppMessages
+            title: reward['name_es'] ?? reward['name'] ?? '',
+            description: reward['description_es'] ?? reward['description'] ?? '',
+            unlocked: isUnlocked,
+            price: reward['price'] ?? 0,
+            examples: examples.isNotEmpty ? examples : [
               localizations.messageExample1,
               localizations.messageExample2,
               localizations.messageExample3,
             ],
-          ),
-          _MotivationalMessage(
-            id: 'achievements',
-            title: localizations.achievementMessages,
-            description: localizations.achievementMessagesDescription,
-            unlocked: userPoints >= 100,
-            price: 100,
-            examples: [
-              localizations.messageExample4,
-              localizations.messageExample5,
-              localizations.messageExample6,
-            ],
-          ),
-          _MotivationalMessage(
-            id: 'encouragement',
-            title: localizations.encouragementMessages,
-            description: localizations.motivationDifficultMoments,
-            unlocked: userPoints >= 150,
-            price: 150,
-            examples: [
-              localizations.messageExample7,
-              localizations.messageExample8,
-              localizations.messageExample9,
-            ],
-          ),
-          _MotivationalMessage(
-            id: 'wisdom',
-            title: localizations.wisdomDaily,
-            description: localizations.wisdomDailyDescription,
-            unlocked: userPoints >= 200,
-            price: 200,
-            examples: [
-              localizations.messageExample10,
-              localizations.messageExample11,
-              localizations.messageExample12,
-            ],
-          ),
-        ];
+          );
+        }).toList();
+        
+        if (messages.isEmpty) {
+          return Center(
+            child: Text(
+              'No hay colecciones de mensajes disponibles',
+              style: TextStyle(color: AppColors.textLight),
+            ),
+          );
+        }
 
         return SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -752,26 +1075,87 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
         final isActive = activeCollections.contains(message.id);
 
         return GestureDetector(
-          onTap: message.unlocked
-              ? () async {
-                  await appProvider.toggleMessageCollection(message.id);
+          onTap: () async {
+            // Obtener el ID de la BD para verificar/comprar
+            final messageReward = _allRewards.firstWhere(
+              (r) => r['tipo_recompensa_id'] == 'message' && _mapMessageId(r['id'] as String) == message.id,
+              orElse: () => <String, dynamic>{},
+            );
+            
+            if (messageReward.isEmpty) return;
+            
+            final dbMessageId = messageReward['id'] as String;
+            
+            final isUnlocked = _isRewardUnlocked(dbMessageId);
+            
+            // Si no está desbloqueada, intentar comprarla
+            if (!isUnlocked && !message.unlocked) {
+              // Si tiene puntos suficientes, comprarla
+              if (userPoints >= message.price) {
+                final result = await RewardService.purchaseReward(dbMessageId);
+                if (result['success'] == true) {
+                  // Actualizar puntos inmediatamente
+                  userPoints = (result['puntos_restantes'] ?? userPoints - message.price) as int;
+                  
+                  // Recargar datos para actualizar el estado
+                  await _loadData();
+                  
+                  // Activar la colección después de comprarla
+                  await appProvider.addMessageCollection(message.id);
+                  
+                  // Forzar reconstrucción del widget
+                  if (mounted) {
+                    setState(() {});
+                  }
+                  
                   if (context.mounted) {
-                    if (isActive) {
-                      CustomSnackBar.showWarning(
-                        context,
-                        localizations.collectionDeactivated(message.title),
-                        icon: Icons.toggle_off_rounded,
-                      );
-                    } else {
-                      CustomSnackBar.showSuccess(
-                        context,
-                        localizations.collectionActivated(message.title),
-                        icon: Icons.toggle_on_rounded,
-                      );
-                    }
+                    CustomSnackBar.showSuccess(
+                      context,
+                      localizations.collectionActivated(message.title),
+                      icon: Icons.toggle_on_rounded,
+                    );
+                  }
+                } else {
+                  if (context.mounted) {
+                    CustomSnackBar.showError(
+                      context,
+                      result['error'] ?? 'Error al comprar colección',
+                    );
                   }
                 }
-              : null,
+              } else {
+                // No tiene puntos suficientes
+                if (context.mounted) {
+                  CustomSnackBar.showWarning(
+                    context,
+                    'Necesitas ${message.price} puntos para desbloquear esta colección',
+                    icon: Icons.lock_rounded,
+                  );
+                }
+              }
+              return;
+            }
+            
+            // Si está desbloqueada, activar/desactivar
+            if (isUnlocked || message.unlocked) {
+              await appProvider.toggleMessageCollection(message.id);
+              if (context.mounted) {
+                if (isActive) {
+                  CustomSnackBar.showWarning(
+                    context,
+                    localizations.collectionDeactivated(message.title),
+                    icon: Icons.toggle_off_rounded,
+                  );
+                } else {
+                  CustomSnackBar.showSuccess(
+                    context,
+                    localizations.collectionActivated(message.title),
+                    icon: Icons.toggle_on_rounded,
+                  );
+                }
+              }
+            }
+          },
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
@@ -915,139 +1299,102 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
   }
 
   Widget _buildBadgesTab() {
-    return Builder(
-      builder: (context) {
-        final localizations = AppLocalizations.of(context)!;
-        final badges = [
-          _RewardBadge(
-            id: 'first_steps',
-            name: localizations.badgeFirstSteps,
-            description: localizations.badgeFirstStepsDescription,
-            icon: Icons.directions_walk,
-            color: Colors.blue,
-            unlocked: true,
-            progress: 1.0,
-          ),
-          _RewardBadge(
-            id: 'week_warrior',
-            name: localizations.warriorWeekly,
-            description: localizations.complete7Days,
-            icon: Icons.calendar_today,
-            color: Colors.purple,
-            unlocked: userPoints >= 100,
-            progress: 0.6,
-          ),
-          _RewardBadge(
-            id: 'month_master',
-            name: localizations.badgeMonthMaster,
-            description: localizations.badgeMonthMasterDescription,
-            icon: Icons.star,
-            color: Colors.amber,
-            unlocked: userPoints >= 200,
-            progress: 0.3,
-          ),
-          _RewardBadge(
-            id: 'time_saver',
-            name: localizations.badgeTimeSaver,
-            description: localizations.badgeTimeSaverDescription,
-            icon: Icons.access_time,
-            color: Colors.green,
-            unlocked: userPoints >= 150,
-            progress: 0.7,
-          ),
-          _RewardBadge(
-            id: 'early_bird',
-            name: localizations.badgeEarlyBird,
-            description: localizations.badgeEarlyBirdDescription,
-            icon: Icons.wb_sunny,
-            color: Colors.yellow,
-            unlocked: userPoints >= 180,
-            progress: 0.4,
-          ),
-          _RewardBadge(
-            id: 'streak_master',
-            name: localizations.badgeStreakMaster,
-            description: localizations.badgeStreakMasterDescription,
-            icon: Icons.local_fire_department,
-            color: Colors.red,
-            unlocked: userPoints >= 250,
-            progress: 0.5,
-          ),
-          _RewardBadge(
-            id: 'goal_crusher',
-            name: localizations.badgeGoalCrusher,
-            description: localizations.badgeGoalCrusherDescription,
-            icon: Icons.flag,
-            color: Colors.indigo,
-            unlocked: userPoints >= 300,
-            progress: 0.6,
-          ),
-          _RewardBadge(
-            id: 'zen_master',
-            name: localizations.badgeZenMaster,
-            description: localizations.badgeZenMasterDescription,
-            icon: Icons.spa,
-            color: Colors.teal,
-            unlocked: userPoints >= 200,
-            progress: 0.3,
-          ),
-          _RewardBadge(
-            id: 'night_owl',
-            name: localizations.badgeNightOwl,
-            description: localizations.badgeNightOwlDescription,
-            icon: Icons.nights_stay,
-            color: Colors.deepPurple,
-            unlocked: userPoints >= 220,
-            progress: 0.2,
-          ),
-          _RewardBadge(
-            id: 'unstoppable',
-            name: localizations.badgeUnstoppable,
-            description: localizations.badgeUnstoppableDescription,
-            icon: Icons.speed,
-            color: Colors.pink,
-            unlocked: userPoints >= 280,
-            progress: 0.8,
-          ),
-          _RewardBadge(
-            id: 'legend',
-            name: localizations.badgeLegend,
-            description: localizations.badgeLegendDescription,
-            icon: Icons.emoji_events,
-            color: Colors.orange,
-            unlocked: userPoints >= 400,
-            progress: 0.1,
-          ),
-        ];
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                localizations.badgesAndAchievements,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textLight,
+    return FutureBuilder<int>(
+      future: _getUserConsecutiveDays(),
+      builder: (context, snapshot) {
+        final consecutiveDays = snapshot.data ?? 0;
+        final localizations = AppLocalizations.of(context)!;
+        
+        // Filtrar solo badges
+        final badgeRewards = _allRewards.where((r) => r['tipo_recompensa_id'] == 'badge').toList();
+        
+        return FutureBuilder<List<_RewardBadge>>(
+          future: Future.wait(badgeRewards.map((reward) async {
+          final rewardId = reward['id'] as String;
+          // Solo desbloqueado si realmente lo tiene en recompensas_usuario
+          final isUnlocked = _isRewardUnlocked(rewardId);
+          final metadata = reward['metadata'] as Map<String, dynamic>?;
+          final colorHex = metadata?['color'] as String? ?? '#2196F3';
+          
+          // Calcular progreso real basado en días consecutivos
+          double progress;
+          if (isUnlocked) {
+            // Si está desbloqueado, mostrar 100%
+            progress = 1.0;
+          } else {
+            // Calcular progreso real basado en días consecutivos
+            progress = await _calculateBadgeProgress(rewardId, consecutiveDays);
+          }
+          
+          // Convertir color hex a Color
+          Color badgeColor;
+          try {
+            final colorStr = colorHex.toString().replaceAll('#', '');
+            badgeColor = Color(int.parse('FF$colorStr', radix: 16));
+          } catch (e) {
+            badgeColor = Colors.blue;
+          }
+          
+            return _RewardBadge(
+              id: rewardId,
+              name: reward['name_es'] ?? reward['name'] ?? '',
+              description: reward['description_es'] ?? reward['description'] ?? '',
+              icon: _getIconFromName(reward['icon_name']),
+              color: badgeColor,
+              unlocked: isUnlocked, // Solo desbloqueado si está en recompensas_usuario
+              progress: progress,
+            );
+          })),
+          builder: (context, badgesSnapshot) {
+            if (!badgesSnapshot.hasData) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            
+            final badges = badgesSnapshot.data!;
+            
+            if (badges.isEmpty) {
+              return Center(
+                child: Text(
+                  'No hay badges disponibles',
+                  style: TextStyle(color: AppColors.textLight),
                 ),
+              );
+            }
+
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    localizations.badgesAndAchievements,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textLight,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    localizations.unlockBadgesDescription,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppColors.textLight.withValues(alpha: 0.8),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  ...badges.map((badge) => Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: _buildBadgeCard(badge),
+                      )),
+                ],
               ),
-              const SizedBox(height: 8),
-              Text(
-                localizations.unlockBadgesDescription,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: AppColors.textLight.withValues(alpha: 0.8),
-                ),
-              ),
-              const SizedBox(height: 20),
-              ...badges.map((badge) => Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: _buildBadgeCard(badge),
-                  )),
-            ],
-          ),
+            );
+          },
         );
       },
     );

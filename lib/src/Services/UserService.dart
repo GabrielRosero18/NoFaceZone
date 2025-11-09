@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as path;
+import 'package:nofacezone/src/Services/RewardService.dart';
 
 /// Servicio para manejar operaciones de usuarios con Supabase
 class UserService {
@@ -49,6 +50,14 @@ class UserService {
           })
           .select()
           .single();
+
+      // Desbloquear recompensas por defecto para el nuevo usuario
+      try {
+        await RewardService.unlockDefaultRewards(authResponse.user!.id);
+      } catch (e) {
+        debugPrint('Error al desbloquear recompensas por defecto: $e');
+        // No fallar el registro si esto falla
+      }
 
       return {
         'success': true,

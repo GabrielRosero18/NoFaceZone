@@ -9,6 +9,7 @@ import 'package:nofacezone/src/Custom/CustomSnackBar.dart';
 import 'package:nofacezone/src/Providers/UserProvider.dart';
 import 'package:nofacezone/src/Providers/AppProvider.dart';
 import 'package:nofacezone/src/Services/UserService.dart';
+import 'package:nofacezone/src/Services/PointsService.dart';
 
 /// Text input formatter para capitalizar la primera letra de cada palabra
 class NameCapitalizationFormatter extends TextInputFormatter {
@@ -56,6 +57,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   String? _profileImageUrl;
   bool _isLoading = false;
   bool _autoValidate = false;
+  String? _lastLanguage; // Para detectar cambios de idioma
   final List<String> ageRanges = [
     '18-25',
     '26-35',
@@ -159,6 +161,22 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     return null;
   }
   
+  /// Mapear género entre idiomas usando las traducciones
+  String? _mapGenderBetweenLanguages(String genderValue, AppLocalizations oldLocalizations, AppLocalizations newLocalizations) {
+    // Obtener todas las traducciones en ambos idiomas
+    final oldGenders = [oldLocalizations.male, oldLocalizations.female, oldLocalizations.nonBinary, oldLocalizations.preferNotSay];
+    final newGenders = [newLocalizations.male, newLocalizations.female, newLocalizations.nonBinary, newLocalizations.preferNotSay];
+    
+    // Buscar el índice del valor en el idioma anterior
+    final index = oldGenders.indexOf(genderValue);
+    if (index >= 0 && index < newGenders.length) {
+      return newGenders[index];
+    }
+    
+    // Si no se encuentra, intentar mapear desde la BD
+    return _mapGenderFromDatabase(genderValue, newLocalizations);
+  }
+  
   /// Mapear frecuencia de la base de datos a la traducción actual
   String? _mapFrequencyFromDatabase(String frequencyFromDb, AppLocalizations localizations) {
     final freqLower = frequencyFromDb.toLowerCase();
@@ -178,6 +196,56 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       return frequencyFromDb;
     }
     return null;
+  }
+  
+  /// Mapear frecuencia entre idiomas usando las traducciones
+  String? _mapFrequencyBetweenLanguages(String frequencyValue, AppLocalizations oldLocalizations, AppLocalizations newLocalizations) {
+    // Obtener todas las traducciones en ambos idiomas
+    final oldFrequencies = [oldLocalizations.veryFrequent, oldLocalizations.frequent, oldLocalizations.moderate, oldLocalizations.lowFrequency];
+    final newFrequencies = [newLocalizations.veryFrequent, newLocalizations.frequent, newLocalizations.moderate, newLocalizations.lowFrequency];
+    
+    // Buscar el índice del valor en el idioma anterior
+    final index = oldFrequencies.indexOf(frequencyValue);
+    if (index >= 0 && index < newFrequencies.length) {
+      return newFrequencies[index];
+    }
+    
+    // Si no se encuentra, intentar mapear desde la BD
+    return _mapFrequencyFromDatabase(frequencyValue, newLocalizations);
+  }
+  
+  /// Mapear valores al idioma actual cuando cambia el idioma
+  void _mapValuesToCurrentLanguage(AppLocalizations localizations) {
+    bool needsUpdate = false;
+    String? newGender = _selectedGender;
+    String? newFrequency = _selectedFrequency;
+    
+    final currentGenders = [localizations.male, localizations.female, localizations.nonBinary, localizations.preferNotSay];
+    final currentFrequencies = [localizations.veryFrequent, localizations.frequent, localizations.moderate, localizations.lowFrequency];
+    
+    // Mapear género si no está en la lista actual
+    if (_selectedGender != null && !currentGenders.contains(_selectedGender)) {
+      newGender = _mapGenderFromDatabase(_selectedGender!, localizations);
+      if (newGender != null && newGender != _selectedGender) {
+        needsUpdate = true;
+      }
+    }
+    
+    // Mapear frecuencia si no está en la lista actual
+    if (_selectedFrequency != null && !currentFrequencies.contains(_selectedFrequency)) {
+      newFrequency = _mapFrequencyFromDatabase(_selectedFrequency!, localizations);
+      if (newFrequency != null && newFrequency != _selectedFrequency) {
+        needsUpdate = true;
+      }
+    }
+    
+    // Actualizar estado solo si es necesario
+    if (needsUpdate) {
+      setState(() {
+        if (newGender != null) _selectedGender = newGender;
+        if (newFrequency != null) _selectedFrequency = newFrequency;
+      });
+    }
   }
 
   String? _getAgeRange(int age) {
@@ -430,6 +498,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
       // Recargar datos del usuario desde Supabase para sincronizar
       if (updateResult['success']) {
+        // Otorgar puntos por actualizar perfil
+        await PointsService.awardUpdateProfilePoints();
+        
+        // Verificar si el perfil está completo para otorgar bonus
+        await PointsService.awardCompleteProfilePoints();
+        
         // Esperar un momento para que Supabase procese la actualización
         await Future.delayed(const Duration(milliseconds: 500));
         
@@ -481,6 +555,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         final localizations = AppLocalizations.of(context)!;
         AppColors.setTheme(appProvider.colorTheme);
     
+    // Detectar cambio de idioma y mapear valores automáticamente
+    final currentLanguage = appProvider.language;
+    if (_lastLanguage != null && _lastLanguage != currentLanguage) {
+      // El idioma cambió, mapear valores al nuevo idioma
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _mapValuesToCurrentLanguage(localizations);
+        }
+      });
+    }
+    _lastLanguage = currentLanguage;
+    
     // Obtener traducciones dinámicamente según el idioma actual
     final List<String> genders = <String>[
       localizations.male,
@@ -500,6 +586,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       localizations.moderate,
       localizations.lowFrequency
     ];
+    
     // Rangos de edad para mayores de 18 años (autocontrol)
     final List<String> ageRanges = <String>[
       '18-25',
@@ -651,7 +738,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   
                   // Género
                   DropdownButtonFormField<String>(
-                    value: _selectedGender != null && genders.contains(_selectedGender) ? _selectedGender : null,
+                    value: _selectedGender != null && genders.contains(_selectedGender) 
+                        ? _selectedGender 
+                        : null,
                     dropdownColor: AppColors.darkSurface,
                     style: const TextStyle(color: AppColors.textLight),
                     items: genders
@@ -688,12 +777,43 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         .toList(),
                     onChanged: (String? v) async {
                       if (v != null) {
-                        setState(() => _selectedLanguage = v);
-                        // Cambiar el idioma de la app cuando se selecciona
+                        // Guardar los valores actuales y las localizaciones antes de cambiar el idioma
+                        final currentFrequency = _selectedFrequency;
+                        final currentGender = _selectedGender;
+                        final oldLocalizations = AppLocalizations.of(context)!;
+                        
+                        // Cambiar el idioma de la app PRIMERO
                         await appProvider.setLanguage(v);
-                        // Forzar reconstrucción de la pantalla para actualizar todos los textos
+                        
+                        // Esperar un frame para que las nuevas localizaciones se actualicen
+                        await Future.delayed(const Duration(milliseconds: 50));
+                        
+                        // Obtener las nuevas localizaciones
                         if (mounted) {
-                          setState(() {});
+                          final newLocalizations = AppLocalizations.of(context)!;
+                          
+                          // Mapear género al nuevo idioma usando mapeo entre idiomas
+                          String? mappedGender;
+                          if (currentGender != null) {
+                            mappedGender = _mapGenderBetweenLanguages(currentGender, oldLocalizations, newLocalizations);
+                          }
+                          
+                          // Mapear frecuencia al nuevo idioma usando mapeo entre idiomas
+                          String? mappedFrequency;
+                          if (currentFrequency != null) {
+                            mappedFrequency = _mapFrequencyBetweenLanguages(currentFrequency, oldLocalizations, newLocalizations);
+                          }
+                          
+                          // Actualizar estado con los valores mapeados
+                          setState(() {
+                            _selectedLanguage = v;
+                            if (mappedGender != null) {
+                              _selectedGender = mappedGender;
+                            }
+                            if (mappedFrequency != null) {
+                              _selectedFrequency = mappedFrequency;
+                            }
+                          });
                         }
                       }
                     },
@@ -704,7 +824,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   
                   // Frecuencia de uso
                   DropdownButtonFormField<String>(
-                    value: _selectedFrequency,
+                    value: _selectedFrequency != null && frequencies.contains(_selectedFrequency) 
+                        ? _selectedFrequency 
+                        : null,
                     dropdownColor: AppColors.darkSurface,
                     style: const TextStyle(color: AppColors.textLight),
                     items: frequencies

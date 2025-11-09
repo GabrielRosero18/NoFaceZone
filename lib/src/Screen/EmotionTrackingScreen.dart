@@ -5,6 +5,7 @@ import 'package:nofacezone/src/Custom/AppLocalizations.dart';
 import 'package:nofacezone/src/Custom/CustomSnackBar.dart';
 import 'package:nofacezone/src/Providers/AppProvider.dart';
 import 'package:nofacezone/src/Services/EmotionService.dart';
+import 'package:nofacezone/src/Services/PointsService.dart';
 import 'package:nofacezone/src/Models/EmotionModel.dart';
 
 class EmotionTrackingScreen extends StatefulWidget {
@@ -131,6 +132,14 @@ class _EmotionTrackingScreenState extends State<EmotionTrackingScreen> {
       );
 
       if (result['success'] == true) {
+        // Verificar si es la primera emoción para otorgar bonus
+        final isFirstEmotion = await PointsService.isFirstEmotion();
+        
+        // Otorgar puntos por registrar emoción
+        await PointsService.awardEmotionRegistrationPoints(
+          isFirstEmotion: isFirstEmotion,
+        );
+
         // Limpiar formulario
         setState(() {
           _selectedEmotion = null;
@@ -141,9 +150,13 @@ class _EmotionTrackingScreenState extends State<EmotionTrackingScreen> {
         await _loadRecentEmotions();
 
         if (mounted) {
+          final pointsMessage = isFirstEmotion 
+              ? 'Emoción registrada exitosamente. ¡Ganaste ${PointsService.POINTS_EMOTION_REGISTER + PointsService.POINTS_FIRST_EMOTION} puntos!'
+              : 'Emoción registrada exitosamente. ¡Ganaste ${PointsService.POINTS_EMOTION_REGISTER} puntos!';
+          
           CustomSnackBar.showSuccess(
             context,
-            localizations?.emotionRegisteredSuccessfully ?? 'Emoción registrada exitosamente',
+            pointsMessage,
             icon: Icons.mood_rounded,
           );
         }
