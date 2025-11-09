@@ -324,7 +324,10 @@ class UsageLimitsService {
   static Future<Map<String, dynamic>?> getOrCreateTodayUsage() async {
     try {
       final userId = _supabase.auth.currentUser?.id;
-      if (userId == null) return null;
+      if (userId == null) {
+        debugPrint('❌ Usuario no autenticado al obtener registro diario');
+        return null;
+      }
 
       final today = DateTime.now();
       final todayString = today.toIso8601String().split('T')[0];
@@ -338,18 +341,42 @@ class UsageLimitsService {
           .maybeSingle();
 
       if (directRead != null) {
+        debugPrint('✅ Registro encontrado para hoy: $todayString');
         return Map<String, dynamic>.from(directRead);
       }
 
+      // Si no existe para hoy, verificar si hay uno de ayer (puede ser temprano en la mañana)
+      final recentUsage = await _supabase
+          .from('registros_uso_diario')
+          .select()
+          .eq('usuario_id', userId)
+          .order('fecha', ascending: false)
+          .limit(1)
+          .maybeSingle();
+      
+      if (recentUsage != null) {
+        final fechaRegistro = recentUsage['fecha'] as String?;
+        if (fechaRegistro != null) {
+          final fechaRegistroDate = DateTime.parse(fechaRegistro);
+          final diffDays = today.difference(fechaRegistroDate).inDays;
+          if (diffDays <= 1) {
+            debugPrint('📅 Usando registro reciente de fecha: $fechaRegistro (diferencia: $diffDays días)');
+            return Map<String, dynamic>.from(recentUsage);
+          }
+        }
+      }
+
       // Si no existe, usar función RPC para crear uno nuevo
+      debugPrint('🆕 Creando nuevo registro para hoy mediante RPC');
       final response = await _supabase.rpc(
         'obtener_registro_dia_actual',
         params: {'p_usuario_id': userId},
       );
 
       return Map<String, dynamic>.from(response);
-    } catch (e) {
-      debugPrint('Error al obtener registro de uso diario: $e');
+    } catch (e, stackTrace) {
+      debugPrint('❌ Error al obtener registro de uso diario: $e');
+      debugPrint('Stack trace: $stackTrace');
       return null;
     }
   }
@@ -427,32 +454,126 @@ class UsageLimitsService {
   /// Obtener tiempo restante hoy en minutos
   static Future<int> getRemainingTimeToday() async {
     try {
-      // Obtener el registro del día actual
-      final todayUsage = await getOrCreateTodayUsage();
-      if (todayUsage == null) {
-        // Si no hay registro, usar el límite actual
-        final limit = await getCurrentDailyLimit();
-        return limit;
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) {
+        debugPrint('❌ Usuario no autenticado al calcular tiempo restante');
+        return 0;
+      }
+
+      // Obtener el registro del día actual DIRECTAMENTE de la tabla (sin caché)
+      final today = DateTime.now();
+      final todayString = today.toIso8601String().split('T')[0];
+      
+      // Leer directamente de la tabla para evitar caché
+      final todayUsage = await _supabase
+          .from('registros_uso_diario')
+          .select()
+          .eq('usuario_id', userId)
+          .eq('fecha', todayString)
+          .maybeSingle();
+
+      // Si no hay registro para hoy, verificar si hay uno de ayer (puede ser temprano en la mañana)
+      Map<String, dynamic>? usageRecord = todayUsage;
+      if (usageRecord == null) {
+        // Intentar obtener el registro más reciente (puede ser de ayer si es temprano)
+        final recentUsage = await _supabase
+            .from('registros_uso_diario')
+            .select()
+            .eq('usuario_id', userId)
+            .order('fecha', ascending: false)
+            .limit(1)
+            .maybeSingle();
+        
+        if (recentUsage != null) {
+          final fechaRegistro = recentUsage['fecha'] as String?;
+          // Si el registro es de hoy o ayer (dentro de las últimas 24 horas), usarlo
+          if (fechaRegistro != null) {
+            final fechaRegistroDate = DateTime.parse(fechaRegistro);
+            final diffDays = today.difference(fechaRegistroDate).inDays;
+            if (diffDays <= 1) {
+              usageRecord = recentUsage;
+              debugPrint('📅 Usando registro de fecha: $fechaRegistro (diferencia: $diffDays días)');
+            }
+          }
+        }
+      }
+
+      // Si todavía no hay registro, crear uno nuevo usando la función RPC
+      if (usageRecord == null) {
+        try {
+          final response = await _supabase.rpc(
+            'obtener_registro_dia_actual',
+            params: {'p_usuario_id': userId},
+          );
+          
+          // Verificar que la respuesta no sea null
+          if (response == null) {
+            debugPrint('❌ Error: RPC retornó null');
+            final limit = await getCurrentDailyLimit();
+            debugPrint('⚠️ Usando límite general como fallback: $limit minutos');
+            return limit;
+          }
+          
+          usageRecord = Map<String, dynamic>.from(response);
+          debugPrint('✅ Registro creado/obtenido mediante RPC');
+        } catch (e) {
+          debugPrint('⚠️ Error al crear registro mediante RPC: $e');
+          // Fallback: usar límite actual como tiempo restante
+          final limit = await getCurrentDailyLimit();
+          debugPrint('⚠️ Usando límite general como fallback: $limit minutos');
+          return limit;
+        }
       }
       
       // SIEMPRE usar el límite del día del registro (limite_del_dia_minutos)
       // Este es el límite real para hoy, que puede ser diferente si se agregó tiempo extra
-      final limitDelDia = todayUsage['limite_del_dia_minutos'] as int?;
-      final tiempoUsado = todayUsage['tiempo_usado_minutos'] as int? ?? 0;
+      final limitDelDia = usageRecord['limite_del_dia_minutos'] as int?;
+      var tiempoUsado = usageRecord['tiempo_usado_minutos'] as int? ?? 0;
       
       // Si no hay límite del día, usar el límite general como fallback
       final limiteAUsar = limitDelDia ?? await getCurrentDailyLimit();
       
-      final remaining = limiteAUsar - tiempoUsado;
-      debugPrint('🔍 Cálculo tiempo restante:');
-      debugPrint('   Límite del día: $limitDelDia minutos');
-      debugPrint('   Tiempo usado: $tiempoUsado minutos');
-      debugPrint('   Límite a usar: $limiteAUsar minutos');
-      debugPrint('   Tiempo restante: $remaining minutos');
+      // CONSIDERAR EL TIEMPO DE LA SESIÓN ACTIVA
+      // Obtener sesiones activas y agregar el tiempo transcurrido
+      final activeSessions = await getActiveSessions();
+      var tiempoSesionActiva = 0;
+      final now = DateTime.now();
       
+      if (activeSessions.isNotEmpty) {
+        for (var session in activeSessions) {
+          final inicioSesion = session['inicio_sesion'] as String?;
+          if (inicioSesion != null) {
+            try {
+              final inicio = DateTime.parse(inicioSesion);
+              // Calcular en segundos primero para mayor precisión, luego convertir a minutos
+              final tiempoTranscurridoSegundos = now.difference(inicio).inSeconds;
+              final tiempoTranscurridoMinutos = tiempoTranscurridoSegundos / 60.0;
+              tiempoSesionActiva += tiempoTranscurridoMinutos.ceil();
+            } catch (e) {
+              debugPrint('⚠️ Error al calcular tiempo de sesión activa: $e');
+            }
+          }
+        }
+      }
+      
+      // Calcular tiempo total usado (BD + sesión activa)
+      final tiempoUsadoTotal = tiempoUsado + tiempoSesionActiva;
+      
+      // Calcular tiempo restante con mayor precisión
+      final remaining = (limiteAUsar - tiempoUsadoTotal).ceil();
+      
+      // Solo loggear si hay cambios significativos para mejorar rendimiento
+      if (remaining <= 5 || tiempoSesionActiva > 0) {
+        debugPrint('🔍 Cálculo tiempo restante:');
+        debugPrint('   Límite: $limiteAUsar min | Usado (BD): $tiempoUsado min | Sesión activa: $tiempoSesionActiva min');
+        debugPrint('   Total usado: $tiempoUsadoTotal min | Restante: $remaining min');
+      }
+      
+      // Retornar 0 si el tiempo se agotó (incluso si hay tiempo negativo)
       return remaining > 0 ? remaining : 0;
-    } catch (e) {
-      debugPrint('Error al calcular tiempo restante: $e');
+    } catch (e, stackTrace) {
+      debugPrint('❌ Error al calcular tiempo restante: $e');
+      debugPrint('Stack trace: $stackTrace');
       // Fallback: usar límite actual
       try {
         final limit = await getCurrentDailyLimit();

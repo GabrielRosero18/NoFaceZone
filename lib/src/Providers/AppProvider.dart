@@ -157,15 +157,38 @@ class AppProvider extends ChangeNotifier {
 
       // Cargar tiempo usado hoy
       _todayUsageMinutes = await UsageLimitsService.getTodayUsageMinutes();
-    } catch (e) {
-      debugPrint('Error loading usage limits from Supabase: $e');
+      
+      // IMPORTANTE: Obtener el límite del día ACTUAL del registro diario
+      // Esto puede ser diferente del límite general si se agregó tiempo extra
+      final todayUsage = await UsageLimitsService.getOrCreateTodayUsage();
+      if (todayUsage != null) {
+        final limiteDelDia = todayUsage['limite_del_dia_minutos'] as int?;
+        final tiempoUsado = todayUsage['tiempo_usado_minutos'] as int? ?? 0;
+        if (limiteDelDia != null && limiteDelDia > 0) {
+          // Actualizar el límite del día con el valor del registro (puede incluir tiempo extra)
+          _dailyUsageLimit = limiteDelDia;
+          debugPrint('📊 Límite del día actualizado desde registro: $limiteDelDia minutos');
+          debugPrint('📊 Tiempo usado actualizado: $tiempoUsado minutos');
+        }
+        // Actualizar también el tiempo usado
+        _todayUsageMinutes = tiempoUsado;
+      }
+    } catch (e, stackTrace) {
+      debugPrint('❌ Error loading usage limits from Supabase: $e');
+      debugPrint('Stack trace: $stackTrace');
     }
   }
 
   /// Recargar límites de uso desde Supabase
   Future<void> refreshUsageLimits() async {
-    await _loadUsageLimitsFromSupabase();
-    notifyListeners();
+    try {
+      await _loadUsageLimitsFromSupabase();
+      notifyListeners();
+      debugPrint('✅ Límites de uso recargados desde Supabase');
+    } catch (e, stackTrace) {
+      debugPrint('❌ Error al recargar límites de uso: $e');
+      debugPrint('Stack trace: $stackTrace');
+    }
   }
 
   /// Marcar onboarding como completado

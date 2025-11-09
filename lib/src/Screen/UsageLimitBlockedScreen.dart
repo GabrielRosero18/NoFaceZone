@@ -103,6 +103,7 @@ class _UsageLimitBlockedScreenState extends State<UsageLimitBlockedScreen>
 
       final currentLimit = todayUsage['limite_del_dia_minutos'] as int? ?? 0;
       final newLimit = currentLimit + 10;
+      final limiteAnterior = currentLimit; // Guardar el límite anterior para verificación
       
       // Obtener la fecha del registro actual (puede ser de ayer si es temprano)
       final today = DateTime.now();
@@ -111,7 +112,7 @@ class _UsageLimitBlockedScreenState extends State<UsageLimitBlockedScreen>
       final fechaAUsar = fechaRegistro ?? todayString;
 
       debugPrint('➕ Agregando 10 minutos:');
-      debugPrint('   Límite actual: $currentLimit minutos');
+      debugPrint('   Límite actual: $limiteAnterior minutos');
       debugPrint('   Nuevo límite: $newLimit minutos');
       debugPrint('   Fecha del registro: $fechaRegistro');
       debugPrint('   Fecha a usar para actualizar: $fechaAUsar');
@@ -133,7 +134,7 @@ class _UsageLimitBlockedScreenState extends State<UsageLimitBlockedScreen>
       debugPrint('✅ Actualización en BD: $updateResult');
 
       // Esperar un momento para que se actualice en la BD
-      await Future.delayed(const Duration(milliseconds: 1000));
+      await Future.delayed(const Duration(milliseconds: 1500));
 
       // Leer DIRECTAMENTE de la tabla sin usar la función RPC (para evitar caché)
       // Usar la misma fecha que se usó para actualizar
@@ -147,11 +148,9 @@ class _UsageLimitBlockedScreenState extends State<UsageLimitBlockedScreen>
       if (verifyUsage != null) {
         final verifyLimit = verifyUsage['limite_del_dia_minutos'] as int? ?? 0;
         final verifyUsed = verifyUsage['tiempo_usado_minutos'] as int? ?? 0;
-        final verifyRemaining = verifyLimit - verifyUsed;
         debugPrint('🔍 Verificación DIRECTA después de agregar tiempo:');
         debugPrint('   Límite del día: $verifyLimit minutos');
-        debugPrint('   Tiempo usado: $verifyUsed minutos');
-        debugPrint('   Tiempo restante: $verifyRemaining minutos');
+        debugPrint('   Tiempo usado (BD): $verifyUsed minutos');
         
         if (verifyLimit != newLimit) {
           debugPrint('⚠️ ADVERTENCIA: El límite no se actualizó correctamente!');
@@ -162,21 +161,202 @@ class _UsageLimitBlockedScreenState extends State<UsageLimitBlockedScreen>
         debugPrint('❌ Error: No se encontró el registro después de actualizar');
       }
 
-      // Recargar datos DESPUÉS de verificar
-      await appProvider.updateTodayUsage();
-      await appProvider.refreshUsageLimits();
-
-      // Llamar callback si existe (esto recargará datos en HomeScreen)
-      if (widget.onTimeAdded != null) {
-        widget.onTimeAdded!();
+      // Verificar que el límite se actualizó correctamente
+      bool limiteActualizado = false;
+      if (verifyUsage != null) {
+        final verifyLimit = verifyUsage['limite_del_dia_minutos'] as int? ?? 0;
+        final verifyUsed = verifyUsage['tiempo_usado_minutos'] as int? ?? 0;
+        if (verifyLimit == newLimit) {
+          limiteActualizado = true;
+          debugPrint('✅ Límite actualizado correctamente en BD: $newLimit minutos');
+          debugPrint('   Tiempo usado en BD: $verifyUsed minutos');
+          
+          // Si el tiempo usado es mayor que el nuevo límite, puede ser por sesiones activas
+          if (verifyUsed > newLimit) {
+            debugPrint('⚠️ ADVERTENCIA: Tiempo usado ($verifyUsed min) es mayor que el nuevo límite ($newLimit min)');
+            debugPrint('   Esto puede deberse a sesiones activas que están sumando tiempo');
+            
+            // Verificar sesiones activas
+            final activeSessions = await UsageLimitsService.getActiveSessions();
+            if (activeSessions.isNotEmpty) {
+              debugPrint('   Sesiones activas encontradas: ${activeSessions.length}');
+              for (var session in activeSessions) {
+                final inicioSesion = session['inicio_sesion'] as String?;
+                if (inicioSesion != null) {
+                  try {
+                    final inicio = DateTime.parse(inicioSesion);
+                    final tiempoTranscurrido = DateTime.now().difference(inicio).inMinutes;
+                    debugPrint('     - Sesión activa: $tiempoTranscurrido minutos transcurridos');
+                  } catch (e) {
+                    debugPrint('     - Error al calcular tiempo de sesión: $e');
+                  }
+                }
+              }
+            }
+          }
+        } else {
+          debugPrint('⚠️ El límite no se actualizó. Esperado: $newLimit, Obtenido: $verifyLimit');
+        }
       }
 
-      // Esperar un poco más antes de cerrar para asegurar que todo se actualizó
-      await Future.delayed(const Duration(milliseconds: 300));
+      // Si el límite no se actualizó, mostrar error
+      if (!limiteActualizado) {
+        debugPrint('❌ Error: El límite no se actualizó en la BD');
+        if (mounted) {
+          setState(() {
+            _isAddingTime = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Error: No se pudo actualizar el límite. Intenta de nuevo.'),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+        return;
+      }
 
-      // Cerrar la pantalla de bloqueo
-      if (mounted) {
-        Navigator.of(context).pop();
+      // Forzar recarga completa de datos DESPUÉS de verificar
+      // Esperar un momento adicional para que Supabase se sincronice completamente
+      await Future.delayed(const Duration(milliseconds: 1500));
+      
+      // Recargar datos desde Supabase directamente (esto actualiza el límite del día)
+      await appProvider.refreshUsageLimits();
+      await appProvider.updateTodayUsage();
+      
+      // Esperar un poco más antes de verificar el tiempo restante
+      await Future.delayed(const Duration(milliseconds: 1000));
+      
+      // Calcular tiempo restante manualmente usando los datos actualizados
+      // Esto nos da más control sobre el cálculo
+      final updatedUsage = await supabase
+          .from('registros_uso_diario')
+          .select()
+          .eq('usuario_id', userId)
+          .eq('fecha', fechaAUsar)
+          .maybeSingle();
+
+      int verifyRemaining = 0;
+      if (updatedUsage != null) {
+        final updatedLimit = updatedUsage['limite_del_dia_minutos'] as int? ?? 0;
+        final updatedUsed = updatedUsage['tiempo_usado_minutos'] as int? ?? 0;
+        
+        // Obtener tiempo de sesión activa
+        final activeSessions = await UsageLimitsService.getActiveSessions();
+        var tiempoSesionActiva = 0;
+        if (activeSessions.isNotEmpty) {
+          debugPrint('🔍 Sesiones activas encontradas: ${activeSessions.length}');
+          for (var session in activeSessions) {
+            final inicioSesion = session['inicio_sesion'] as String?;
+            if (inicioSesion != null) {
+              try {
+                final inicio = DateTime.parse(inicioSesion);
+                final tiempoTranscurrido = DateTime.now().difference(inicio).inMinutes;
+                tiempoSesionActiva += tiempoTranscurrido;
+                debugPrint('   - Sesión: $tiempoTranscurrido minutos transcurridos');
+              } catch (e) {
+                debugPrint('⚠️ Error al calcular tiempo de sesión activa: $e');
+              }
+            }
+          }
+        }
+        
+        final tiempoUsadoTotal = updatedUsed + tiempoSesionActiva;
+        
+        // Calcular tiempo restante basado en el nuevo límite
+        verifyRemaining = (updatedLimit - tiempoUsadoTotal).clamp(0, updatedLimit);
+        
+        // Si el tiempo usado excede el límite, el tiempo restante es 0
+        // PERO si acabamos de agregar tiempo, podemos considerar que el tiempo agregado
+        // es tiempo "disponible" que se puede usar. Sin embargo, si el tiempo usado
+        // ya excedía el límite anterior, técnicamente no hay tiempo restante.
+        
+        // Si el límite aumentó y el tiempo usado excede el nuevo límite,
+        // el tiempo restante es 0, pero el límite se actualizó correctamente
+        // Cuando las sesiones activas se finalicen, el tiempo usado se actualizará
+        // y el tiempo restante se calculará correctamente
+        
+        // IMPORTANTE: Si el tiempo usado excede el límite, pero acabamos de agregar tiempo,
+        // debemos considerar que el tiempo agregado es tiempo "disponible" que se puede usar
+        // antes de que se bloquee de nuevo. Sin embargo, si el tiempo usado ya excede el límite,
+        // técnicamente no hay tiempo restante.
+        
+        // Si el tiempo usado es mayor que el límite, significa que ya se excedió el límite
+        // En este caso, el tiempo restante es 0, pero el límite aumentó, así que cuando
+        // se finalice la sesión activa o se actualice el tiempo usado, habrá tiempo disponible
+        
+        debugPrint('🔍 Cálculo manual después de agregar tiempo:');
+        debugPrint('   Límite anterior: $limiteAnterior minutos');
+        debugPrint('   Límite actualizado: $updatedLimit minutos');
+        debugPrint('   Tiempo usado (BD): $updatedUsed minutos');
+        debugPrint('   Tiempo sesión activa: $tiempoSesionActiva minutos');
+        debugPrint('   Tiempo usado TOTAL: $tiempoUsadoTotal minutos');
+        debugPrint('   Tiempo restante: $verifyRemaining minutos');
+        
+        // Si el tiempo usado excede el límite, verificar si hay sesiones activas que deben finalizarse
+        if (tiempoUsadoTotal > updatedLimit && activeSessions.isNotEmpty) {
+          debugPrint('⚠️ El tiempo usado ($tiempoUsadoTotal min) excede el límite ($updatedLimit min)');
+          debugPrint('   Esto puede deberse a sesiones activas que no se han finalizado');
+          debugPrint('   El tiempo restante es 0, pero el límite se actualizó correctamente');
+          debugPrint('   Cuando las sesiones se finalicen, el tiempo restante se calculará correctamente');
+        }
+      } else {
+        debugPrint('⚠️ No se pudo obtener el registro actualizado');
+        // Si el límite se actualizó pero no podemos calcular el tiempo restante,
+        // al menos verificar usando el método normal
+        verifyRemaining = await UsageLimitsService.getRemainingTimeToday();
+        debugPrint('   Tiempo restante (método normal): $verifyRemaining minutos');
+      }
+
+      // Si el límite se actualizó correctamente, considerar éxito
+      // Incluso si el tiempo restante es 0 (puede ser por sesión activa larga)
+      // El límite se actualizó correctamente, así que cerrar la pantalla
+      if (limiteActualizado) {
+        debugPrint('✅ Límite aumentó de $limiteAnterior a $newLimit minutos');
+        debugPrint('   Tiempo restante calculado: $verifyRemaining minutos');
+        
+        // Si el tiempo restante es 0, puede ser por una sesión activa que está sumando tiempo
+        // Pero el límite se actualizó correctamente, así que el usuario puede seguir usando la app
+        if (verifyRemaining <= 0) {
+          debugPrint('⚠️ Tiempo restante es 0, pero el límite se actualizó correctamente');
+          debugPrint('   Esto puede deberse a una sesión activa que está sumando tiempo');
+          debugPrint('   El límite aumentó, así que cuando la sesión se finalice habrá más tiempo disponible');
+        }
+        
+        // Cerrar la pantalla de bloqueo ya que el límite se actualizó correctamente
+        if (mounted) {
+          debugPrint('✅ Cerrando pantalla de bloqueo. Límite actualizado correctamente.');
+          
+          // Llamar callback ANTES de cerrar para que HomeScreen actualice sus datos
+          // Pasar información de que el límite se actualizó correctamente
+          if (widget.onTimeAdded != null) {
+            widget.onTimeAdded!();
+          }
+          
+          // Esperar un momento para que el callback se ejecute
+          await Future.delayed(const Duration(milliseconds: 500));
+          
+          // Cerrar el diálogo
+          Navigator.of(context).pop();
+          return;
+        }
+      } else {
+        // Si el límite no se actualizó, ya se mostró el error antes
+        // Pero por si acaso, verificar una vez más
+        debugPrint('❌ El límite no se actualizó correctamente después de todos los intentos');
+        if (mounted) {
+          setState(() {
+            _isAddingTime = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Error: No se pudo actualizar el límite. Verifica tu conexión e intenta de nuevo.'),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 4),
+            ),
+          );
+        }
       }
     } catch (e, stackTrace) {
       debugPrint('❌ Error al agregar tiempo extra: $e');
