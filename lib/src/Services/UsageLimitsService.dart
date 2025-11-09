@@ -326,7 +326,22 @@ class UsageLimitsService {
       final userId = _supabase.auth.currentUser?.id;
       if (userId == null) return null;
 
-      // Usar función RPC para obtener o crear registro
+      final today = DateTime.now();
+      final todayString = today.toIso8601String().split('T')[0];
+
+      // Primero intentar leer directamente de la tabla (más rápido y sin caché)
+      final directRead = await _supabase
+          .from('registros_uso_diario')
+          .select()
+          .eq('usuario_id', userId)
+          .eq('fecha', todayString)
+          .maybeSingle();
+
+      if (directRead != null) {
+        return Map<String, dynamic>.from(directRead);
+      }
+
+      // Si no existe, usar función RPC para crear uno nuevo
       final response = await _supabase.rpc(
         'obtener_registro_dia_actual',
         params: {'p_usuario_id': userId},
@@ -420,18 +435,21 @@ class UsageLimitsService {
         return limit;
       }
       
-      // Usar el límite del día del registro (puede ser diferente si se cambió el límite)
+      // SIEMPRE usar el límite del día del registro (limite_del_dia_minutos)
+      // Este es el límite real para hoy, que puede ser diferente si se agregó tiempo extra
       final limitDelDia = todayUsage['limite_del_dia_minutos'] as int?;
       final tiempoUsado = todayUsage['tiempo_usado_minutos'] as int? ?? 0;
       
-      // Si el límite del día es diferente al límite actual, usar el límite actual
-      // Esto permite que si cambias el límite, el tiempo restante se recalcule
-      final limiteActual = await getCurrentDailyLimit();
-      final limiteAUsar = limitDelDia != null && limitDelDia == limiteActual 
-          ? limiteActual 
-          : limiteActual;
+      // Si no hay límite del día, usar el límite general como fallback
+      final limiteAUsar = limitDelDia ?? await getCurrentDailyLimit();
       
       final remaining = limiteAUsar - tiempoUsado;
+      debugPrint('🔍 Cálculo tiempo restante:');
+      debugPrint('   Límite del día: $limitDelDia minutos');
+      debugPrint('   Tiempo usado: $tiempoUsado minutos');
+      debugPrint('   Límite a usar: $limiteAUsar minutos');
+      debugPrint('   Tiempo restante: $remaining minutos');
+      
       return remaining > 0 ? remaining : 0;
     } catch (e) {
       debugPrint('Error al calcular tiempo restante: $e');

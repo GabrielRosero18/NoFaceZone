@@ -2,6 +2,7 @@ import 'dart:math';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:nofacezone/src/Custom/AppColors.dart';
 import 'package:nofacezone/src/Custom/AppLocalizations.dart';
 import 'package:nofacezone/src/Custom/AppMessages.dart';
@@ -10,6 +11,7 @@ import 'package:nofacezone/src/Providers/UserProvider.dart';
 import 'package:nofacezone/src/Providers/AppProvider.dart';
 import 'package:nofacezone/src/Services/PointsService.dart';
 import 'package:nofacezone/src/Services/UsageLimitsService.dart';
+import 'package:nofacezone/src/Screen/UsageLimitBlockedScreen.dart';
 import 'package:nofacezone/src/Custom/Library.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -26,8 +28,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
   Timer? _usageTimer;
   int _remainingMinutes = 0;
   int _dailyLimitMinutes = 60;
-  DateTime? _appStartTime;
   int? _currentSessionId;
+  bool _isBlockedScreenShown = false;
+  bool _isLoadingUsageData = false;
+  DateTime? _appStartTime;
+  DateTime? _blockDismissedTime; // Tiempo cuando se quitó el bloqueo
 
   @override
   void initState() {
@@ -58,11 +63,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     // Registrar observer para detectar cambios en el ciclo de vida de la app
     WidgetsBinding.instance.addObserver(this);
     
-    // Cargar límites y tiempo restante
-    _loadUsageData();
-    
     // Iniciar sesión de uso cuando se abre la app
     _startAppSession();
+    
+    // Cargar límites y tiempo restante después de iniciar sesión (con delay para evitar múltiples llamadas)
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        _loadUsageData().then((_) {
+          // Verificar límite después de cargar datos iniciales
+          if (mounted && _remainingMinutes <= 0) {
+            _showBlockedScreen();
+          }
+        });
+      }
+    });
     
     // Iniciar timer para actualizar cada 10 segundos (más frecuente)
     _startUsageTimer();
@@ -83,7 +97,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       case AppLifecycleState.resumed:
         // App volvió a primer plano - iniciar nueva sesión
         _startAppSession();
-        _loadUsageData();
+        // Cargar datos después de un pequeño delay para evitar múltiples llamadas
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted) {
+            _loadUsageData();
+          }
+        });
         break;
       case AppLifecycleState.paused:
       case AppLifecycleState.inactive:
@@ -144,18 +163,25 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
 
   /// Cargar datos de uso desde Supabase
   Future<void> _loadUsageData() async {
+    // Prevenir múltiples llamadas simultáneas
+    if (_isLoadingUsageData) {
+      return;
+    }
+
+    _isLoadingUsageData = true;
+    
     try {
       // Cargar límite y tiempo restante
       final limit = await UsageLimitsService.getCurrentDailyLimit();
       final remaining = await UsageLimitsService.getRemainingTimeToday();
       final used = await UsageLimitsService.getTodayUsageMinutes();
       
-      debugPrint('📊 Datos de uso cargados:');
-      debugPrint('   Límite: $limit minutos');
-      debugPrint('   Usado: $used minutos');
-      debugPrint('   Restante: $remaining minutos');
-      
       if (mounted) {
+        debugPrint('📊 Datos de uso cargados:');
+        debugPrint('   Límite: $limit minutos');
+        debugPrint('   Usado: $used minutos');
+        debugPrint('   Restante: $remaining minutos');
+        
         setState(() {
           _dailyLimitMinutes = limit;
           _remainingMinutes = remaining;
@@ -165,28 +191,128 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         final appProvider = Provider.of<AppProvider>(context, listen: false);
         await appProvider.updateTodayUsage();
         await appProvider.refreshUsageLimits(); // Recargar límites desde Supabase
+        
+        // Verificar si se alcanzó el límite y mostrar pantalla de bloqueo
+        // No mostrar si se quitó el bloqueo recientemente (últimos 5 minutos)
+        final canShowBlock = _blockDismissedTime == null || 
+            DateTime.now().difference(_blockDismissedTime!).inMinutes >= 5;
+        
+        debugPrint('🔍 Verificación de bloqueo:');
+        debugPrint('   Tiempo restante: $remaining minutos');
+        debugPrint('   Bloqueo mostrado: $_isBlockedScreenShown');
+        debugPrint('   Puede mostrar bloqueo: $canShowBlock');
+        debugPrint('   Tiempo desde último bloqueo quitado: ${_blockDismissedTime != null ? DateTime.now().difference(_blockDismissedTime!).inMinutes : "N/A"} minutos');
+        
+        if (remaining <= 0 && !_isBlockedScreenShown && canShowBlock) {
+          debugPrint('🚨 Mostrando pantalla de bloqueo');
+          _showBlockedScreen();
+        } else if (remaining > 0 && _isBlockedScreenShown) {
+          // Si hay tiempo restante y la pantalla está mostrada, cerrarla
+          debugPrint('✅ Hay tiempo restante, cerrando bloqueo');
+          _isBlockedScreenShown = false;
+          _blockDismissedTime = null; // Resetear el tiempo de bloqueo quitado
+        } else if (remaining <= 0 && _isBlockedScreenShown) {
+          debugPrint('⚠️ Tiempo restante es 0 pero bloqueo ya está mostrado');
+        } else if (remaining <= 0 && !canShowBlock) {
+          debugPrint('⏸️ Tiempo restante es 0 pero bloqueo fue quitado recientemente');
+        }
       }
     } catch (e) {
       debugPrint('Error loading usage data: $e');
+    } finally {
+      _isLoadingUsageData = false;
     }
+  }
+
+  /// Mostrar pantalla de bloqueo cuando se alcanza el límite
+  void _showBlockedScreen() {
+    if (!mounted || _isBlockedScreenShown) return;
+    
+    _isBlockedScreenShown = true;
+    
+    // Mostrar como overlay/modal
+    showDialog(
+      context: context,
+      barrierDismissible: false, // No se puede cerrar tocando fuera
+      barrierColor: Colors.black.withValues(alpha: 0.95),
+      builder: (context) => WillPopScope(
+        onWillPop: () async => false, // Prevenir cierre con botón atrás
+        child: UsageLimitBlockedScreen(
+          onTimeAdded: () async {
+            // Cuando se agrega tiempo, recargar datos y cerrar
+            _isBlockedScreenShown = false;
+            
+            // Esperar un momento para que la BD se actualice completamente
+            await Future.delayed(const Duration(milliseconds: 1500));
+            
+            // Forzar recarga de datos directamente desde la tabla (sin caché)
+            final supabase = Supabase.instance.client;
+            final userId = supabase.auth.currentUser?.id;
+            if (userId != null) {
+              // Obtener el registro más reciente (puede ser de hoy o ayer)
+              final directRead = await supabase
+                  .from('registros_uso_diario')
+                  .select()
+                  .eq('usuario_id', userId)
+                  .order('fecha', ascending: false)
+                  .limit(1)
+                  .maybeSingle();
+              
+              if (directRead != null) {
+                final limitDelDia = directRead['limite_del_dia_minutos'] as int? ?? 0;
+                final tiempoUsado = directRead['tiempo_usado_minutos'] as int? ?? 0;
+                final remaining = limitDelDia - tiempoUsado;
+                
+                debugPrint('🔄 Lectura DIRECTA después de agregar tiempo:');
+                debugPrint('   Límite del día: $limitDelDia minutos');
+                debugPrint('   Tiempo usado: $tiempoUsado minutos');
+                debugPrint('   Tiempo restante: $remaining minutos');
+                
+                if (remaining > 0) {
+                  // Si hay tiempo restante, no mostrar el bloqueo por al menos 5 minutos
+                  _blockDismissedTime = DateTime.now().subtract(const Duration(minutes: 4));
+                  debugPrint('✅ Hay tiempo restante, bloqueo no se mostrará por 5 minutos');
+                } else {
+                  _blockDismissedTime = null;
+                }
+              }
+            }
+            
+            // Recargar datos usando el método normal
+            await _loadUsageData();
+            
+            // Recargar datos de nuevo después de un momento para asegurar sincronización
+            Future.delayed(const Duration(seconds: 2), () {
+              if (mounted) {
+                _loadUsageData();
+              }
+            });
+          },
+          onBlockRemoved: () {
+            // Cuando se quita el bloqueo, marcar el tiempo para no mostrar de nuevo por 5 minutos
+            _isBlockedScreenShown = false;
+            _blockDismissedTime = DateTime.now();
+            debugPrint('🚫 Bloqueo quitado. No se mostrará de nuevo por 5 minutos');
+            // No recargar datos inmediatamente para evitar que se muestre de nuevo
+          },
+        ),
+      ),
+    ).then((_) {
+      // Cuando se cierra el diálogo
+      _isBlockedScreenShown = false;
+    });
   }
 
   /// Iniciar timer para actualizar el contador cada 10 segundos
   void _startUsageTimer() {
+    _usageTimer?.cancel(); // Cancelar timer anterior si existe
     _usageTimer = Timer.periodic(const Duration(seconds: 10), (timer) async {
-      // Si hay una sesión activa, actualizar el tiempo usado
-      if (_currentSessionId != null && _appStartTime != null) {
-        final elapsed = DateTime.now().difference(_appStartTime!).inSeconds;
-        // Actualizar cada minuto completo
-        if (elapsed >= 60) {
-          // El tiempo se actualiza automáticamente en Supabase cuando se finaliza la sesión
-          // Pero podemos forzar una actualización periódica
-          await _loadUsageData();
-          _appStartTime = DateTime.now(); // Resetear para el próximo minuto
-        }
+      if (!mounted) {
+        timer.cancel();
+        return;
       }
       
-      // Actualizar datos de uso
+      // Actualizar datos de uso solo una vez por ciclo
       await _loadUsageData();
     });
   }
@@ -693,18 +819,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     showDialog(
       context: context,
       barrierDismissible: true,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) {
-          return _TimeRemainingDialog(
-            remainingMinutes: _remainingMinutes,
-            dailyLimitMinutes: _dailyLimitMinutes,
-            onRefresh: () async {
+      builder: (context) {
+        return _TimeRemainingDialog(
+          remainingMinutes: _remainingMinutes,
+          dailyLimitMinutes: _dailyLimitMinutes,
+          onRefresh: () async {
+            // Solo recargar si no está ya cargando
+            if (!_isLoadingUsageData) {
               await _loadUsageData();
-              setDialogState(() {});
-            },
-          );
-        },
-      ),
+            }
+          },
+        );
+      },
     );
   }
 
@@ -1027,56 +1153,86 @@ class _TimeRemainingDialog extends StatefulWidget {
 
 class _TimeRemainingDialogState extends State<_TimeRemainingDialog> {
   Timer? _updateTimer;
+  Timer? _syncTimer;
   int _currentRemainingSeconds = 0;
+  DateTime _dialogStartTime = DateTime.now();
+  int _initialRemainingSeconds = 0;
+  bool _isSyncing = false;
 
   @override
   void initState() {
     super.initState();
-    _currentRemainingSeconds = widget.remainingMinutes * 60;
+    _initialRemainingSeconds = widget.remainingMinutes * 60;
+    _currentRemainingSeconds = _initialRemainingSeconds;
+    _dialogStartTime = DateTime.now();
     _startTimer();
   }
 
   @override
   void didUpdateWidget(_TimeRemainingDialog oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Actualizar cuando cambien los datos del widget
-    if (oldWidget.remainingMinutes != widget.remainingMinutes) {
-      _currentRemainingSeconds = widget.remainingMinutes * 60;
+    // NO resetear el contador cuando se actualiza el widget
+    // El contador debe seguir contando independientemente
+    // Solo actualizar el valor inicial si cambió significativamente (más de 30 segundos)
+    final newInitialSeconds = widget.remainingMinutes * 60;
+    final diff = newInitialSeconds - _initialRemainingSeconds;
+    
+    if (diff.abs() > 30) {
+      // Solo actualizar si hay un cambio muy grande (probablemente se agregó tiempo)
+      _initialRemainingSeconds = newInitialSeconds;
+      // Calcular cuánto tiempo ha pasado desde que se abrió el diálogo
+      final elapsed = DateTime.now().difference(_dialogStartTime).inSeconds;
+      _currentRemainingSeconds = (_initialRemainingSeconds - elapsed).clamp(0, _initialRemainingSeconds);
     }
   }
 
   void _startTimer() {
-    _updateTimer = Timer.periodic(const Duration(seconds: 1), (timer) async {
+    // Timer principal que cuenta hacia atrás cada segundo
+    // Calcula el tiempo restante basado en el tiempo transcurrido desde que se abrió el diálogo
+    _updateTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (mounted) {
+        final elapsed = DateTime.now().difference(_dialogStartTime).inSeconds;
+        final calculatedRemaining = _initialRemainingSeconds - elapsed;
+        
         setState(() {
-          if (_currentRemainingSeconds > 0) {
-            _currentRemainingSeconds--;
+          if (calculatedRemaining > 0) {
+            _currentRemainingSeconds = calculatedRemaining;
           } else {
-            // Si llega a 0, recargar datos desde Supabase
-            widget.onRefresh();
-            // Recargar el valor desde el widget
-            Future.delayed(const Duration(milliseconds: 500), () {
-              if (mounted) {
-                setState(() {
-                  _currentRemainingSeconds = widget.remainingMinutes * 60;
-                });
-              }
-            });
+            _currentRemainingSeconds = 0;
+            // Si llegó a 0, recargar datos una vez
+            if (!_isSyncing) {
+              _isSyncing = true;
+              widget.onRefresh();
+              Future.delayed(const Duration(seconds: 1), () {
+                _isSyncing = false;
+              });
+            }
           }
         });
       }
     });
     
-    // También actualizar desde Supabase cada 10 segundos
-    Timer.periodic(const Duration(seconds: 10), (timer) async {
-      if (mounted) {
+    // Timer para sincronizar con Supabase cada 30 segundos (menos frecuente)
+    // Solo para actualizar el valor inicial si cambió significativamente
+    _syncTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+      if (mounted && !_isSyncing) {
+        _isSyncing = true;
         widget.onRefresh();
-        // Sincronizar con los datos actualizados
+        
         Future.delayed(const Duration(milliseconds: 500), () {
           if (mounted) {
-            setState(() {
-              _currentRemainingSeconds = widget.remainingMinutes * 60;
-            });
+            final newInitialSeconds = widget.remainingMinutes * 60;
+            final diff = newInitialSeconds - _initialRemainingSeconds;
+            
+            // Solo actualizar si hay un cambio significativo (más de 30 segundos)
+            // Esto podría ser porque se agregó tiempo extra
+            if (diff.abs() > 30) {
+              _initialRemainingSeconds = newInitialSeconds;
+              // Recalcular el tiempo restante basado en el tiempo transcurrido
+              final elapsed = DateTime.now().difference(_dialogStartTime).inSeconds;
+              _currentRemainingSeconds = (_initialRemainingSeconds - elapsed).clamp(0, _initialRemainingSeconds);
+            }
+            _isSyncing = false;
           }
         });
       }
@@ -1086,6 +1242,7 @@ class _TimeRemainingDialogState extends State<_TimeRemainingDialog> {
   @override
   void dispose() {
     _updateTimer?.cancel();
+    _syncTimer?.cancel();
     super.dispose();
   }
 
@@ -1304,25 +1461,33 @@ class _TimeRemainingDialogState extends State<_TimeRemainingDialog> {
             const SizedBox(height: 16),
             
             // Información adicional
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildInfoItem(
-                  'Límite',
-                  '${widget.dailyLimitMinutes}m',
-                  Icons.timer_outlined,
-                ),
-                _buildInfoItem(
-                  'Usado',
-                  '${widget.dailyLimitMinutes - widget.remainingMinutes}m',
-                  Icons.access_time,
-                ),
-                _buildInfoItem(
-                  'Restante',
-                  '${widget.remainingMinutes}m',
-                  Icons.hourglass_empty,
-                ),
-              ],
+            Builder(
+              builder: (context) {
+                // Calcular valores basados en el tiempo actual del contador
+                final currentRemainingMinutes = (_currentRemainingSeconds / 60).ceil();
+                final usedMinutes = widget.dailyLimitMinutes - currentRemainingMinutes;
+                
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildInfoItem(
+                      'Límite',
+                      '${widget.dailyLimitMinutes}m',
+                      Icons.timer_outlined,
+                    ),
+                    _buildInfoItem(
+                      'Usado',
+                      '${usedMinutes.clamp(0, widget.dailyLimitMinutes)}m',
+                      Icons.access_time,
+                    ),
+                    _buildInfoItem(
+                      'Restante',
+                      '${currentRemainingMinutes.clamp(0, widget.dailyLimitMinutes)}m',
+                      Icons.hourglass_empty,
+                    ),
+                  ],
+                );
+              },
             ),
           ],
         ),
