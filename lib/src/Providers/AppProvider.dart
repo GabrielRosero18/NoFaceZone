@@ -1,6 +1,7 @@
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:nofacezone/src/Services/PreferencesService.dart';
+import 'package:nofacezone/src/Services/UsageLimitsService.dart';
 import 'package:nofacezone/src/Custom/AppColors.dart';
 import 'package:nofacezone/src/Custom/AppFonts.dart';
 import 'package:nofacezone/src/Custom/AppMessages.dart';
@@ -46,12 +47,21 @@ class AppProvider extends ChangeNotifier {
   int _dailyUsageLimit = 60;
   bool _privateModeEnabled = false;
   int _weeklyGoal = 10;
+  
+  // Límites de uso desde Supabase
+  int _todayUsageMinutes = 0;
+  bool _nightBlockActive = false;
+  bool _mandatoryBreaksActive = false;
+  int? _currentSessionId;
 
   bool get notificationsEnabled => _notificationsEnabled;
   int get notificationInterval => _notificationInterval;
   int get dailyUsageLimit => _dailyUsageLimit;
   bool get privateModeEnabled => _privateModeEnabled;
   int get weeklyGoal => _weeklyGoal;
+  int get todayUsageMinutes => _todayUsageMinutes;
+  bool get nightBlockActive => _nightBlockActive;
+  bool get mandatoryBreaksActive => _mandatoryBreaksActive;
 
   AppProvider() {
     _loadAppState();
@@ -112,15 +122,50 @@ class AppProvider extends ChangeNotifier {
       // Cargar configuraciones adicionales
       _notificationsEnabled = PreferencesService.areNotificationsEnabled();
       _notificationInterval = PreferencesService.getNotificationInterval();
-      _dailyUsageLimit = PreferencesService.getDailyUsageLimit();
       _privateModeEnabled = PreferencesService.isPrivateModeEnabled();
-      _weeklyGoal = PreferencesService.getWeeklyGoal();
+      
+      // Cargar límites de uso desde Supabase (si el usuario está autenticado)
+      await _loadUsageLimitsFromSupabase();
+      
+      // Si no hay límites en Supabase, usar valores de PreferencesService como fallback
+      if (_dailyUsageLimit == 60) {
+        _dailyUsageLimit = PreferencesService.getDailyUsageLimit();
+      }
+      if (_weeklyGoal == 10) {
+        _weeklyGoal = PreferencesService.getWeeklyGoal();
+      }
       
     } catch (e) {
       debugPrint('Error loading app state: $e');
     } finally {
       _setLoading(false);
     }
+  }
+
+  /// Cargar límites de uso desde Supabase
+  Future<void> _loadUsageLimitsFromSupabase() async {
+    try {
+      final limits = await UsageLimitsService.getOrCreateUsageLimits();
+      if (limits != null) {
+        _dailyUsageLimit = limits['limite_diario_minutos'] as int? ?? 60;
+        _weeklyGoal = limits['meta_semanal_horas'] as int? ?? 10;
+        _nightBlockActive = limits['bloqueo_nocturno_activo'] as bool? ?? false;
+        _mandatoryBreaksActive = limits['pausas_obligatorias_activas'] as bool? ?? false;
+        _notificationsEnabled = limits['notificaciones_activas'] as bool? ?? true;
+        _notificationInterval = limits['intervalo_notificacion_minutos'] as int? ?? 15;
+      }
+
+      // Cargar tiempo usado hoy
+      _todayUsageMinutes = await UsageLimitsService.getTodayUsageMinutes();
+    } catch (e) {
+      debugPrint('Error loading usage limits from Supabase: $e');
+    }
+  }
+
+  /// Recargar límites de uso desde Supabase
+  Future<void> refreshUsageLimits() async {
+    await _loadUsageLimitsFromSupabase();
+    notifyListeners();
   }
 
   /// Marcar onboarding como completado
@@ -248,11 +293,34 @@ class AppProvider extends ChangeNotifier {
   /// Cambiar límite de uso diario
   Future<void> setDailyUsageLimit(int minutes) async {
     try {
+      debugPrint('🔄 Actualizando límite diario a: $minutes minutos');
+      
+      // Actualizar en Supabase
+      final success = await UsageLimitsService.updateDailyLimit(minutes);
+      if (success) {
+        _dailyUsageLimit = minutes;
+        // También guardar en PreferencesService como respaldo
+        await PreferencesService.setDailyUsageLimit(minutes);
+        
+        // Recargar datos de uso para actualizar el tiempo restante
+        await _loadUsageLimitsFromSupabase();
+        await updateTodayUsage();
+        
+        debugPrint('✅ Límite actualizado correctamente');
+        notifyListeners();
+      } else {
+        debugPrint('⚠️ Error al actualizar en Supabase, usando fallback');
+        // Si falla Supabase, usar PreferencesService como fallback
+        await PreferencesService.setDailyUsageLimit(minutes);
+        _dailyUsageLimit = minutes;
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Error setting daily usage limit: $e');
+      // Fallback a PreferencesService
       await PreferencesService.setDailyUsageLimit(minutes);
       _dailyUsageLimit = minutes;
       notifyListeners();
-    } catch (e) {
-      debugPrint('Error setting daily usage limit: $e');
     }
   }
 
@@ -270,11 +338,64 @@ class AppProvider extends ChangeNotifier {
   /// Cambiar meta semanal
   Future<void> setWeeklyGoal(int hours) async {
     try {
+      // Actualizar en Supabase
+      final success = await UsageLimitsService.updateWeeklyGoal(hours);
+      if (success) {
+        _weeklyGoal = hours;
+        // También guardar en PreferencesService como respaldo
+        await PreferencesService.setWeeklyGoal(hours);
+        notifyListeners();
+      } else {
+        // Si falla Supabase, usar PreferencesService como fallback
+        await PreferencesService.setWeeklyGoal(hours);
+        _weeklyGoal = hours;
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Error setting weekly goal: $e');
+      // Fallback a PreferencesService
       await PreferencesService.setWeeklyGoal(hours);
       _weeklyGoal = hours;
       notifyListeners();
+    }
+  }
+
+  /// Iniciar sesión de uso
+  Future<void> startUsageSession() async {
+    try {
+      final sessionId = await UsageLimitsService.startUsageSession();
+      if (sessionId != null) {
+        _currentSessionId = sessionId;
+        notifyListeners();
+      }
     } catch (e) {
-      debugPrint('Error setting weekly goal: $e');
+      debugPrint('Error starting usage session: $e');
+    }
+  }
+
+  /// Finalizar sesión de uso actual
+  Future<void> finishUsageSession() async {
+    try {
+      final sessionId = _currentSessionId;
+      if (sessionId != null) {
+        await UsageLimitsService.finishUsageSession(sessionId);
+        // Recargar tiempo usado hoy
+        _todayUsageMinutes = await UsageLimitsService.getTodayUsageMinutes();
+        _currentSessionId = null;
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Error finishing usage session: $e');
+    }
+  }
+
+  /// Actualizar tiempo usado hoy
+  Future<void> updateTodayUsage() async {
+    try {
+      _todayUsageMinutes = await UsageLimitsService.getTodayUsageMinutes();
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error updating today usage: $e');
     }
   }
 

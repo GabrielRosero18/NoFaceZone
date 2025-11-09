@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:nofacezone/src/Custom/AppColors.dart';
@@ -8,6 +9,7 @@ import 'package:nofacezone/src/Custom/CustomSnackBar.dart';
 import 'package:nofacezone/src/Providers/UserProvider.dart';
 import 'package:nofacezone/src/Providers/AppProvider.dart';
 import 'package:nofacezone/src/Services/PointsService.dart';
+import 'package:nofacezone/src/Services/UsageLimitsService.dart';
 import 'package:nofacezone/src/Custom/Library.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -17,10 +19,15 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, WidgetsBindingObserver {
   late AnimationController _animationController;
   late Animation<double> _fadeInAnimation;
   late Animation<Offset> _slideAnimation;
+  Timer? _usageTimer;
+  int _remainingMinutes = 0;
+  int _dailyLimitMinutes = 60;
+  DateTime? _appStartTime;
+  int? _currentSessionId;
 
   @override
   void initState() {
@@ -48,11 +55,139 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     
     _animationController.forward();
     
+    // Registrar observer para detectar cambios en el ciclo de vida de la app
+    WidgetsBinding.instance.addObserver(this);
+    
+    // Cargar límites y tiempo restante
+    _loadUsageData();
+    
+    // Iniciar sesión de uso cuando se abre la app
+    _startAppSession();
+    
+    // Iniciar timer para actualizar cada 10 segundos (más frecuente)
+    _startUsageTimer();
+    
     // Mostrar mensaje motivacional después de que la pantalla se construya
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _showWelcomeMessage();
       // Otorgar puntos por inicio de sesión diario
       PointsService.awardDailyLoginPoints();
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    
+    switch (state) {
+      case AppLifecycleState.resumed:
+        // App volvió a primer plano - iniciar nueva sesión
+        _startAppSession();
+        _loadUsageData();
+        break;
+      case AppLifecycleState.paused:
+      case AppLifecycleState.inactive:
+        // App fue a segundo plano - finalizar sesión actual
+        _endAppSession();
+        break;
+      case AppLifecycleState.detached:
+        // App está siendo cerrada - finalizar sesión
+        _endAppSession();
+        break;
+      case AppLifecycleState.hidden:
+        break;
+    }
+  }
+
+  /// Iniciar sesión de uso cuando se abre la app
+  Future<void> _startAppSession() async {
+    try {
+      // Finalizar cualquier sesión activa anterior (por si acaso)
+      final activeSessions = await UsageLimitsService.getActiveSessions();
+      for (var session in activeSessions) {
+        final sessionId = session['id'] as int;
+        await UsageLimitsService.finishUsageSession(sessionId);
+      }
+      
+      // Iniciar nueva sesión
+      final sessionId = await UsageLimitsService.startUsageSession();
+      if (sessionId != null) {
+        _currentSessionId = sessionId;
+        _appStartTime = DateTime.now();
+        
+        // Actualizar AppProvider
+        final appProvider = Provider.of<AppProvider>(context, listen: false);
+        await appProvider.startUsageSession();
+      }
+    } catch (e) {
+      debugPrint('Error starting app session: $e');
+    }
+  }
+
+  /// Finalizar sesión cuando la app se cierra o va a segundo plano
+  Future<void> _endAppSession() async {
+    try {
+      if (_currentSessionId != null) {
+        await UsageLimitsService.finishUsageSession(_currentSessionId!);
+        
+        // Actualizar AppProvider
+        final appProvider = Provider.of<AppProvider>(context, listen: false);
+        await appProvider.finishUsageSession();
+        
+        _currentSessionId = null;
+        _appStartTime = null;
+      }
+    } catch (e) {
+      debugPrint('Error ending app session: $e');
+    }
+  }
+
+  /// Cargar datos de uso desde Supabase
+  Future<void> _loadUsageData() async {
+    try {
+      // Cargar límite y tiempo restante
+      final limit = await UsageLimitsService.getCurrentDailyLimit();
+      final remaining = await UsageLimitsService.getRemainingTimeToday();
+      final used = await UsageLimitsService.getTodayUsageMinutes();
+      
+      debugPrint('📊 Datos de uso cargados:');
+      debugPrint('   Límite: $limit minutos');
+      debugPrint('   Usado: $used minutos');
+      debugPrint('   Restante: $remaining minutos');
+      
+      if (mounted) {
+        setState(() {
+          _dailyLimitMinutes = limit;
+          _remainingMinutes = remaining;
+        });
+        
+        // También actualizar el AppProvider
+        final appProvider = Provider.of<AppProvider>(context, listen: false);
+        await appProvider.updateTodayUsage();
+        await appProvider.refreshUsageLimits(); // Recargar límites desde Supabase
+      }
+    } catch (e) {
+      debugPrint('Error loading usage data: $e');
+    }
+  }
+
+  /// Iniciar timer para actualizar el contador cada 10 segundos
+  void _startUsageTimer() {
+    _usageTimer = Timer.periodic(const Duration(seconds: 10), (timer) async {
+      // Si hay una sesión activa, actualizar el tiempo usado
+      if (_currentSessionId != null && _appStartTime != null) {
+        final elapsed = DateTime.now().difference(_appStartTime!).inSeconds;
+        // Actualizar cada minuto completo
+        if (elapsed >= 60) {
+          // El tiempo se actualiza automáticamente en Supabase cuando se finaliza la sesión
+          // Pero podemos forzar una actualización periódica
+          await _loadUsageData();
+          _appStartTime = DateTime.now(); // Resetear para el próximo minuto
+        }
+      }
+      
+      // Actualizar datos de uso
+      await _loadUsageData();
     });
   }
 
@@ -95,7 +230,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    // Finalizar sesión al cerrar la app
+    _endAppSession();
+    
+    // Remover observer
+    WidgetsBinding.instance.removeObserver(this);
+    
     _animationController.dispose();
+    _usageTimer?.cancel();
     super.dispose();
   }
 
@@ -472,13 +614,55 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
           ),
           const SizedBox(height: 16),
-          _buildLimitItem(
-            localizations.dailyLimitHome,
-            '2 ${localizations.hours}',
-            '1h 15m ${localizations.remaining}',
-            Icons.access_time,
-            AppColors.accentBlue,
-            0.4, // 40% usado
+          Consumer<AppProvider>(
+            builder: (context, appProvider, child) {
+              // Calcular tiempo usado y restante
+              final usedMinutes = appProvider.todayUsageMinutes;
+              final limitMinutes = appProvider.dailyUsageLimit;
+              final remainingMinutes = (limitMinutes - usedMinutes).clamp(0, limitMinutes);
+              
+              // Formatear límite
+              String limitText;
+              if (limitMinutes >= 60) {
+                final hours = limitMinutes ~/ 60;
+                final mins = limitMinutes % 60;
+                if (mins > 0) {
+                  limitText = '${hours}h ${mins}m';
+                } else {
+                  limitText = '$hours ${localizations.hours}';
+                }
+              } else {
+                limitText = '$limitMinutes ${localizations.minutesShort}';
+              }
+              
+              // Formatear tiempo restante
+              String remainingText;
+              if (remainingMinutes >= 60) {
+                final hours = remainingMinutes ~/ 60;
+                final mins = remainingMinutes % 60;
+                if (mins > 0) {
+                  remainingText = '${hours}h ${mins}m';
+                } else {
+                  remainingText = '${hours}h';
+                }
+              } else {
+                remainingText = '${remainingMinutes}m';
+              }
+              
+              final progress = limitMinutes > 0 ? usedMinutes / limitMinutes : 0.0;
+              
+              return GestureDetector(
+                onTap: () => _showTimeRemainingDialog(localizations),
+                child: _buildLimitItem(
+                  localizations.dailyLimitHome,
+                  limitText,
+                  '$remainingText ${localizations.remaining}',
+                  Icons.access_time,
+                  AppColors.accentBlue,
+                  progress.clamp(0.0, 1.0),
+                ),
+              );
+            },
           ),
           const SizedBox(height: 12),
           _buildLimitItem(
@@ -499,6 +683,27 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             0.5, // 50% del tiempo transcurrido
           ),
         ],
+      ),
+    );
+  }
+
+
+  /// Mostrar diálogo con reloj de tiempo restante
+  void _showTimeRemainingDialog(AppLocalizations localizations) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return _TimeRemainingDialog(
+            remainingMinutes: _remainingMinutes,
+            dailyLimitMinutes: _dailyLimitMinutes,
+            onRefresh: () async {
+              await _loadUsageData();
+              setDialogState(() {});
+            },
+          );
+        },
       ),
     );
   }
@@ -800,6 +1005,352 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Diálogo con reloj que muestra el tiempo restante
+class _TimeRemainingDialog extends StatefulWidget {
+  final int remainingMinutes;
+  final int dailyLimitMinutes;
+  final VoidCallback onRefresh;
+
+  const _TimeRemainingDialog({
+    required this.remainingMinutes,
+    required this.dailyLimitMinutes,
+    required this.onRefresh,
+  });
+
+  @override
+  State<_TimeRemainingDialog> createState() => _TimeRemainingDialogState();
+}
+
+class _TimeRemainingDialogState extends State<_TimeRemainingDialog> {
+  Timer? _updateTimer;
+  int _currentRemainingSeconds = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentRemainingSeconds = widget.remainingMinutes * 60;
+    _startTimer();
+  }
+
+  @override
+  void didUpdateWidget(_TimeRemainingDialog oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Actualizar cuando cambien los datos del widget
+    if (oldWidget.remainingMinutes != widget.remainingMinutes) {
+      _currentRemainingSeconds = widget.remainingMinutes * 60;
+    }
+  }
+
+  void _startTimer() {
+    _updateTimer = Timer.periodic(const Duration(seconds: 1), (timer) async {
+      if (mounted) {
+        setState(() {
+          if (_currentRemainingSeconds > 0) {
+            _currentRemainingSeconds--;
+          } else {
+            // Si llega a 0, recargar datos desde Supabase
+            widget.onRefresh();
+            // Recargar el valor desde el widget
+            Future.delayed(const Duration(milliseconds: 500), () {
+              if (mounted) {
+                setState(() {
+                  _currentRemainingSeconds = widget.remainingMinutes * 60;
+                });
+              }
+            });
+          }
+        });
+      }
+    });
+    
+    // También actualizar desde Supabase cada 10 segundos
+    Timer.periodic(const Duration(seconds: 10), (timer) async {
+      if (mounted) {
+        widget.onRefresh();
+        // Sincronizar con los datos actualizados
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted) {
+            setState(() {
+              _currentRemainingSeconds = widget.remainingMinutes * 60;
+            });
+          }
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _updateTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Calcular horas, minutos y segundos
+    final hours = _currentRemainingSeconds ~/ 3600;
+    final minutes = (_currentRemainingSeconds % 3600) ~/ 60;
+    final seconds = _currentRemainingSeconds % 60;
+
+    // Color según el tiempo restante
+    Color clockColor;
+    if (_currentRemainingSeconds <= 0) {
+      clockColor = Colors.red;
+    } else if (_currentRemainingSeconds <= widget.dailyLimitMinutes * 60 * 0.25) {
+      clockColor = Colors.orange;
+    } else {
+      clockColor = Colors.green;
+    }
+
+    // Calcular porcentaje usado
+    final totalSeconds = widget.dailyLimitMinutes * 60;
+    final progress = totalSeconds > 0 
+        ? (1.0 - (_currentRemainingSeconds / totalSeconds)).clamp(0.0, 1.0)
+        : 0.0;
+
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              AppColors.darkSurface,
+              AppColors.darkSurface.withValues(alpha: 0.95),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: clockColor.withValues(alpha: 0.5),
+            width: 2,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: clockColor.withValues(alpha: 0.3),
+              blurRadius: 20,
+              spreadRadius: 5,
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Título
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  '⏱️ Tiempo Restante',
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textLight,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, color: AppColors.textLight),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            
+            // Reloj circular
+            Container(
+              width: 240,
+              height: 240,
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    clockColor.withValues(alpha: 0.15),
+                    clockColor.withValues(alpha: 0.05),
+                  ],
+                ),
+                border: Border.all(
+                  color: clockColor.withValues(alpha: 0.5),
+                  width: 3,
+                ),
+              ),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // Indicador de progreso circular
+                  SizedBox(
+                    width: 224,
+                    height: 224,
+                    child: CircularProgressIndicator(
+                      value: progress,
+                      strokeWidth: 8,
+                      backgroundColor: AppColors.textLight.withValues(alpha: 0.1),
+                      valueColor: AlwaysStoppedAnimation<Color>(clockColor),
+                    ),
+                  ),
+                  // Tiempo en el centro - layout flexible para evitar overflow
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (hours > 0) ...[
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              hours.toString().padLeft(2, '0'),
+                              style: const TextStyle(
+                                fontSize: 38,
+                                fontWeight: FontWeight.w900,
+                                color: AppColors.textLight,
+                                height: 1.0,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'horas',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: AppColors.textLight.withValues(alpha: 0.7),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                        ],
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            minutes.toString().padLeft(2, '0'),
+                            style: TextStyle(
+                              fontSize: hours > 0 ? 30 : 38,
+                              fontWeight: FontWeight.w900,
+                              color: AppColors.textLight,
+                              height: 1.0,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'minutos',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: AppColors.textLight.withValues(alpha: 0.7),
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            seconds.toString().padLeft(2, '0'),
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.textLight.withValues(alpha: 0.9),
+                              height: 1.0,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          'segundos',
+                          style: TextStyle(
+                            fontSize: 9,
+                            color: AppColors.textLight.withValues(alpha: 0.6),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            
+            // Tiempo en formato digital
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              decoration: BoxDecoration(
+                color: clockColor.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: clockColor.withValues(alpha: 0.4),
+                  width: 1.5,
+                ),
+              ),
+              child: Text(
+                hours > 0
+                    ? '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}'
+                    : '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}',
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textLight,
+                  fontFeatures: [const FontFeature.tabularFigures()],
+                  shadows: [
+                    Shadow(
+                      color: clockColor.withValues(alpha: 0.5),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            
+            // Información adicional
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildInfoItem(
+                  'Límite',
+                  '${widget.dailyLimitMinutes}m',
+                  Icons.timer_outlined,
+                ),
+                _buildInfoItem(
+                  'Usado',
+                  '${widget.dailyLimitMinutes - widget.remainingMinutes}m',
+                  Icons.access_time,
+                ),
+                _buildInfoItem(
+                  'Restante',
+                  '${widget.remainingMinutes}m',
+                  Icons.hourglass_empty,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoItem(String label, String value, IconData icon) {
+    return Column(
+      children: [
+        Icon(icon, color: AppColors.textLight.withValues(alpha: 0.7), size: 20),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textLight,
+          ),
+        ),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: AppColors.textLight.withValues(alpha: 0.6),
+          ),
+        ),
+      ],
     );
   }
 }

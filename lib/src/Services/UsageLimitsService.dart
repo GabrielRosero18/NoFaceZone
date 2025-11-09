@@ -1,0 +1,684 @@
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/material.dart';
+
+/// Servicio para gestionar límites de uso desde Supabase
+/// Permite tracking dinámico del tiempo de uso
+class UsageLimitsService {
+  static final SupabaseClient _supabase = Supabase.instance.client;
+
+  // ============================================
+  // LÍMITES DE USO
+  // ============================================
+
+  /// Obtener o crear límites de uso del usuario actual
+  static Future<Map<String, dynamic>?> getOrCreateUsageLimits() async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) {
+        debugPrint('Usuario no autenticado');
+        return null;
+      }
+
+      // Usar función RPC para obtener o crear límites
+      final response = await _supabase.rpc(
+        'obtener_o_crear_limites_uso',
+        params: {'p_usuario_id': userId},
+      );
+
+      return Map<String, dynamic>.from(response);
+    } catch (e) {
+      debugPrint('Error al obtener límites de uso: $e');
+      return null;
+    }
+  }
+
+  /// Actualizar límite diario
+  static Future<bool> updateDailyLimit(int minutes) async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) return false;
+
+      // Verificar si ya existe un registro de límites para este usuario
+      final existingLimits = await _supabase
+          .from('limites_uso')
+          .select('id')
+          .eq('usuario_id', userId)
+          .maybeSingle();
+
+      if (existingLimits != null) {
+        // Si existe, actualizar
+        await _supabase
+            .from('limites_uso')
+            .update({
+              'limite_diario_minutos': minutes,
+              'updated_at': DateTime.now().toIso8601String(),
+            })
+            .eq('usuario_id', userId)
+            .select()
+            .single();
+      } else {
+        // Si no existe, insertar
+        await _supabase
+            .from('limites_uso')
+            .insert({
+              'usuario_id': userId,
+              'limite_diario_minutos': minutes,
+              'updated_at': DateTime.now().toIso8601String(),
+            })
+            .select()
+            .single();
+      }
+
+      // Actualizar también el límite del día actual en registros_uso_diario
+      // Esto es importante porque el registro diario tiene un snapshot del límite del día
+      final today = DateTime.now();
+      final todayString = today.toIso8601String().split('T')[0];
+      
+      // Verificar si existe un registro para hoy
+      final todayRecord = await _supabase
+          .from('registros_uso_diario')
+          .select('id')
+          .eq('usuario_id', userId)
+          .eq('fecha', todayString)
+          .maybeSingle();
+
+      if (todayRecord != null) {
+        // Actualizar el límite del día en el registro existente
+        await _supabase
+            .from('registros_uso_diario')
+            .update({
+              'limite_del_dia_minutos': minutes,
+              'updated_at': DateTime.now().toIso8601String(),
+            })
+            .eq('id', todayRecord['id']);
+      } else {
+        // Si no existe registro para hoy, crear uno nuevo
+        await _supabase
+            .from('registros_uso_diario')
+            .insert({
+              'usuario_id': userId,
+              'fecha': todayString,
+              'tiempo_usado_minutos': 0,
+              'limite_del_dia_minutos': minutes,
+              'numero_sesiones': 0,
+            });
+      }
+
+      return true;
+    } catch (e) {
+      debugPrint('Error al actualizar límite diario: $e');
+      return false;
+    }
+  }
+
+  /// Actualizar bloqueo nocturno
+  static Future<bool> updateNightBlock({
+    required bool active,
+    String? startTime,
+    String? endTime,
+  }) async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) return false;
+
+      final updateData = {
+        'bloqueo_nocturno_activo': active,
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+
+      if (startTime != null) {
+        updateData['bloqueo_nocturno_inicio'] = startTime;
+      }
+      if (endTime != null) {
+        updateData['bloqueo_nocturno_fin'] = endTime;
+      }
+
+      // Verificar si existe un registro
+      final existing = await _supabase
+          .from('limites_uso')
+          .select('id')
+          .eq('usuario_id', userId)
+          .maybeSingle();
+
+      if (existing != null) {
+        await _supabase
+            .from('limites_uso')
+            .update(updateData)
+            .eq('usuario_id', userId)
+            .select()
+            .single();
+      } else {
+        // Si no existe, crear uno nuevo con valores por defecto
+        final insertData = Map<String, dynamic>.from(updateData);
+        insertData['usuario_id'] = userId;
+        insertData['limite_diario_minutos'] = 60; // Valor por defecto
+        await _supabase
+            .from('limites_uso')
+            .insert(insertData)
+            .select()
+            .single();
+      }
+
+      return true;
+    } catch (e) {
+      debugPrint('Error al actualizar bloqueo nocturno: $e');
+      return false;
+    }
+  }
+
+  /// Actualizar pausas obligatorias
+  static Future<bool> updateMandatoryBreaks({
+    required bool active,
+    int? intervalMinutes,
+    int? durationMinutes,
+  }) async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) return false;
+
+      final updateData = {
+        'pausas_obligatorias_activas': active,
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+
+      if (intervalMinutes != null) {
+        updateData['intervalo_pausa_minutos'] = intervalMinutes;
+      }
+      if (durationMinutes != null) {
+        updateData['duracion_pausa_minutos'] = durationMinutes;
+      }
+
+      // Verificar si existe un registro
+      final existing = await _supabase
+          .from('limites_uso')
+          .select('id')
+          .eq('usuario_id', userId)
+          .maybeSingle();
+
+      if (existing != null) {
+        await _supabase
+            .from('limites_uso')
+            .update(updateData)
+            .eq('usuario_id', userId)
+            .select()
+            .single();
+      } else {
+        // Si no existe, crear uno nuevo con valores por defecto
+        final insertData = Map<String, dynamic>.from(updateData);
+        insertData['usuario_id'] = userId;
+        insertData['limite_diario_minutos'] = 60; // Valor por defecto
+        await _supabase
+            .from('limites_uso')
+            .insert(insertData)
+            .select()
+            .single();
+      }
+
+      return true;
+    } catch (e) {
+      debugPrint('Error al actualizar pausas obligatorias: $e');
+      return false;
+    }
+  }
+
+  /// Actualizar meta semanal
+  static Future<bool> updateWeeklyGoal(int hours) async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) return false;
+
+      // Verificar si existe un registro
+      final existing = await _supabase
+          .from('limites_uso')
+          .select('id')
+          .eq('usuario_id', userId)
+          .maybeSingle();
+
+      if (existing != null) {
+        await _supabase
+            .from('limites_uso')
+            .update({
+              'meta_semanal_horas': hours,
+              'updated_at': DateTime.now().toIso8601String(),
+            })
+            .eq('usuario_id', userId)
+            .select()
+            .single();
+      } else {
+        // Si no existe, crear uno nuevo con valores por defecto
+        await _supabase
+            .from('limites_uso')
+            .insert({
+              'usuario_id': userId,
+              'meta_semanal_horas': hours,
+              'limite_diario_minutos': 60, // Valor por defecto
+              'updated_at': DateTime.now().toIso8601String(),
+            })
+            .select()
+            .single();
+      }
+
+      return true;
+    } catch (e) {
+      debugPrint('Error al actualizar meta semanal: $e');
+      return false;
+    }
+  }
+
+  /// Actualizar configuración de notificaciones
+  static Future<bool> updateNotificationSettings({
+    required bool active,
+    int? intervalMinutes,
+  }) async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) return false;
+
+      final updateData = {
+        'notificaciones_activas': active,
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+
+      if (intervalMinutes != null) {
+        updateData['intervalo_notificacion_minutos'] = intervalMinutes;
+      }
+
+      // Verificar si existe un registro
+      final existing = await _supabase
+          .from('limites_uso')
+          .select('id')
+          .eq('usuario_id', userId)
+          .maybeSingle();
+
+      if (existing != null) {
+        await _supabase
+            .from('limites_uso')
+            .update(updateData)
+            .eq('usuario_id', userId)
+            .select()
+            .single();
+      } else {
+        // Si no existe, crear uno nuevo con valores por defecto
+        final insertData = Map<String, dynamic>.from(updateData);
+        insertData['usuario_id'] = userId;
+        insertData['limite_diario_minutos'] = 60; // Valor por defecto
+        await _supabase
+            .from('limites_uso')
+            .insert(insertData)
+            .select()
+            .single();
+      }
+
+      return true;
+    } catch (e) {
+      debugPrint('Error al actualizar configuración de notificaciones: $e');
+      return false;
+    }
+  }
+
+  // ============================================
+  // REGISTRO DE USO DIARIO
+  // ============================================
+
+  /// Obtener o crear registro de uso del día actual
+  static Future<Map<String, dynamic>?> getOrCreateTodayUsage() async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) return null;
+
+      // Usar función RPC para obtener o crear registro
+      final response = await _supabase.rpc(
+        'obtener_registro_dia_actual',
+        params: {'p_usuario_id': userId},
+      );
+
+      return Map<String, dynamic>.from(response);
+    } catch (e) {
+      debugPrint('Error al obtener registro de uso diario: $e');
+      return null;
+    }
+  }
+
+  /// Obtener registro de uso de una fecha específica
+  static Future<Map<String, dynamic>?> getUsageByDate(DateTime date) async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) return null;
+
+      final dateString = date.toIso8601String().split('T')[0];
+
+      final response = await _supabase
+          .from('registros_uso_diario')
+          .select()
+          .eq('usuario_id', userId)
+          .eq('fecha', dateString)
+          .maybeSingle();
+
+      if (response == null) return null;
+      return Map<String, dynamic>.from(response);
+    } catch (e) {
+      debugPrint('Error al obtener registro de uso por fecha: $e');
+      return null;
+    }
+  }
+
+  /// Obtener registros de uso de los últimos N días
+  static Future<List<Map<String, dynamic>>> getUsageHistory(int days) async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) return [];
+
+      final cutoffDate = DateTime.now().subtract(Duration(days: days));
+      final cutoffDateString = cutoffDate.toIso8601String().split('T')[0];
+
+      final response = await _supabase
+          .from('registros_uso_diario')
+          .select()
+          .eq('usuario_id', userId)
+          .gte('fecha', cutoffDateString)
+          .order('fecha', ascending: false);
+
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      debugPrint('Error al obtener historial de uso: $e');
+      return [];
+    }
+  }
+
+  /// Obtener tiempo usado hoy en minutos
+  static Future<int> getTodayUsageMinutes() async {
+    try {
+      final todayUsage = await getOrCreateTodayUsage();
+      if (todayUsage == null) return 0;
+      return todayUsage['tiempo_usado_minutos'] as int? ?? 0;
+    } catch (e) {
+      debugPrint('Error al obtener tiempo usado hoy: $e');
+      return 0;
+    }
+  }
+
+  /// Obtener límite diario actual en minutos
+  static Future<int> getCurrentDailyLimit() async {
+    try {
+      final limits = await getOrCreateUsageLimits();
+      if (limits == null) return 60; // Valor por defecto
+      return limits['limite_diario_minutos'] as int? ?? 60;
+    } catch (e) {
+      debugPrint('Error al obtener límite diario: $e');
+      return 60;
+    }
+  }
+
+  /// Obtener tiempo restante hoy en minutos
+  static Future<int> getRemainingTimeToday() async {
+    try {
+      // Obtener el registro del día actual
+      final todayUsage = await getOrCreateTodayUsage();
+      if (todayUsage == null) {
+        // Si no hay registro, usar el límite actual
+        final limit = await getCurrentDailyLimit();
+        return limit;
+      }
+      
+      // Usar el límite del día del registro (puede ser diferente si se cambió el límite)
+      final limitDelDia = todayUsage['limite_del_dia_minutos'] as int?;
+      final tiempoUsado = todayUsage['tiempo_usado_minutos'] as int? ?? 0;
+      
+      // Si el límite del día es diferente al límite actual, usar el límite actual
+      // Esto permite que si cambias el límite, el tiempo restante se recalcule
+      final limiteActual = await getCurrentDailyLimit();
+      final limiteAUsar = limitDelDia != null && limitDelDia == limiteActual 
+          ? limiteActual 
+          : limiteActual;
+      
+      final remaining = limiteAUsar - tiempoUsado;
+      return remaining > 0 ? remaining : 0;
+    } catch (e) {
+      debugPrint('Error al calcular tiempo restante: $e');
+      // Fallback: usar límite actual
+      try {
+        final limit = await getCurrentDailyLimit();
+        return limit;
+      } catch (e2) {
+        return 60; // Valor por defecto
+      }
+    }
+  }
+
+  // ============================================
+  // SESIONES DE USO
+  // ============================================
+
+  /// Iniciar una nueva sesión de uso
+  static Future<int?> startUsageSession() async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) return null;
+
+      final response = await _supabase.rpc(
+        'iniciar_sesion_uso',
+        params: {'p_usuario_id': userId},
+      );
+
+      return response as int?;
+    } catch (e) {
+      debugPrint('Error al iniciar sesión de uso: $e');
+      return null;
+    }
+  }
+
+  /// Finalizar una sesión de uso
+  static Future<Map<String, dynamic>?> finishUsageSession(int sessionId) async {
+    try {
+      final response = await _supabase.rpc(
+        'finalizar_sesion_uso',
+        params: {'p_sesion_id': sessionId},
+      );
+
+      if (response == null) return null;
+      return Map<String, dynamic>.from(response);
+    } catch (e) {
+      debugPrint('Error al finalizar sesión de uso: $e');
+      return null;
+    }
+  }
+
+  /// Obtener sesiones activas del usuario
+  static Future<List<Map<String, dynamic>>> getActiveSessions() async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) return [];
+
+      final response = await _supabase
+          .from('sesiones_uso')
+          .select()
+          .eq('usuario_id', userId)
+          .eq('estado', 'activa')
+          .order('inicio_sesion', ascending: false);
+
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      debugPrint('Error al obtener sesiones activas: $e');
+      return [];
+    }
+  }
+
+  /// Obtener sesiones del día actual
+  static Future<List<Map<String, dynamic>>> getTodaySessions() async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) return [];
+
+      final today = DateTime.now();
+      final startOfDay = DateTime(today.year, today.month, today.day);
+      final endOfDay = startOfDay.add(const Duration(days: 1));
+
+      final response = await _supabase
+          .from('sesiones_uso')
+          .select()
+          .eq('usuario_id', userId)
+          .gte('inicio_sesion', startOfDay.toIso8601String())
+          .lt('inicio_sesion', endOfDay.toIso8601String())
+          .order('inicio_sesion', ascending: false);
+
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      debugPrint('Error al obtener sesiones del día: $e');
+      return [];
+    }
+  }
+
+  // ============================================
+  // ESTADÍSTICAS Y REPORTES
+  // ============================================
+
+  /// Obtener estadísticas semanales
+  static Future<Map<String, dynamic>> getWeeklyStats() async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) {
+        return {
+          'total_minutos': 0,
+          'total_horas': 0.0,
+          'promedio_diario_minutos': 0,
+          'dias_con_uso': 0,
+        };
+      }
+
+      final weekAgo = DateTime.now().subtract(const Duration(days: 7));
+      final weekAgoString = weekAgo.toIso8601String().split('T')[0];
+
+      final response = await _supabase
+          .from('registros_uso_diario')
+          .select('tiempo_usado_minutos')
+          .eq('usuario_id', userId)
+          .gte('fecha', weekAgoString);
+
+      final records = List<Map<String, dynamic>>.from(response);
+      final totalMinutos = records.fold<int>(
+        0,
+        (sum, record) => sum + (record['tiempo_usado_minutos'] as int? ?? 0),
+      );
+
+      final diasConUso = records.where((r) => (r['tiempo_usado_minutos'] as int? ?? 0) > 0).length;
+
+      return {
+        'total_minutos': totalMinutos,
+        'total_horas': totalMinutos / 60.0,
+        'promedio_diario_minutos': diasConUso > 0 ? totalMinutos ~/ diasConUso : 0,
+        'dias_con_uso': diasConUso,
+      };
+    } catch (e) {
+      debugPrint('Error al obtener estadísticas semanales: $e');
+      return {
+        'total_minutos': 0,
+        'total_horas': 0.0,
+        'promedio_diario_minutos': 0,
+        'dias_con_uso': 0,
+      };
+    }
+  }
+
+  /// Verificar si el usuario ha alcanzado su límite diario
+  static Future<bool> hasReachedDailyLimit() async {
+    try {
+      final remaining = await getRemainingTimeToday();
+      return remaining <= 0;
+    } catch (e) {
+      debugPrint('Error al verificar límite diario: $e');
+      return false;
+    }
+  }
+
+  /// Verificar si está en horario de bloqueo nocturno
+  static Future<bool> isInNightBlockTime() async {
+    try {
+      final limits = await getOrCreateUsageLimits();
+      if (limits == null || limits['bloqueo_nocturno_activo'] != true) {
+        return false;
+      }
+
+      final now = DateTime.now();
+      final currentTime = TimeOfDay.fromDateTime(now);
+      final startTimeStr = limits['bloqueo_nocturno_inicio'] as String? ?? '22:00:00';
+      final endTimeStr = limits['bloqueo_nocturno_fin'] as String? ?? '07:00:00';
+
+      final startParts = startTimeStr.split(':');
+      final endParts = endTimeStr.split(':');
+      final startHour = int.parse(startParts[0]);
+      final startMinute = int.parse(startParts[1]);
+      final endHour = int.parse(endParts[0]);
+      final endMinute = int.parse(endParts[1]);
+
+      final startTime = TimeOfDay(hour: startHour, minute: startMinute);
+      final endTime = TimeOfDay(hour: endHour, minute: endMinute);
+
+      // Si el bloqueo cruza medianoche (ej: 22:00 - 07:00)
+      if (startHour > endHour || (startHour == endHour && startMinute > endMinute)) {
+        // Bloqueo activo si es después de startTime o antes de endTime
+        final currentMinutes = currentTime.hour * 60 + currentTime.minute;
+        final startMinutes = startTime.hour * 60 + startTime.minute;
+        final endMinutes = endTime.hour * 60 + endTime.minute;
+
+        return currentMinutes >= startMinutes || currentMinutes < endMinutes;
+      } else {
+        // Bloqueo normal (no cruza medianoche)
+        final currentMinutes = currentTime.hour * 60 + currentTime.minute;
+        final startMinutes = startTime.hour * 60 + startTime.minute;
+        final endMinutes = endTime.hour * 60 + endTime.minute;
+
+        return currentMinutes >= startMinutes && currentMinutes < endMinutes;
+      }
+    } catch (e) {
+      debugPrint('Error al verificar bloqueo nocturno: $e');
+      return false;
+    }
+  }
+
+  /// Obtener tiempo hasta la próxima pausa obligatoria
+  static Future<int?> getTimeUntilNextBreak() async {
+    try {
+      final limits = await getOrCreateUsageLimits();
+      if (limits == null || limits['pausas_obligatorias_activas'] != true) {
+        return null;
+      }
+
+      final intervalMinutes = limits['intervalo_pausa_minutos'] as int? ?? 30;
+      final sessions = await getTodaySessions();
+
+      if (sessions.isEmpty) {
+        return intervalMinutes;
+      }
+
+      // Obtener la última sesión finalizada
+      final finishedSessions = sessions
+          .where((s) => s['estado'] == 'finalizada' && s['fin_sesion'] != null)
+          .toList();
+
+      if (finishedSessions.isEmpty) {
+        // Si hay una sesión activa, calcular desde su inicio
+        final activeSessions = sessions.where((s) => s['estado'] == 'activa').toList();
+        if (activeSessions.isNotEmpty) {
+          final lastActive = activeSessions.first;
+          final startTime = DateTime.parse(lastActive['inicio_sesion'] as String);
+          final elapsed = DateTime.now().difference(startTime).inMinutes;
+          final remaining = intervalMinutes - elapsed;
+          return remaining > 0 ? remaining : 0;
+        }
+        return intervalMinutes;
+      }
+
+      // Calcular desde la última sesión finalizada
+      final lastSession = finishedSessions.first;
+      final lastEndTime = DateTime.parse(lastSession['fin_sesion'] as String);
+      final elapsed = DateTime.now().difference(lastEndTime).inMinutes;
+      final remaining = intervalMinutes - elapsed;
+
+      return remaining > 0 ? remaining : 0;
+    } catch (e) {
+      debugPrint('Error al calcular tiempo hasta próxima pausa: $e');
+      return null;
+    }
+  }
+}
+

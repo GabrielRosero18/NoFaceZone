@@ -449,6 +449,372 @@ ALTER TABLE public.emociones ENABLE ROW LEVEL SECURITY;
 
 ---
 
+## 📋 Tablas de Límites de Uso
+
+Estas tablas gestionan los límites de uso de forma dinámica, permitiendo tracking en tiempo real del tiempo de uso.
+
+### 1. Tabla: `limites_uso`
+
+Almacena las configuraciones de límites de uso por usuario.
+
+#### Estructura
+
+| Columna | Tipo | Descripción | Restricciones |
+|---------|------|-------------|---------------|
+| `id` | SERIAL | ID único del límite | PRIMARY KEY |
+| `usuario_id` | UUID | ID del usuario en Supabase Auth | NOT NULL, UNIQUE, FOREIGN KEY |
+| `limite_diario_minutos` | INTEGER | Límite diario en minutos | NOT NULL, DEFAULT 60, CHECK (1-1440) |
+| `bloqueo_nocturno_activo` | BOOLEAN | Si el bloqueo nocturno está activo | NOT NULL, DEFAULT false |
+| `bloqueo_nocturno_inicio` | TIME | Hora de inicio del bloqueo | NOT NULL, DEFAULT '22:00:00' |
+| `bloqueo_nocturno_fin` | TIME | Hora de fin del bloqueo | NOT NULL, DEFAULT '07:00:00' |
+| `pausas_obligatorias_activas` | BOOLEAN | Si las pausas obligatorias están activas | NOT NULL, DEFAULT false |
+| `intervalo_pausa_minutos` | INTEGER | Intervalo entre pausas en minutos | NOT NULL, DEFAULT 30 |
+| `duracion_pausa_minutos` | INTEGER | Duración de cada pausa en minutos | NOT NULL, DEFAULT 5 |
+| `meta_semanal_horas` | INTEGER | Meta semanal en horas | NOT NULL, DEFAULT 10, CHECK (1-168) |
+| `notificaciones_activas` | BOOLEAN | Si las notificaciones están activas | NOT NULL, DEFAULT true |
+| `intervalo_notificacion_minutos` | INTEGER | Intervalo de notificaciones en minutos | NOT NULL, DEFAULT 15 |
+| `created_at` | TIMESTAMP WITH TIME ZONE | Fecha de creación | DEFAULT NOW() |
+| `updated_at` | TIMESTAMP WITH TIME ZONE | Fecha de última actualización | DEFAULT NOW() |
+
+---
+
+### 2. Tabla: `registros_uso_diario`
+
+Registra el tiempo de uso por día para cada usuario.
+
+#### Estructura
+
+| Columna | Tipo | Descripción | Restricciones |
+|---------|------|-------------|---------------|
+| `id` | SERIAL | ID único del registro | PRIMARY KEY |
+| `usuario_id` | UUID | ID del usuario en Supabase Auth | NOT NULL, FOREIGN KEY |
+| `fecha` | DATE | Fecha del registro | NOT NULL, DEFAULT CURRENT_DATE |
+| `tiempo_usado_minutos` | INTEGER | Tiempo usado en minutos | NOT NULL, DEFAULT 0, CHECK (>= 0) |
+| `limite_del_dia_minutos` | INTEGER | Límite del día en minutos | NOT NULL |
+| `numero_sesiones` | INTEGER | Número de sesiones en el día | NOT NULL, DEFAULT 0, CHECK (>= 0) |
+| `created_at` | TIMESTAMP WITH TIME ZONE | Fecha de creación | DEFAULT NOW() |
+| `updated_at` | TIMESTAMP WITH TIME ZONE | Fecha de última actualización | DEFAULT NOW() |
+
+**Índice único**: `(usuario_id, fecha)` - Un usuario solo puede tener un registro por día
+
+**Nota**: El nombre de la tabla está en plural (`registros_uso_diario`) para seguir la convención de las demás tablas del sistema.
+
+---
+
+### 3. Tabla: `sesiones_uso`
+
+Registra sesiones individuales de uso para tracking preciso.
+
+#### Estructura
+
+| Columna | Tipo | Descripción | Restricciones |
+|---------|------|-------------|---------------|
+| `id` | SERIAL | ID único de la sesión | PRIMARY KEY |
+| `usuario_id` | UUID | ID del usuario en Supabase Auth | NOT NULL, FOREIGN KEY |
+| `registro_diario_id` | INTEGER | ID del registro diario asociado | FOREIGN KEY, opcional |
+| `inicio_sesion` | TIMESTAMP WITH TIME ZONE | Inicio de la sesión | NOT NULL, DEFAULT NOW() |
+| `fin_sesion` | TIMESTAMP WITH TIME ZONE | Fin de la sesión | Opcional |
+| `duracion_minutos` | INTEGER | Duración en minutos (calculada) | CHECK (>= 0) |
+| `estado` | VARCHAR(20) | Estado de la sesión | NOT NULL, DEFAULT 'activa', CHECK (IN ('activa', 'finalizada', 'interrumpida')) |
+| `created_at` | TIMESTAMP WITH TIME ZONE | Fecha de creación | DEFAULT NOW() |
+| `updated_at` | TIMESTAMP WITH TIME ZONE | Fecha de última actualización | DEFAULT NOW() |
+
+---
+
+### Funciones RPC Disponibles
+
+1. **`obtener_o_crear_limites_uso(p_usuario_id UUID)`**
+   - Obtiene los límites de uso del usuario o crea unos nuevos con valores por defecto
+   - Retorna: `limites_uso`
+
+2. **`obtener_registro_dia_actual(p_usuario_id UUID)`**
+   - Obtiene el registro de uso del día actual o crea uno nuevo
+   - Retorna: `registros_uso_diario`
+
+3. **`iniciar_sesion_uso(p_usuario_id UUID)`**
+   - Inicia una nueva sesión de uso
+   - Retorna: `INTEGER` (ID de la sesión)
+
+4. **`finalizar_sesion_uso(p_sesion_id INTEGER)`**
+   - Finaliza una sesión de uso y actualiza el registro diario
+   - Retorna: `sesiones_uso`
+
+---
+
+### Triggers Automáticos
+
+1. **Actualización de `updated_at`**: Se actualiza automáticamente al modificar registros
+2. **Cálculo de duración**: Calcula automáticamente la duración de la sesión al finalizarla
+3. **Actualización de registro diario**: Actualiza automáticamente el registro diario cuando se finaliza una sesión
+
+---
+
+---
+
+### Script SQL para Crear las Tablas de Límites de Uso
+
+```sql
+-- ============================================
+-- ESQUEMA DE LÍMITES DE USO - NoFaceZone
+-- ============================================
+
+-- Tabla: limites_uso
+CREATE TABLE IF NOT EXISTS public.limites_uso (
+    id SERIAL PRIMARY KEY,
+    usuario_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    limite_diario_minutos INTEGER NOT NULL DEFAULT 60 CHECK (limite_diario_minutos > 0 AND limite_diario_minutos <= 1440),
+    bloqueo_nocturno_activo BOOLEAN NOT NULL DEFAULT false,
+    bloqueo_nocturno_inicio TIME NOT NULL DEFAULT '22:00:00',
+    bloqueo_nocturno_fin TIME NOT NULL DEFAULT '07:00:00',
+    pausas_obligatorias_activas BOOLEAN NOT NULL DEFAULT false,
+    intervalo_pausa_minutos INTEGER NOT NULL DEFAULT 30 CHECK (intervalo_pausa_minutos > 0),
+    duracion_pausa_minutos INTEGER NOT NULL DEFAULT 5 CHECK (duracion_pausa_minutos > 0),
+    meta_semanal_horas INTEGER NOT NULL DEFAULT 10 CHECK (meta_semanal_horas > 0 AND meta_semanal_horas <= 168),
+    notificaciones_activas BOOLEAN NOT NULL DEFAULT true,
+    intervalo_notificacion_minutos INTEGER NOT NULL DEFAULT 15 CHECK (intervalo_notificacion_minutos > 0),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(usuario_id)
+);
+
+-- Tabla: registros_uso_diario
+CREATE TABLE IF NOT EXISTS public.registros_uso_diario (
+    id SERIAL PRIMARY KEY,
+    usuario_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    fecha DATE NOT NULL DEFAULT CURRENT_DATE,
+    tiempo_usado_minutos INTEGER NOT NULL DEFAULT 0 CHECK (tiempo_usado_minutos >= 0),
+    limite_del_dia_minutos INTEGER NOT NULL CHECK (limite_del_dia_minutos > 0),
+    numero_sesiones INTEGER NOT NULL DEFAULT 0 CHECK (numero_sesiones >= 0),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(usuario_id, fecha)
+);
+
+-- Tabla: sesiones_uso
+CREATE TABLE IF NOT EXISTS public.sesiones_uso (
+    id SERIAL PRIMARY KEY,
+    usuario_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    registro_diario_id INTEGER REFERENCES public.registros_uso_diario(id) ON DELETE CASCADE,
+    inicio_sesion TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    fin_sesion TIMESTAMP WITH TIME ZONE,
+    duracion_minutos INTEGER CHECK (duracion_minutos >= 0),
+    estado VARCHAR(20) NOT NULL DEFAULT 'activa' CHECK (estado IN ('activa', 'finalizada', 'interrumpida')),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Índices
+CREATE INDEX IF NOT EXISTS idx_limites_uso_usuario_id ON public.limites_uso(usuario_id);
+CREATE INDEX IF NOT EXISTS idx_registros_uso_diario_usuario_id ON public.registros_uso_diario(usuario_id);
+CREATE INDEX IF NOT EXISTS idx_registros_uso_diario_fecha ON public.registros_uso_diario(fecha DESC);
+CREATE INDEX IF NOT EXISTS idx_registros_uso_diario_usuario_fecha ON public.registros_uso_diario(usuario_id, fecha DESC);
+CREATE INDEX IF NOT EXISTS idx_sesiones_uso_usuario_id ON public.sesiones_uso(usuario_id);
+CREATE INDEX IF NOT EXISTS idx_sesiones_uso_registro_diario_id ON public.sesiones_uso(registro_diario_id);
+CREATE INDEX IF NOT EXISTS idx_sesiones_uso_inicio_sesion ON public.sesiones_uso(inicio_sesion DESC);
+CREATE INDEX IF NOT EXISTS idx_sesiones_uso_estado ON public.sesiones_uso(estado);
+
+-- Función para actualizar updated_at automáticamente
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- Función para calcular duración de sesión
+CREATE OR REPLACE FUNCTION calcular_duracion_sesion()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.fin_sesion IS NOT NULL AND NEW.inicio_sesion IS NOT NULL THEN
+        NEW.duracion_minutos = EXTRACT(EPOCH FROM (NEW.fin_sesion - NEW.inicio_sesion)) / 60;
+    END IF;
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- Función para actualizar registro diario cuando se finaliza una sesión
+CREATE OR REPLACE FUNCTION actualizar_registro_diario()
+RETURNS TRIGGER AS $$
+DECLARE
+    fecha_sesion DATE;
+    registro_id INTEGER;
+BEGIN
+    IF NEW.estado = 'finalizada' AND OLD.estado != 'finalizada' THEN
+        fecha_sesion := DATE(NEW.inicio_sesion);
+        
+        SELECT id INTO registro_id
+        FROM public.registros_uso_diario
+        WHERE usuario_id = NEW.usuario_id AND fecha = fecha_sesion;
+        
+        IF registro_id IS NULL THEN
+            INSERT INTO public.registros_uso_diario (
+                usuario_id, fecha, tiempo_usado_minutos, limite_del_dia_minutos, numero_sesiones
+            )
+            SELECT 
+                NEW.usuario_id, fecha_sesion, COALESCE(NEW.duracion_minutos, 0),
+                COALESCE((SELECT limite_diario_minutos FROM public.limites_uso WHERE usuario_id = NEW.usuario_id), 60),
+                1
+            RETURNING id INTO registro_id;
+        ELSE
+            UPDATE public.registros_uso_diario
+            SET 
+                tiempo_usado_minutos = tiempo_usado_minutos + COALESCE(NEW.duracion_minutos, 0),
+                numero_sesiones = numero_sesiones + 1,
+                updated_at = NOW()
+            WHERE id = registro_id;
+        END IF;
+        
+        NEW.registro_diario_id = registro_id;
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- Triggers
+CREATE TRIGGER update_limites_uso_updated_at 
+    BEFORE UPDATE ON public.limites_uso 
+    FOR EACH ROW 
+    EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_registros_uso_diario_updated_at 
+    BEFORE UPDATE ON public.registros_uso_diario 
+    FOR EACH ROW 
+    EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_sesiones_uso_updated_at 
+    BEFORE UPDATE ON public.sesiones_uso 
+    FOR EACH ROW 
+    EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER calcular_duracion_sesion_trigger
+    BEFORE UPDATE ON public.sesiones_uso
+    FOR EACH ROW
+    WHEN (NEW.fin_sesion IS NOT NULL AND (OLD.fin_sesion IS NULL OR NEW.fin_sesion != OLD.fin_sesion))
+    EXECUTE FUNCTION calcular_duracion_sesion();
+
+CREATE TRIGGER actualizar_registro_diario_trigger
+    AFTER UPDATE ON public.sesiones_uso
+    FOR EACH ROW
+    WHEN (NEW.estado = 'finalizada' AND OLD.estado != 'finalizada')
+    EXECUTE FUNCTION actualizar_registro_diario();
+
+-- Habilitar RLS
+ALTER TABLE public.limites_uso ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.registros_uso_diario ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.sesiones_uso ENABLE ROW LEVEL SECURITY;
+
+-- Políticas RLS para limites_uso
+CREATE POLICY "Usuarios pueden ver sus propios límites"
+    ON public.limites_uso FOR SELECT USING (auth.uid() = usuario_id);
+CREATE POLICY "Usuarios pueden insertar sus propios límites"
+    ON public.limites_uso FOR INSERT WITH CHECK (auth.uid() = usuario_id);
+CREATE POLICY "Usuarios pueden actualizar sus propios límites"
+    ON public.limites_uso FOR UPDATE USING (auth.uid() = usuario_id) WITH CHECK (auth.uid() = usuario_id);
+CREATE POLICY "Usuarios pueden eliminar sus propios límites"
+    ON public.limites_uso FOR DELETE USING (auth.uid() = usuario_id);
+
+-- Políticas RLS para registros_uso_diario
+CREATE POLICY "Usuarios pueden ver sus propios registros diarios"
+    ON public.registros_uso_diario FOR SELECT USING (auth.uid() = usuario_id);
+CREATE POLICY "Usuarios pueden insertar sus propios registros diarios"
+    ON public.registros_uso_diario FOR INSERT WITH CHECK (auth.uid() = usuario_id);
+CREATE POLICY "Usuarios pueden actualizar sus propios registros diarios"
+    ON public.registros_uso_diario FOR UPDATE USING (auth.uid() = usuario_id) WITH CHECK (auth.uid() = usuario_id);
+
+-- Políticas RLS para sesiones_uso
+CREATE POLICY "Usuarios pueden ver sus propias sesiones"
+    ON public.sesiones_uso FOR SELECT USING (auth.uid() = usuario_id);
+CREATE POLICY "Usuarios pueden insertar sus propias sesiones"
+    ON public.sesiones_uso FOR INSERT WITH CHECK (auth.uid() = usuario_id);
+CREATE POLICY "Usuarios pueden actualizar sus propias sesiones"
+    ON public.sesiones_uso FOR UPDATE USING (auth.uid() = usuario_id) WITH CHECK (auth.uid() = usuario_id);
+CREATE POLICY "Usuarios pueden eliminar sus propias sesiones"
+    ON public.sesiones_uso FOR DELETE USING (auth.uid() = usuario_id);
+
+-- Funciones RPC
+CREATE OR REPLACE FUNCTION obtener_o_crear_limites_uso(p_usuario_id UUID)
+RETURNS public.limites_uso AS $$
+DECLARE
+    v_limites public.limites_uso;
+BEGIN
+    SELECT * INTO v_limites FROM public.limites_uso WHERE usuario_id = p_usuario_id;
+    
+    IF v_limites IS NULL THEN
+        INSERT INTO public.limites_uso (
+            usuario_id, limite_diario_minutos, bloqueo_nocturno_activo,
+            bloqueo_nocturno_inicio, bloqueo_nocturno_fin, pausas_obligatorias_activas,
+            intervalo_pausa_minutos, duracion_pausa_minutos, meta_semanal_horas,
+            notificaciones_activas, intervalo_notificacion_minutos
+        )
+        VALUES (p_usuario_id, 60, false, '22:00:00', '07:00:00', false, 30, 5, 10, true, 15)
+        RETURNING * INTO v_limites;
+    END IF;
+    
+    RETURN v_limites;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION obtener_registro_dia_actual(p_usuario_id UUID)
+RETURNS public.registros_uso_diario AS $$
+DECLARE
+    v_registro public.registros_uso_diario;
+    v_limite_diario INTEGER;
+BEGIN
+    SELECT limite_diario_minutos INTO v_limite_diario
+    FROM public.limites_uso WHERE usuario_id = p_usuario_id;
+    
+    IF v_limite_diario IS NULL THEN
+        v_limite_diario := 60;
+    END IF;
+    
+    SELECT * INTO v_registro
+    FROM public.registros_uso_diario
+    WHERE usuario_id = p_usuario_id AND fecha = CURRENT_DATE;
+    
+    IF v_registro IS NULL THEN
+        INSERT INTO public.registros_uso_diario (
+            usuario_id, fecha, tiempo_usado_minutos, limite_del_dia_minutos, numero_sesiones
+        )
+        VALUES (p_usuario_id, CURRENT_DATE, 0, v_limite_diario, 0)
+        RETURNING * INTO v_registro;
+    END IF;
+    
+    RETURN v_registro;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION iniciar_sesion_uso(p_usuario_id UUID)
+RETURNS INTEGER AS $$
+DECLARE
+    v_sesion_id INTEGER;
+BEGIN
+    INSERT INTO public.sesiones_uso (usuario_id, inicio_sesion, estado)
+    VALUES (p_usuario_id, NOW(), 'activa')
+    RETURNING id INTO v_sesion_id;
+    
+    RETURN v_sesion_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION finalizar_sesion_uso(p_sesion_id INTEGER)
+RETURNS public.sesiones_uso AS $$
+DECLARE
+    v_sesion public.sesiones_uso;
+BEGIN
+    UPDATE public.sesiones_uso
+    SET fin_sesion = NOW(), estado = 'finalizada', updated_at = NOW()
+    WHERE id = p_sesion_id AND estado = 'activa'
+    RETURNING * INTO v_sesion;
+    
+    RETURN v_sesion;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+```
+
+---
+
 ## 📝 Notas Importantes
 
 1. **auth_user_id**: Se llena automáticamente al registrar usuarios. Relaciona la tabla `usuarios` con `auth.users` de Supabase.
