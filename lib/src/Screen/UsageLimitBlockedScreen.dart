@@ -336,8 +336,8 @@ class _UsageLimitBlockedScreenState extends State<UsageLimitBlockedScreen>
           
           // Esperar un momento para que el callback se ejecute
           await Future.delayed(const Duration(milliseconds: 500));
-          
-          // Cerrar el diálogo
+
+          if (!mounted) return;
           Navigator.of(context).pop();
           return;
         }
@@ -381,8 +381,8 @@ class _UsageLimitBlockedScreenState extends State<UsageLimitBlockedScreen>
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async => false, // Prevenir que se cierre con el botón atrás
+    return PopScope(
+      canPop: false, // Prevenir que se cierre con el botón atrás
       child: Scaffold(
         backgroundColor: Colors.black.withValues(alpha: 0.9),
         body: SafeArea(

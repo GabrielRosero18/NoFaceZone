@@ -1,3 +1,7 @@
+plugins {
+    id("com.android.application") apply false
+}
+
 allprojects {
     repositories {
         google()
@@ -14,6 +18,13 @@ rootProject.layout.buildDirectory.value(newBuildDir)
 subprojects {
     val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
     project.layout.buildDirectory.value(newSubprojectBuildDir)
+
+    afterEvaluate {
+        extensions.findByType<com.android.build.gradle.BaseExtension>()?.compileOptions?.apply {
+            sourceCompatibility = JavaVersion.VERSION_17
+            targetCompatibility = JavaVersion.VERSION_17
+        }
+    }
 }
 subprojects {
     project.evaluationDependsOn(":app")
