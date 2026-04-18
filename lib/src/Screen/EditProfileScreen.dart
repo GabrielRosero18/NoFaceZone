@@ -409,15 +409,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     return null;
   }
 
-  String? _validateEmail(String? value, AppLocalizations localizations) {
-    final String v = (value ?? '').trim();
-    if (v.isEmpty) return localizations.emailRequired;
-    if (v.contains(' ')) return localizations.emailNoSpaces;
-    final RegExp emailRegex = RegExp(r'^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$');
-    if (!emailRegex.hasMatch(v)) return localizations.emailInvalid;
-    return null;
-  }
-
   Future<void> _saveProfile() async {
     setState(() {
       _autoValidate = true;

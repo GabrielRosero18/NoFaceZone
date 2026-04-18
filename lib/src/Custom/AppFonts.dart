@@ -1,5 +1,3 @@
-import 'package:google_fonts/google_fonts.dart';
-
 /// Sistema de fuentes para la aplicación NoFaceZone
 class AppFonts {
   // Mapeo de IDs de fuentes a nombres de familias de fuentes

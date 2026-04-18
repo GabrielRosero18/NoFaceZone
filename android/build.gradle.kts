@@ -1,5 +1,8 @@
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+
 plugins {
     id("com.android.application") apply false
+    id("org.jetbrains.kotlin.android") apply false
 }
 
 allprojects {
@@ -23,6 +26,11 @@ subprojects {
         extensions.findByType<com.android.build.gradle.BaseExtension>()?.compileOptions?.apply {
             sourceCompatibility = JavaVersion.VERSION_17
             targetCompatibility = JavaVersion.VERSION_17
+        }
+        tasks.withType<KotlinCompile>().configureEach {
+            compilerOptions.jvmTarget.set(
+                org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17,
+            )
         }
     }
 }

@@ -1241,13 +1241,6 @@ class _SettingsState extends State<Settings> {
         try {
           final importData = jsonDecode(jsonController.text) as Map<String, dynamic>;
           
-          // Importar datos del usuario
-          if (importData.containsKey('user')) {
-            final userProvider = Provider.of<UserProvider>(context, listen: false);
-            final userData = importData['user'] as Map<String, dynamic>;
-            // Aquí podrías actualizar el usuario si tienes un método para eso
-          }
-
           // Importar configuraciones
           if (importData.containsKey('settings')) {
             final appProvider = Provider.of<AppProvider>(context, listen: false);
