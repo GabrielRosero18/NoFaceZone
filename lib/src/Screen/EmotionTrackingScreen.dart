@@ -256,6 +256,7 @@ class _EmotionTrackingScreenState extends State<EmotionTrackingScreen> {
     return Row(
       children: [
         IconButton(
+          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
           icon: const Icon(Icons.arrow_back, color: AppColors.textLight),
           onPressed: () => Navigator.of(context).pop(),
         ),
@@ -329,7 +330,11 @@ class _EmotionTrackingScreenState extends State<EmotionTrackingScreen> {
               final icon = emotion['icon'] as IconData;
               final color = emotion['color'] as Color;
               
-              return GestureDetector(
+              return Semantics(
+                button: true,
+                label: emotion['name'] as String,
+                selected: isSelected,
+                child: GestureDetector(
                 onTap: () {
                   setState(() {
                     _selectedEmotion = emotion['id'] as String;
@@ -415,6 +420,7 @@ class _EmotionTrackingScreenState extends State<EmotionTrackingScreen> {
                       ],
                     ],
                   ),
+                ),
                 ),
               );
             },
@@ -662,14 +668,17 @@ class _EmotionTrackingScreenState extends State<EmotionTrackingScreen> {
           ),
           // Botón de eliminar
           IconButton(
+            tooltip: localizations?.deleteEmotion ?? 'Eliminar emoción',
             icon: Icon(
               Icons.delete_outline,
               color: AppColors.error.withValues(alpha: 0.8),
               size: 20,
             ),
             onPressed: () => _showDeleteConfirmation(emotion, localizations),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
+            style: IconButton.styleFrom(
+              minimumSize: const Size(48, 48),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
           ),
         ],
       ),

@@ -52,7 +52,14 @@ class _UsageLimitBlockedScreenState extends State<UsageLimitBlockedScreen>
       curve: Curves.easeOutCubic,
     ));
 
-    _animationController.forward();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (MediaQuery.disableAnimationsOf(context)) {
+        _animationController.value = 1.0;
+      } else {
+        _animationController.forward();
+      }
+    });
   }
 
   @override
@@ -526,7 +533,10 @@ class _UsageLimitBlockedScreenState extends State<UsageLimitBlockedScreen>
                               ),
                               child: Material(
                                 color: Colors.transparent,
-                                child: InkWell(
+                                child: Semantics(
+                                  button: true,
+                                  label: 'Quitar bloqueo y cerrar',
+                                  child: InkWell(
                                   onTap: () {
                                     // Llamar callback si existe
                                     if (widget.onBlockRemoved != null) {
@@ -558,6 +568,7 @@ class _UsageLimitBlockedScreenState extends State<UsageLimitBlockedScreen>
                                     ),
                                   ),
                                 ),
+                                ),
                               ),
                             ),
                           ),
@@ -584,7 +595,10 @@ class _UsageLimitBlockedScreenState extends State<UsageLimitBlockedScreen>
                               ),
                               child: Material(
                                 color: Colors.transparent,
-                                child: InkWell(
+                                child: Semantics(
+                                  button: true,
+                                  label: 'Agregar diez minutos al límite de hoy',
+                                  child: InkWell(
                                   onTap: _isAddingTime ? null : _addExtraTime,
                                   borderRadius: BorderRadius.circular(16),
                                   child: Center(
@@ -618,6 +632,7 @@ class _UsageLimitBlockedScreenState extends State<UsageLimitBlockedScreen>
                                             ],
                                           ),
                                   ),
+                                ),
                                 ),
                               ),
                             ),

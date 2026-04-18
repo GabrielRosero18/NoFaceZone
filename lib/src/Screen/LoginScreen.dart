@@ -137,13 +137,19 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Escuchar cambios del AppProvider para actualizar el tema
-    final appProvider = Provider.of<AppProvider>(context);
-    AppColors.setTheme(appProvider.colorTheme);
-    
-    return Scaffold(
+    final loc = AppLocalizations.of(context)!;
+    final backLabel = MaterialLocalizations.of(context).backButtonTooltip;
+
+    return Selector<AppProvider, String>(
+      selector: (_, p) => '${p.colorTheme}|${p.language}',
+      builder: (context, _, __) {
+        final appProvider = Provider.of<AppProvider>(context, listen: false);
+        AppColors.setTheme(appProvider.colorTheme);
+
+        return Scaffold(
       appBar: AppBar(
         leading: IconButton(
+          tooltip: backLabel,
           icon: const Icon(Icons.arrow_back, color: AppColors.textLight),
           onPressed: () => Navigator.of(context).pop(),
         ),
@@ -241,6 +247,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     filled: true,
                     fillColor: AppColors.textLight.withValues(alpha: 0.1),
                     suffixIcon: IconButton(
+                      tooltip: _passwordVisible ? loc.hidePasswordA11y : loc.showPasswordA11y,
                       icon: Icon(
                         _passwordVisible ? Icons.lock_open : Icons.lock,
                         color: AppColors.textLight.withValues(alpha: 0.7),
@@ -389,6 +396,8 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       ),
+    );
+      },
     );
   }
 }

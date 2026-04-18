@@ -41,6 +41,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
+          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).pop(),
         ),

@@ -142,6 +142,8 @@ class AppLocalizations {
       'password_no_spaces': 'La contraseña no puede contener espacios',
       'password_confirm': 'Confirma tu contraseña',
       'password_mismatch': 'Las contraseñas no coinciden',
+      'show_password_a11y': 'Mostrar contraseña',
+      'hide_password_a11y': 'Ocultar contraseña',
       
       // Welcome
       'app_subtitle': 'Control de Adicción a Facebook',
@@ -621,6 +623,8 @@ class AppLocalizations {
       'password_no_spaces': 'Password cannot contain spaces',
       'password_confirm': 'Confirm your password',
       'password_mismatch': 'Passwords do not match',
+      'show_password_a11y': 'Show password',
+      'hide_password_a11y': 'Hide password',
       
       // Welcome
       'app_subtitle': 'Facebook Addiction Control',
@@ -1083,6 +1087,8 @@ class AppLocalizations {
   String get passwordNoSpaces => translate('password_no_spaces');
   String get passwordConfirm => translate('password_confirm');
   String get passwordMismatch => translate('password_mismatch');
+  String get showPasswordA11y => translate('show_password_a11y');
+  String get hidePasswordA11y => translate('hide_password_a11y');
   String get appSubtitle => translate('app_subtitle');
   String get appDescriptionText => translate('app_description_text');
   String get getStarted => translate('get_started');

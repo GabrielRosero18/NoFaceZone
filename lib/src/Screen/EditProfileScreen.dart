@@ -10,6 +10,7 @@ import 'package:nofacezone/src/Providers/UserProvider.dart';
 import 'package:nofacezone/src/Providers/AppProvider.dart';
 import 'package:nofacezone/src/Services/UserService.dart';
 import 'package:nofacezone/src/Services/PointsService.dart';
+import 'package:nofacezone/src/Custom/AppImageProviders.dart';
 
 /// Text input formatter para capitalizar la primera letra de cada palabra
 class NameCapitalizationFormatter extends TextInputFormatter {
@@ -596,6 +597,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
+          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).pop(),
         ),
@@ -644,7 +646,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
                                       image: DecorationImage(
-                                        image: FileImage(_profileImage!),
+                                        image: fileAvatarProvider(_profileImage!, logicalDiameter: 112),
                                         fit: BoxFit.cover,
                                       ),
                                     ),
@@ -656,7 +658,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                         decoration: BoxDecoration(
                                           shape: BoxShape.circle,
                                           image: DecorationImage(
-                                            image: NetworkImage(_profileImageUrl!),
+                                            image: networkAvatarProvider(_profileImageUrl!, logicalDiameter: 112),
                                             fit: BoxFit.cover,
                                           ),
                                         ),
@@ -680,6 +682,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               border: Border.all(color: AppColors.darkSurface, width: 3),
                             ),
                             child: IconButton(
+                              tooltip: localizations.camera,
                               icon: const Icon(Icons.camera_alt, color: AppColors.textLight, size: 20),
                               onPressed: _showImagePickerDialog,
                               padding: EdgeInsets.zero,

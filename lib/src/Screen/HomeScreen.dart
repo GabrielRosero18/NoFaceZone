@@ -12,6 +12,7 @@ import 'package:nofacezone/src/Services/PointsService.dart';
 import 'package:nofacezone/src/Services/UsageLimitsService.dart';
 import 'package:nofacezone/src/Screen/UsageLimitBlockedScreen.dart';
 import 'package:nofacezone/src/Custom/Library.dart';
+import 'package:nofacezone/src/Custom/AppImageProviders.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -31,6 +32,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
   bool _isBlockedScreenShown = false;
   bool _isLoadingUsageData = false;
   DateTime? _blockDismissedTime; // Tiempo cuando se quitó el bloqueo
+  /// Última carga completa de uso (para espaciar llamadas a red desde el timer periódico).
+  DateTime? _lastUsageDataFetchAt;
 
   @override
   void initState() {
@@ -55,8 +58,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       parent: _animationController,
       curve: Curves.easeOutCubic,
     ));
-    
-    _animationController.forward();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (MediaQuery.disableAnimationsOf(context)) {
+        _animationController.value = 1.0;
+      } else {
+        _animationController.forward();
+      }
+    });
     
     // Registrar observer para detectar cambios en el ciclo de vida de la app
     WidgetsBinding.instance.addObserver(this);
@@ -160,7 +170,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
   }
 
   /// Cargar datos de uso desde Supabase (optimizado)
-  Future<void> _loadUsageData() async {
+  Future<void> _loadUsageData({bool fromPeriodicTimer = false}) async {
+    if (fromPeriodicTimer && _lastUsageDataFetchAt != null) {
+      final since = DateTime.now().difference(_lastUsageDataFetchAt!);
+      if (since < const Duration(seconds: 8)) {
+        return;
+      }
+    }
     // Prevenir múltiples llamadas simultáneas
     if (_isLoadingUsageData) {
       return;
@@ -231,7 +247,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         if (remaining <= 0 && !_isBlockedScreenShown && canShowBlock) {
           debugPrint('🚨 Tiempo agotado. Mostrando pantalla de bloqueo');
           _showBlockedScreen();
-        } else if (remaining > 0 && _isBlockedScreenShown) {
+        } else         if (remaining > 0 && _isBlockedScreenShown) {
           // Si hay tiempo restante y la pantalla está mostrada, cerrarla
           debugPrint('✅ Hay tiempo restante ($remaining min), cerrando bloqueo');
           _isBlockedScreenShown = false;
@@ -240,6 +256,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
             Navigator.of(context).pop();
           }
         }
+
+        _lastUsageDataFetchAt = DateTime.now();
       }
     } catch (e) {
       debugPrint('Error loading usage data: $e');
@@ -372,7 +390,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       // No actualizar si ya se está cargando para evitar múltiples llamadas
       if (!_isLoadingUsageData) {
         try {
-          await _loadUsageData();
+          await _loadUsageData(fromPeriodicTimer: true);
         } catch (e) {
           debugPrint('❌ Error en timer de actualización de uso: $e');
         }
@@ -432,9 +450,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
 
   @override
   Widget build(BuildContext context) {
-    // Escuchar cambios del AppProvider para actualizar el tema
-    return Consumer<AppProvider>(
-      builder: (context, appProvider, child) {
+    // Solo reconstruir el shell cuando cambian tema o idioma (menos trabajo que Consumer completo).
+    return Selector<AppProvider, String>(
+      selector: (_, p) => '${p.colorTheme}|${p.language}',
+      builder: (context, _, __) {
+        final appProvider = Provider.of<AppProvider>(context, listen: false);
         AppColors.setTheme(appProvider.colorTheme);
         
         return Scaffold(
@@ -533,44 +553,41 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                 ],
               ),
             ),
-            // Avatar del usuario
-            Consumer<UserProvider>(
-              builder: (context, userProvider, child) {
-                final user = userProvider.user;
-                return Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
+            // Avatar (foto decorativa junto al nombre: se oculta a semántica duplicada).
+            ExcludeSemantics(
+              child: Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(colors: AppColors.accentGradient),
+                  boxShadow: AppColors.cardShadow,
+                ),
+                child: Container(
+                  margin: const EdgeInsets.all(2),
+                  decoration: const BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: LinearGradient(colors: AppColors.accentGradient),
-                    boxShadow: AppColors.cardShadow,
+                    color: AppColors.darkSurface,
                   ),
-                  child: Container(
-                    margin: const EdgeInsets.all(2),
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppColors.darkSurface,
-                    ),
-                    child: user?.profileImage != null && user!.profileImage!.isNotEmpty
-                        ? Container(
-                            width: 52,
-                            height: 52,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              image: DecorationImage(
-                                image: NetworkImage(user.profileImage!),
-                                fit: BoxFit.cover,
-                              ),
+                  child: user?.profileImage != null && user!.profileImage!.isNotEmpty
+                      ? Container(
+                          width: 52,
+                          height: 52,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            image: DecorationImage(
+                              image: networkAvatarProvider(user.profileImage!, logicalDiameter: 52),
+                              fit: BoxFit.cover,
                             ),
-                          )
-                        : const Icon(
-                            Icons.person,
-                            color: AppColors.textLight,
-                            size: 28,
                           ),
-                  ),
-                );
-              },
+                        )
+                      : const Icon(
+                          Icons.person,
+                          color: AppColors.textLight,
+                          size: 28,
+                        ),
+                ),
+              ),
             ),
           ],
         );
@@ -1431,6 +1448,7 @@ class _TimeRemainingDialogState extends State<_TimeRemainingDialog> {
                   ),
                 ),
                 IconButton(
+                  tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
                   icon: const Icon(Icons.close, color: AppColors.textLight),
                   onPressed: () => Navigator.of(context).pop(),
                 ),
@@ -1463,12 +1481,16 @@ class _TimeRemainingDialogState extends State<_TimeRemainingDialog> {
                   SizedBox(
                     width: 224,
                     height: 224,
+                    child: Semantics(
+                    label: 'Progreso de uso del día',
+                    value: '${(progress * 100).round()} por ciento',
                     child: CircularProgressIndicator(
                       value: progress,
                       strokeWidth: 8,
                       backgroundColor: AppColors.textLight.withValues(alpha: 0.1),
                       valueColor: AlwaysStoppedAnimation<Color>(clockColor),
                     ),
+                  ),
                   ),
                   // Tiempo en el centro - layout flexible para evitar overflow
                   Padding(

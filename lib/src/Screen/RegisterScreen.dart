@@ -586,6 +586,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
+          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
           icon: const Icon(Icons.arrow_back, color: AppColors.textLight),
           onPressed: () => Navigator.of(context).pop(),
         ),
@@ -719,6 +720,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   decoration: _getInputDecoration(
                     localizations.password,
                     suffixIcon: IconButton(
+                      tooltip: _passwordVisible ? localizations.hidePasswordA11y : localizations.showPasswordA11y,
                       icon: Icon(
                         _passwordVisible ? Icons.lock_open : Icons.lock,
                         color: AppColors.textLight.withValues(alpha: 0.7),
@@ -777,6 +779,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   decoration: _getInputDecoration(
                     localizations.confirmPassword,
                     suffixIcon: IconButton(
+                      tooltip: _confirmPasswordVisible ? localizations.hidePasswordA11y : localizations.showPasswordA11y,
                       icon: Icon(
                         _confirmPasswordVisible ? Icons.lock_open : Icons.lock,
                         color: AppColors.textLight.withValues(alpha: 0.7),

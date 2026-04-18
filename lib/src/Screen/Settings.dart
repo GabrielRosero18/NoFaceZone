@@ -13,6 +13,7 @@ import 'package:nofacezone/src/Providers/UserProvider.dart';
 import 'package:nofacezone/src/Screen/EditProfileScreen.dart';
 import 'package:nofacezone/src/Screen/ReportsScreen.dart';
 import 'package:nofacezone/src/Services/PreferencesService.dart';
+import 'package:nofacezone/src/Custom/AppImageProviders.dart';
 
 class Settings extends StatefulWidget {
   const Settings({super.key});
@@ -24,63 +25,58 @@ class Settings extends StatefulWidget {
 class _SettingsState extends State<Settings> {
   @override
   Widget build(BuildContext context) {
-    // Escuchar cambios del AppProvider para actualizar el tema
-    final appProvider = Provider.of<AppProvider>(context);
-    AppColors.setTheme(appProvider.colorTheme);
-    
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(AppLocalizations.of(context)?.settings ?? 'Configuración'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-      ),
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: AppColors.backgroundGradient,
-          ),
-        ),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Perfil del usuario
-                _buildProfileSection(),
-                const SizedBox(height: 32),
+    return Selector<AppProvider, String>(
+      selector: (_, p) => '${p.colorTheme}|${p.language}',
+      builder: (context, _, __) {
+        final appProvider = Provider.of<AppProvider>(context, listen: false);
+        AppColors.setTheme(appProvider.colorTheme);
+        final backLabel = MaterialLocalizations.of(context).backButtonTooltip;
 
-                // Notificaciones
-                _buildNotificationsSection(),
-                const SizedBox(height: 24),
-
-                // Límites de uso
-                _buildUsageLimitsSection(),
-                const SizedBox(height: 24),
-
-                // Apariencia
-                _buildAppearanceSection(),
-                const SizedBox(height: 24),
-
-                // Configuración avanzada
-                _buildAdvancedSection(),
-                const SizedBox(height: 24),
-
-                // Información de la app
-                _buildAboutSection(),
-              ],
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(AppLocalizations.of(context)?.settings ?? 'Configuración'),
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            leading: IconButton(
+              tooltip: backLabel,
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => Navigator.of(context).pop(),
             ),
           ),
-        ),
-      ),
+          body: Container(
+            width: double.infinity,
+            height: double.infinity,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: AppColors.backgroundGradient,
+              ),
+            ),
+            child: SafeArea(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    RepaintBoundary(child: _buildProfileSection()),
+                    const SizedBox(height: 32),
+                    RepaintBoundary(child: _buildNotificationsSection()),
+                    const SizedBox(height: 24),
+                    RepaintBoundary(child: _buildUsageLimitsSection()),
+                    const SizedBox(height: 24),
+                    RepaintBoundary(child: _buildAppearanceSection()),
+                    const SizedBox(height: 24),
+                    RepaintBoundary(child: _buildAdvancedSection()),
+                    const SizedBox(height: 24),
+                    RepaintBoundary(child: _buildAboutSection()),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -119,14 +115,16 @@ class _SettingsState extends State<Settings> {
                     color: AppColors.darkSurface,
                   ),
                   child: user?.profileImage != null && user!.profileImage!.isNotEmpty
-                      ? Container(
-                          width: 60,
-                          height: 60,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            image: DecorationImage(
-                              image: NetworkImage(user.profileImage!),
-                              fit: BoxFit.cover,
+                      ? ExcludeSemantics(
+                          child: Container(
+                            width: 60,
+                            height: 60,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              image: DecorationImage(
+                                image: networkAvatarProvider(user.profileImage!, logicalDiameter: 60),
+                                fit: BoxFit.cover,
+                              ),
                             ),
                           ),
                         )
@@ -162,6 +160,7 @@ class _SettingsState extends State<Settings> {
                 ),
               ),
               IconButton(
+                tooltip: AppLocalizations.of(context)?.editProfile ?? 'Editar perfil',
                 icon: const Icon(Icons.edit, color: AppColors.textLight),
                 onPressed: () async {
                   await Navigator.of(context).push(
