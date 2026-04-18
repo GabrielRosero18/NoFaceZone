@@ -362,6 +362,11 @@ class AppLocalizations {
       'month': 'Mes',
       'hourly_activity': 'Actividad horaria',
       'effectiveness': 'Efectividad',
+      'motivation': 'Motivación',
+      'refresh': 'Actualizar',
+      'statistics_sign_in_hint': 'Inicia sesión para ver estadísticas sincronizadas con tu cuenta.',
+      'effectiveness_under_limit': 'Respeto del límite hoy',
+      'effectiveness_no_data': 'Sin datos',
       'mood': 'Estado de ánimo',
       'mental_strength': 'Fuerza mental',
       'high': 'Alta',
@@ -846,6 +851,11 @@ class AppLocalizations {
       'month': 'Month',
       'hourly_activity': 'Hourly Activity',
       'effectiveness': 'Effectiveness',
+      'motivation': 'Motivation',
+      'refresh': 'Refresh',
+      'statistics_sign_in_hint': 'Sign in to see statistics synced with your account.',
+      'effectiveness_under_limit': 'Daily limit adherence',
+      'effectiveness_no_data': 'No data',
       'mood': 'Mood',
       'mental_strength': 'Mental Strength',
       'high': 'High',
@@ -1257,6 +1267,10 @@ class AppLocalizations {
   String get month => translate('month');
   String get hourlyActivity => translate('hourly_activity');
   String get effectiveness => translate('effectiveness');
+  String get refresh => translate('refresh');
+  String get statisticsSignInHint => translate('statistics_sign_in_hint');
+  String get effectivenessUnderLimit => translate('effectiveness_under_limit');
+  String get effectivenessNoData => translate('effectiveness_no_data');
   String get motivation => translate('motivation');
   String get mood => translate('mood');
   String get mentalStrength => translate('mental_strength');

@@ -427,6 +427,37 @@ class UsageLimitsService {
     }
   }
 
+  /// Registros diarios entre dos fechas (inclusive), orden ascendente por [fecha].
+  static Future<List<Map<String, dynamic>>> getDailyUsageRecordsInRange(
+    DateTime fromInclusive,
+    DateTime toInclusive,
+  ) async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) return [];
+
+      final fromStr = DateTime(fromInclusive.year, fromInclusive.month, fromInclusive.day)
+          .toIso8601String()
+          .split('T')[0];
+      final toStr = DateTime(toInclusive.year, toInclusive.month, toInclusive.day)
+          .toIso8601String()
+          .split('T')[0];
+
+      final response = await _supabase
+          .from('registros_uso_diario')
+          .select()
+          .eq('usuario_id', userId)
+          .gte('fecha', fromStr)
+          .lte('fecha', toStr)
+          .order('fecha', ascending: true);
+
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      debugPrint('Error al obtener registros diarios en rango: $e');
+      return [];
+    }
+  }
+
   /// Obtener tiempo usado hoy en minutos
   static Future<int> getTodayUsageMinutes() async {
     try {
