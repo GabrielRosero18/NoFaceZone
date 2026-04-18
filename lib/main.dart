@@ -9,12 +9,12 @@ import 'src/Providers/AppProvider.dart';
 import 'src/Custom/AppColors.dart';
 import 'src/Custom/AppFonts.dart';
 import 'src/Custom/AppLocalizations.dart';
-import 'src/Custom/Config.dart' as AppConfig;
+import 'src/Custom/Config.dart' as app_config;
 
 Future<void> main() async {
   await Supabase.initialize(
-    url: AppConfig.Config.mSupabaseUrl,
-    anonKey: AppConfig.Config.mSupabaseKey,
+    url: app_config.Config.mSupabaseUrl,
+    anonKey: app_config.Config.mSupabaseKey,
   );
   runApp(const MyApp());
 }

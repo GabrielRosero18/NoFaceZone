@@ -704,7 +704,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   
                   // Edad
                   DropdownButtonFormField<String>(
-                    value: _selectedAge,
+                    initialValue: _selectedAge,
                     dropdownColor: AppColors.darkSurface,
                     style: const TextStyle(color: AppColors.textLight),
                     items: ageRanges
@@ -729,7 +729,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   
                   // Género
                   DropdownButtonFormField<String>(
-                    value: _selectedGender != null && genders.contains(_selectedGender) 
+                    initialValue: _selectedGender != null && genders.contains(_selectedGender) 
                         ? _selectedGender 
                         : null,
                     dropdownColor: AppColors.darkSurface,
@@ -757,7 +757,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   
                   // Idioma
                   DropdownButtonFormField<String>(
-                    value: _selectedLanguage ?? (appProvider.language == 'es' ? 'es' : 'en'),
+                    initialValue: _selectedLanguage ?? (appProvider.language == 'es' ? 'es' : 'en'),
                     dropdownColor: AppColors.darkSurface,
                     style: const TextStyle(color: AppColors.textLight),
                     items: languageCodes
@@ -780,32 +780,31 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         await Future.delayed(const Duration(milliseconds: 50));
                         
                         // Obtener las nuevas localizaciones
-                        if (mounted) {
-                          final newLocalizations = AppLocalizations.of(context)!;
-                          
-                          // Mapear género al nuevo idioma usando mapeo entre idiomas
-                          String? mappedGender;
-                          if (currentGender != null) {
-                            mappedGender = _mapGenderBetweenLanguages(currentGender, oldLocalizations, newLocalizations);
-                          }
-                          
-                          // Mapear frecuencia al nuevo idioma usando mapeo entre idiomas
-                          String? mappedFrequency;
-                          if (currentFrequency != null) {
-                            mappedFrequency = _mapFrequencyBetweenLanguages(currentFrequency, oldLocalizations, newLocalizations);
-                          }
-                          
-                          // Actualizar estado con los valores mapeados
-                          setState(() {
-                            _selectedLanguage = v;
-                            if (mappedGender != null) {
-                              _selectedGender = mappedGender;
-                            }
-                            if (mappedFrequency != null) {
-                              _selectedFrequency = mappedFrequency;
-                            }
-                          });
+                        if (!context.mounted) return;
+                        final newLocalizations = AppLocalizations.of(context)!;
+                        
+                        // Mapear género al nuevo idioma usando mapeo entre idiomas
+                        String? mappedGender;
+                        if (currentGender != null) {
+                          mappedGender = _mapGenderBetweenLanguages(currentGender, oldLocalizations, newLocalizations);
                         }
+                        
+                        // Mapear frecuencia al nuevo idioma usando mapeo entre idiomas
+                        String? mappedFrequency;
+                        if (currentFrequency != null) {
+                          mappedFrequency = _mapFrequencyBetweenLanguages(currentFrequency, oldLocalizations, newLocalizations);
+                        }
+                        
+                        // Actualizar estado con los valores mapeados
+                        setState(() {
+                          _selectedLanguage = v;
+                          if (mappedGender != null) {
+                            _selectedGender = mappedGender;
+                          }
+                          if (mappedFrequency != null) {
+                            _selectedFrequency = mappedFrequency;
+                          }
+                        });
                       }
                     },
                     decoration: _getInputDecoration(localizations.language),
@@ -815,7 +814,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   
                   // Frecuencia de uso
                   DropdownButtonFormField<String>(
-                    value: _selectedFrequency != null && frequencies.contains(_selectedFrequency) 
+                    initialValue: _selectedFrequency != null && frequencies.contains(_selectedFrequency) 
                         ? _selectedFrequency 
                         : null,
                     dropdownColor: AppColors.darkSurface,

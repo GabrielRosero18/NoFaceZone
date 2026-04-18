@@ -583,22 +583,24 @@ class _SettingsState extends State<Settings> {
           localizations.notificationIntervalTitle,
           style: const TextStyle(color: AppColors.textLight),
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: intervals.map((interval) {
-            return RadioListTile<int>(
-              title: Text(
-                '$interval ${localizations.minutes}',
-                style: const TextStyle(color: AppColors.textLight),
-              ),
-              value: interval,
-              groupValue: appProvider.notificationInterval,
-              onChanged: (value) {
-                Navigator.pop(context, value);
-              },
-              activeColor: AppColors.accentBlue,
-            );
-          }).toList(),
+        content: RadioGroup<int>(
+          groupValue: appProvider.notificationInterval,
+          onChanged: (value) {
+            if (value != null) Navigator.pop(context, value);
+          },
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: intervals.map((interval) {
+              return RadioListTile<int>(
+                title: Text(
+                  '$interval ${localizations.minutes}',
+                  style: const TextStyle(color: AppColors.textLight),
+                ),
+                value: interval,
+                activeColor: AppColors.accentBlue,
+              );
+            }).toList(),
+          ),
         ),
       ),
     );
@@ -886,31 +888,31 @@ class _SettingsState extends State<Settings> {
           localizations.selectTheme,
           style: const TextStyle(color: AppColors.textLight),
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            RadioListTile<ThemeMode>(
-              title: Text(localizations.system, style: const TextStyle(color: AppColors.textLight)),
-              value: ThemeMode.system,
-              groupValue: appProvider.themeMode,
-              onChanged: (value) => Navigator.pop(context, value),
-              activeColor: AppColors.accentBlue,
-            ),
-            RadioListTile<ThemeMode>(
-              title: Text(localizations.light, style: const TextStyle(color: AppColors.textLight)),
-              value: ThemeMode.light,
-              groupValue: appProvider.themeMode,
-              onChanged: (value) => Navigator.pop(context, value),
-              activeColor: AppColors.accentBlue,
-            ),
-            RadioListTile<ThemeMode>(
-              title: Text(localizations.dark, style: const TextStyle(color: AppColors.textLight)),
-              value: ThemeMode.dark,
-              groupValue: appProvider.themeMode,
-              onChanged: (value) => Navigator.pop(context, value),
-              activeColor: AppColors.accentBlue,
-            ),
-          ],
+        content: RadioGroup<ThemeMode>(
+          groupValue: appProvider.themeMode,
+          onChanged: (value) {
+            if (value != null) Navigator.pop(context, value);
+          },
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              RadioListTile<ThemeMode>(
+                title: Text(localizations.system, style: const TextStyle(color: AppColors.textLight)),
+                value: ThemeMode.system,
+                activeColor: AppColors.accentBlue,
+              ),
+              RadioListTile<ThemeMode>(
+                title: Text(localizations.light, style: const TextStyle(color: AppColors.textLight)),
+                value: ThemeMode.light,
+                activeColor: AppColors.accentBlue,
+              ),
+              RadioListTile<ThemeMode>(
+                title: Text(localizations.dark, style: const TextStyle(color: AppColors.textLight)),
+                value: ThemeMode.dark,
+                activeColor: AppColors.accentBlue,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -938,24 +940,26 @@ class _SettingsState extends State<Settings> {
           localizations.selectLanguage,
           style: const TextStyle(color: AppColors.textLight),
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            RadioListTile<String>(
-              title: Text(localizations.spanish, style: const TextStyle(color: AppColors.textLight)),
-              value: 'es',
-              groupValue: appProvider.language,
-              onChanged: (value) => Navigator.pop(context, value),
-              activeColor: AppColors.accentBlue,
-            ),
-            RadioListTile<String>(
-              title: Text(localizations.english, style: const TextStyle(color: AppColors.textLight)),
-              value: 'en',
-              groupValue: appProvider.language,
-              onChanged: (value) => Navigator.pop(context, value),
-              activeColor: AppColors.accentBlue,
-            ),
-          ],
+        content: RadioGroup<String>(
+          groupValue: appProvider.language,
+          onChanged: (value) {
+            if (value != null) Navigator.pop(context, value);
+          },
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              RadioListTile<String>(
+                title: Text(localizations.spanish, style: const TextStyle(color: AppColors.textLight)),
+                value: 'es',
+                activeColor: AppColors.accentBlue,
+              ),
+              RadioListTile<String>(
+                title: Text(localizations.english, style: const TextStyle(color: AppColors.textLight)),
+                value: 'en',
+                activeColor: AppColors.accentBlue,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1236,6 +1240,8 @@ class _SettingsState extends State<Settings> {
           ],
         ),
       );
+
+      if (!mounted) return;
 
       if (shouldImport == true && jsonController.text.isNotEmpty) {
         try {

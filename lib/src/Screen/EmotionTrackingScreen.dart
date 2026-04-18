@@ -151,8 +151,8 @@ class _EmotionTrackingScreenState extends State<EmotionTrackingScreen> {
 
         if (mounted) {
           final pointsMessage = isFirstEmotion 
-              ? 'Emoción registrada exitosamente. ¡Ganaste ${PointsService.POINTS_EMOTION_REGISTER + PointsService.POINTS_FIRST_EMOTION} puntos!'
-              : 'Emoción registrada exitosamente. ¡Ganaste ${PointsService.POINTS_EMOTION_REGISTER} puntos!';
+              ? 'Emoción registrada exitosamente. ¡Ganaste ${PointsService.pointsEmotionRegister + PointsService.pointsFirstEmotion} puntos!'
+              : 'Emoción registrada exitosamente. ¡Ganaste ${PointsService.pointsEmotionRegister} puntos!';
           
           CustomSnackBar.showSuccess(
             context,

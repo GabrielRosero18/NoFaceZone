@@ -11,14 +11,14 @@ class PointsService {
   // ============================================
   // CONFIGURACIÓN DE PUNTOS POR ACCIÓN
   // ============================================
-  static const int POINTS_DAILY_LOGIN = 5; // Puntos por iniciar sesión diariamente
-  static const int POINTS_EMOTION_REGISTER = 10; // Puntos por registrar una emoción
-  static const int POINTS_DAY_WITHOUT_FACEBOOK = 20; // Puntos por completar un día sin Facebook
-  static const int POINTS_WEEK_STREAK = 50; // Puntos por racha de 7 días
-  static const int POINTS_MONTH_STREAK = 200; // Puntos por racha de 30 días
-  static const int POINTS_FIRST_EMOTION = 15; // Puntos bonus por primera emoción
-  static const int POINTS_COMPLETE_PROFILE = 25; // Puntos por completar perfil
-  static const int POINTS_UPDATE_PROFILE = 5; // Puntos por actualizar perfil
+  static const int pointsDailyLogin = 5; // Puntos por iniciar sesión diariamente
+  static const int pointsEmotionRegister = 10; // Puntos por registrar una emoción
+  static const int pointsDayWithoutFacebook = 20; // Puntos por completar un día sin Facebook
+  static const int pointsWeekStreak = 50; // Puntos por racha de 7 días
+  static const int pointsMonthStreak = 200; // Puntos por racha de 30 días
+  static const int pointsFirstEmotion = 15; // Puntos bonus por primera emoción
+  static const int pointsCompleteProfile = 25; // Puntos por completar perfil
+  static const int pointsUpdateProfile = 5; // Puntos por actualizar perfil
 
   // ============================================
   // MÉTODOS PARA OTORGAR PUNTOS
@@ -43,14 +43,14 @@ class PointsService {
 
       // Otorgar puntos
       await RewardService.addPoints(
-        POINTS_DAILY_LOGIN,
+        pointsDailyLogin,
         description: 'Inicio de sesión diario',
       );
 
       // Guardar que obtuvo puntos hoy
       await PreferencesService.setString(lastLoginKey, todayKey);
 
-      debugPrint('✅ Puntos otorgados por inicio de sesión: $POINTS_DAILY_LOGIN');
+      debugPrint('✅ Puntos otorgados por inicio de sesión: $pointsDailyLogin');
     } catch (e) {
       debugPrint('Error al otorgar puntos por inicio de sesión: $e');
     }
@@ -62,12 +62,12 @@ class PointsService {
       final authUser = _supabase.auth.currentUser;
       if (authUser == null) return;
 
-      int points = POINTS_EMOTION_REGISTER;
+      int points = pointsEmotionRegister;
       String description = 'Registro de emoción';
 
       // Bonus por primera emoción
       if (isFirstEmotion) {
-        points += POINTS_FIRST_EMOTION;
+        points += pointsFirstEmotion;
         description = 'Primera emoción registrada';
       }
 
@@ -96,14 +96,14 @@ class PointsService {
 
       // Otorgar puntos
       await RewardService.addPoints(
-        POINTS_DAY_WITHOUT_FACEBOOK,
+        pointsDayWithoutFacebook,
         description: 'Día completo sin usar Facebook',
       );
 
       // Guardar que obtuvo puntos por este día
       await PreferencesService.setString(lastDayKey, todayKey);
 
-      debugPrint('✅ Puntos otorgados por día sin Facebook: $POINTS_DAY_WITHOUT_FACEBOOK');
+      debugPrint('✅ Puntos otorgados por día sin Facebook: $pointsDayWithoutFacebook');
     } catch (e) {
       debugPrint('Error al otorgar puntos por día sin Facebook: $e');
     }
@@ -124,11 +124,11 @@ class PointsService {
 
         if (lastWeekStreak != todayKey) {
           await RewardService.addPoints(
-            POINTS_WEEK_STREAK,
+            pointsWeekStreak,
             description: 'Racha de 7 días consecutivos',
           );
           await PreferencesService.setString(lastWeekStreakKey, todayKey);
-          debugPrint('✅ Puntos otorgados por racha de 7 días: $POINTS_WEEK_STREAK');
+          debugPrint('✅ Puntos otorgados por racha de 7 días: $pointsWeekStreak');
         }
       }
 
@@ -141,11 +141,11 @@ class PointsService {
 
         if (lastMonthStreak != todayKey) {
           await RewardService.addPoints(
-            POINTS_MONTH_STREAK,
+            pointsMonthStreak,
             description: 'Racha de 30 días consecutivos',
           );
           await PreferencesService.setString(lastMonthStreakKey, todayKey);
-          debugPrint('✅ Puntos otorgados por racha de 30 días: $POINTS_MONTH_STREAK');
+          debugPrint('✅ Puntos otorgados por racha de 30 días: $pointsMonthStreak');
         }
       }
     } catch (e) {
@@ -164,11 +164,11 @@ class PointsService {
 
       if (!isCompleted) {
         await RewardService.addPoints(
-          POINTS_COMPLETE_PROFILE,
+          pointsCompleteProfile,
           description: 'Perfil completado',
         );
         await PreferencesService.setBool(profileCompletedKey, true);
-        debugPrint('✅ Puntos otorgados por completar perfil: $POINTS_COMPLETE_PROFILE');
+        debugPrint('✅ Puntos otorgados por completar perfil: $pointsCompleteProfile');
       }
     } catch (e) {
       debugPrint('Error al otorgar puntos por completar perfil: $e');
@@ -192,12 +192,12 @@ class PointsService {
       }
 
       await RewardService.addPoints(
-        POINTS_UPDATE_PROFILE,
+        pointsUpdateProfile,
         description: 'Perfil actualizado',
       );
 
       await PreferencesService.setString(lastUpdateKey, todayKey);
-      debugPrint('✅ Puntos otorgados por actualizar perfil: $POINTS_UPDATE_PROFILE');
+      debugPrint('✅ Puntos otorgados por actualizar perfil: $pointsUpdateProfile');
     } catch (e) {
       debugPrint('Error al otorgar puntos por actualizar perfil: $e');
     }

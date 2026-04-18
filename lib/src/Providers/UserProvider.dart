@@ -124,7 +124,7 @@ class UserProvider extends ChangeNotifier {
             _user = User.fromSupabaseData(userData, {
               'id': authUser.id,
               'email': authUser.email,
-              'email_confirmed_at': authUser.emailConfirmedAt != null ? authUser.emailConfirmedAt.toString() : null,
+              'email_confirmed_at': authUser.emailConfirmedAt?.toString(),
             });
             debugPrint('👤 Usuario cargado. Foto en User: ${_user?.profileImage}');
             _token = authUser.id;
@@ -167,7 +167,7 @@ class UserProvider extends ChangeNotifier {
             _user = User.fromSupabaseData(dbUserData, {
               'id': currentAuthUser.id,
               'email': currentAuthUser.email,
-              'email_confirmed_at': currentAuthUser.emailConfirmedAt != null ? currentAuthUser.emailConfirmedAt.toString() : null,
+              'email_confirmed_at': currentAuthUser.emailConfirmedAt?.toString(),
             });
             _token = currentAuthUser.id;
             _isLoggedIn = true;

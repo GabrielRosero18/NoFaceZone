@@ -131,6 +131,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       if (sessionId != null) {
         _currentSessionId = sessionId;
         
+        if (!mounted) return;
         // Actualizar AppProvider
         final appProvider = Provider.of<AppProvider>(context, listen: false);
         await appProvider.startUsageSession();
@@ -146,6 +147,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       if (_currentSessionId != null) {
         await UsageLimitsService.finishUsageSession(_currentSessionId!);
         
+        if (!mounted) return;
         // Actualizar AppProvider
         final appProvider = Provider.of<AppProvider>(context, listen: false);
         await appProvider.finishUsageSession();
@@ -204,9 +206,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         if (appProvider.dailyUsageLimit != limit) {
           await appProvider.refreshUsageLimits();
         }
+        if (!mounted) return;
         if (appProvider.todayUsageMinutes != used) {
           await appProvider.updateTodayUsage();
         }
+        if (!mounted) return;
         
         // Verificar si se alcanzó el límite y mostrar pantalla de bloqueo
         // No mostrar si se quitó el bloqueo recientemente (últimos 1 minuto)
@@ -255,8 +259,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       context: context,
       barrierDismissible: false, // No se puede cerrar tocando fuera
       barrierColor: Colors.black.withValues(alpha: 0.95),
-      builder: (context) => WillPopScope(
-        onWillPop: () async => false, // Prevenir cierre con botón atrás
+      builder: (context) => PopScope(
+        canPop: false, // Prevenir cierre con botón atrás
         child: UsageLimitBlockedScreen(
           onTimeAdded: () async {
             // Cuando se agrega tiempo, marcar que el bloqueo fue quitado

@@ -66,9 +66,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ? {
                   'id': result['authUser'].id,
                   'email': result['authUser'].email,
-                  'email_confirmed_at': result['authUser'].emailConfirmedAt != null 
-                      ? result['authUser'].emailConfirmedAt.toString() 
-                      : null,
+                  'email_confirmed_at': result['authUser'].emailConfirmedAt?.toString(),
                 }
               : null,
         );
