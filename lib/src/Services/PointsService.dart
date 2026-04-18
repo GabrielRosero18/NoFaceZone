@@ -229,14 +229,41 @@ class PointsService {
     }
   }
 
-  /// Obtener días consecutivos sin usar Facebook
+  /// Días consecutivos con al menos un registro de emoción (aprox. hábito diario).
   static Future<int> getConsecutiveDays() async {
     try {
-      // Esta función debería calcular los días consecutivos
-      // basándose en el historial de uso de Facebook
-      // Por ahora retornamos un valor por defecto
-      // TODO: Implementar lógica real de días consecutivos
-      return 0;
+      final authUser = _supabase.auth.currentUser;
+      if (authUser == null) return 0;
+
+      final response = await _supabase
+          .from('emociones')
+          .select('created_at')
+          .eq('user_id', authUser.id)
+          .order('created_at', ascending: false);
+
+      final list = List<Map<String, dynamic>>.from(response);
+      if (list.isEmpty) return 0;
+
+      String dayKey(DateTime d) =>
+          '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+      final daysWithEmotion = <String>{};
+      for (final row in list) {
+        final dt = DateTime.parse(row['created_at'] as String);
+        daysWithEmotion.add(dayKey(DateTime(dt.year, dt.month, dt.day)));
+      }
+
+      var streak = 0;
+      var check = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
+      // Si hoy aún no hay emoción, la racha puede contar desde ayer.
+      if (!daysWithEmotion.contains(dayKey(check))) {
+        check = check.subtract(const Duration(days: 1));
+      }
+      while (daysWithEmotion.contains(dayKey(check))) {
+        streak++;
+        check = check.subtract(const Duration(days: 1));
+      }
+      return streak;
     } catch (e) {
       debugPrint('Error al obtener días consecutivos: $e');
       return 0;

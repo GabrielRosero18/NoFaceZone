@@ -351,53 +351,7 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
   // Función auxiliar para obtener días consecutivos del usuario
   Future<int> _getUserConsecutiveDays() async {
     try {
-      // Intentar obtener desde PointsService
-      final consecutiveDays = await PointsService.getConsecutiveDays();
-      
-      // Si PointsService retorna 0 (no implementado aún), calcular desde emociones
-      // como aproximación: contar días consecutivos con emociones registradas
-      if (consecutiveDays == 0) {
-        final supabase = Supabase.instance.client;
-        final authUser = supabase.auth.currentUser;
-        if (authUser == null) return 0;
-
-        // Obtener todas las emociones del usuario ordenadas por fecha
-        final emotions = await supabase
-            .from('emociones')
-            .select('created_at')
-            .eq('user_id', authUser.id)
-            .order('created_at', ascending: false);
-
-        if (emotions.isEmpty) return 0;
-
-        // Calcular días consecutivos desde hoy hacia atrás
-        final today = DateTime.now();
-        int streak = 0;
-        DateTime currentDate = DateTime(today.year, today.month, today.day);
-
-        for (final emotion in emotions) {
-          final emotionDate = DateTime.parse(emotion['created_at'] as String);
-          final emotionDay = DateTime(emotionDate.year, emotionDate.month, emotionDate.day);
-          
-          // Si la emoción es del día actual o anterior consecutivo
-          if (emotionDay.isAtSameMomentAs(currentDate) || 
-              emotionDay.isAtSameMomentAs(currentDate.subtract(const Duration(days: 1)))) {
-            if (emotionDay.isAtSameMomentAs(currentDate)) {
-              streak++;
-            } else {
-              streak++;
-              currentDate = emotionDay;
-            }
-          } else {
-            break; // Se rompió la racha
-          }
-        }
-
-        debugPrint('📅 Días consecutivos calculados desde emociones: $streak');
-        return streak;
-      }
-
-      return consecutiveDays;
+      return await PointsService.getConsecutiveDays();
     } catch (e) {
       debugPrint('Error al obtener días consecutivos: $e');
       return 0;

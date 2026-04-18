@@ -188,6 +188,18 @@ class PreferencesService {
     return prefs.getInt('record_time_without_facebook') ?? 0;
   }
 
+  /// Veces que se mostró el bloqueo por límite (sesiones de autocontrol activadas).
+  static int getBlockedSessionsCount() {
+    if (_prefs == null) return 0;
+    return _prefs!.getInt('blocked_sessions_count_v1') ?? 0;
+  }
+
+  static Future<void> incrementBlockedSessionsCount() async {
+    await init();
+    final next = getBlockedSessionsCount() + 1;
+    await prefs.setInt('blocked_sessions_count_v1', next);
+  }
+
   // ===== PREFERENCIAS DE PRIVACIDAD =====
   
   /// Guardar si el modo privado está habilitado

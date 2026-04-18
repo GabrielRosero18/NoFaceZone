@@ -212,6 +212,8 @@ class AppLocalizations {
       'daily_limit_home': 'Límite diario',
       'night_block': 'Bloqueo nocturno',
       'active': 'Activo',
+      'feature_off': 'Apagado',
+      'usage_status_standby': 'En espera',
       'mandatory_breaks': 'Pausas obligatorias',
       'next_in': 'Próxima en',
       'remaining': 'restantes',
@@ -693,6 +695,8 @@ class AppLocalizations {
       'daily_limit_home': 'Daily limit',
       'night_block': 'Night block',
       'active': 'Active',
+      'feature_off': 'Off',
+      'usage_status_standby': 'Standby',
       'mandatory_breaks': 'Mandatory breaks',
       'next_in': 'Next in',
       'remaining': 'remaining',
@@ -1145,6 +1149,8 @@ class AppLocalizations {
   String get dailyLimitHome => translate('daily_limit_home');
   String get nightBlock => translate('night_block');
   String get active => translate('active');
+  String get featureOff => translate('feature_off');
+  String get usageStatusStandby => translate('usage_status_standby');
   String get mandatoryBreaks => translate('mandatory_breaks');
   String get nextIn => translate('next_in');
   String get remaining => translate('remaining');

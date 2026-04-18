@@ -10,6 +10,7 @@ import 'package:nofacezone/src/Providers/UserProvider.dart';
 import 'package:nofacezone/src/Providers/AppProvider.dart';
 import 'package:nofacezone/src/Services/PointsService.dart';
 import 'package:nofacezone/src/Services/UsageLimitsService.dart';
+import 'package:nofacezone/src/Services/PreferencesService.dart';
 import 'package:nofacezone/src/Screen/UsageLimitBlockedScreen.dart';
 import 'package:nofacezone/src/Custom/Library.dart';
 import 'package:nofacezone/src/Custom/AppImageProviders.dart';
@@ -34,6 +35,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
   DateTime? _blockDismissedTime; // Tiempo cuando se quitó el bloqueo
   /// Última carga completa de uso (para espaciar llamadas a red desde el timer periódico).
   DateTime? _lastUsageDataFetchAt;
+
+  int _consecutiveDaysWithEmotions = 0;
+  double _weeklyProgressFactor = 0.0;
+  int _weeklyDaysWithUsage = 0;
+  String _nightWindowLabel = '—';
+  String _pauseIntervalLabel = '—';
+  int? _minutesToNextMandatoryPause;
+  int _mandatoryPauseIntervalMinutes = 30;
+  bool _isInNightBlockWindow = false;
 
   @override
   void initState() {
@@ -190,6 +200,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       final todayUsage = await UsageLimitsService.getOrCreateTodayUsage();
       
       if (todayUsage == null) {
+        if (mounted) {
+          await _refreshHomeSummaryMetrics();
+        }
         _isLoadingUsageData = false;
         return;
       }
@@ -247,7 +260,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         if (remaining <= 0 && !_isBlockedScreenShown && canShowBlock) {
           debugPrint('🚨 Tiempo agotado. Mostrando pantalla de bloqueo');
           _showBlockedScreen();
-        } else         if (remaining > 0 && _isBlockedScreenShown) {
+        } else if (remaining > 0 && _isBlockedScreenShown) {
           // Si hay tiempo restante y la pantalla está mostrada, cerrarla
           debugPrint('✅ Hay tiempo restante ($remaining min), cerrando bloqueo');
           _isBlockedScreenShown = false;
@@ -256,6 +269,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
             Navigator.of(context).pop();
           }
         }
+
+        await _refreshHomeSummaryMetrics();
 
         _lastUsageDataFetchAt = DateTime.now();
       }
@@ -271,6 +286,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     if (!mounted || _isBlockedScreenShown) return;
     
     _isBlockedScreenShown = true;
+    PreferencesService.incrementBlockedSessionsCount();
     
     // Mostrar como overlay/modal
     showDialog(
@@ -452,7 +468,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
   Widget build(BuildContext context) {
     // Solo reconstruir el shell cuando cambian tema o idioma (menos trabajo que Consumer completo).
     return Selector<AppProvider, String>(
-      selector: (_, p) => '${p.colorTheme}|${p.language}',
+      selector: (_, p) =>
+          '${p.colorTheme}|${p.language}|${p.nightBlockActive}|${p.mandatoryBreaksActive}|${p.dailyUsageLimit}|${p.todayUsageMinutes}',
       builder: (context, _, __) {
         final appProvider = Provider.of<AppProvider>(context, listen: false);
         AppColors.setTheme(appProvider.colorTheme);
@@ -674,8 +691,85 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     );
   }
 
+  Future<void> _refreshHomeSummaryMetrics() async {
+    try {
+      final consecutive = await PointsService.getConsecutiveDays();
+      final weekly = await UsageLimitsService.getWeeklyStats();
+      final limits = await UsageLimitsService.getOrCreateUsageLimits();
+      final nextBreak = await UsageLimitsService.getTimeUntilNextBreak();
+      final inNight = await UsageLimitsService.isInNightBlockTime();
+
+      if (!mounted) return;
+      final app = Provider.of<AppProvider>(context, listen: false);
+      final goalHours = app.weeklyGoal.clamp(1, 200);
+      final totalMin = weekly['total_minutos'] as int? ?? 0;
+      final usedHours = totalMin / 60.0;
+      final factor = (usedHours / goalHours).clamp(0.0, 1.0);
+      final diasUso = weekly['dias_con_uso'] as int? ?? 0;
+
+      String nightLbl = '—';
+      int pauseInterval = 30;
+      if (limits != null) {
+        final s = limits['bloqueo_nocturno_inicio'] as String?;
+        final e = limits['bloqueo_nocturno_fin'] as String?;
+        nightLbl = _compactTimeRange(s, e);
+        pauseInterval = limits['intervalo_pausa_minutos'] as int? ?? 30;
+      }
+
+      setState(() {
+        _consecutiveDaysWithEmotions = consecutive;
+        _weeklyProgressFactor = factor;
+        _weeklyDaysWithUsage = diasUso;
+        _nightWindowLabel = nightLbl;
+        _pauseIntervalLabel = '$pauseInterval min';
+        _minutesToNextMandatoryPause = nextBreak;
+        _mandatoryPauseIntervalMinutes = pauseInterval;
+        _isInNightBlockWindow = inNight;
+      });
+    } catch (e) {
+      debugPrint('Error refrescando métricas del home: $e');
+    }
+  }
+
+  String _compactTimeRange(String? start, String? end) {
+    if (start == null || end == null) return '—';
+    String short(String t) {
+      final p = t.split(':');
+      if (p.length >= 2) return '${p[0]}:${p[1]}';
+      return t;
+    }
+    return '${short(start)} – ${short(end)}';
+  }
+
+  String _formatRecordHours(int hours) {
+    if (hours <= 0) return '0 h';
+    return '$hours h';
+  }
+
+  String _formatMinutesHm(int minutes) {
+    if (minutes <= 0) return '0m';
+    final h = minutes ~/ 60;
+    final m = minutes % 60;
+    if (h > 0 && m > 0) return '${h}h ${m}m';
+    if (h > 0) return '${h}h';
+    return '${m}m';
+  }
+
+  double _mandatoryBreakProgress(bool mandatoryActive) {
+    if (!mandatoryActive) return 0.05;
+    final interval = _mandatoryPauseIntervalMinutes.clamp(1, 9999);
+    final next = _minutesToNextMandatoryPause;
+    if (next == null) return 0.35;
+    return (1.0 - (next / interval)).clamp(0.0, 1.0);
+  }
+
   Widget _buildUsageSummary() {
     final localizations = AppLocalizations.of(context)!;
+    final recordHours = PreferencesService.getRecordTimeWithoutFacebook();
+    final blocked = PreferencesService.getBlockedSessionsCount();
+    final app = Provider.of<AppProvider>(context, listen: false);
+    final savedToday = (app.dailyUsageLimit - app.todayUsageMinutes).clamp(0, app.dailyUsageLimit);
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -700,7 +794,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
               Expanded(
                 child: _buildUsageCard(
                   localizations.timeWithoutFacebook,
-                  '2h 45m',
+                  _formatRecordHours(recordHours),
                   Icons.access_time,
                   AppColors.accentBlue,
                 ),
@@ -709,7 +803,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
               Expanded(
                 child: _buildUsageCard(
                   localizations.blockedSessions,
-                  '3',
+                  '$blocked',
                   Icons.block,
                   AppColors.accentPurple,
                 ),
@@ -722,7 +816,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
               Expanded(
                 child: _buildUsageCard(
                   localizations.timeSaved,
-                  '1h 20m',
+                  _formatMinutesHm(savedToday),
                   Icons.savings,
                   Colors.green,
                 ),
@@ -731,7 +825,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
               Expanded(
                 child: _buildUsageCard(
                   localizations.consecutiveDays,
-                  '5',
+                  '$_consecutiveDaysWithEmotions',
                   Icons.calendar_today,
                   Colors.orange,
                 ),
@@ -801,6 +895,52 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
 
   Widget _buildUsageLimits() {
     final localizations = AppLocalizations.of(context)!;
+    final appProvider = Provider.of<AppProvider>(context, listen: false);
+    final usedMinutes = appProvider.todayUsageMinutes;
+    final limitMinutes = appProvider.dailyUsageLimit;
+    final remainingMinutes = (limitMinutes - usedMinutes).clamp(0, limitMinutes);
+
+    String limitText;
+    if (limitMinutes >= 60) {
+      final hours = limitMinutes ~/ 60;
+      final mins = limitMinutes % 60;
+      if (mins > 0) {
+        limitText = '${hours}h ${mins}m';
+      } else {
+        limitText = '$hours ${localizations.hours}';
+      }
+    } else {
+      limitText = '$limitMinutes ${localizations.minutesShort}';
+    }
+
+    String remainingText;
+    if (remainingMinutes >= 60) {
+      final hours = remainingMinutes ~/ 60;
+      final mins = remainingMinutes % 60;
+      if (mins > 0) {
+        remainingText = '${hours}h ${mins}m';
+      } else {
+        remainingText = '${hours}h';
+      }
+    } else {
+      remainingText = '${remainingMinutes}m';
+    }
+
+    final progress = limitMinutes > 0 ? usedMinutes / limitMinutes : 0.0;
+
+    final nightStatus = !appProvider.nightBlockActive
+        ? localizations.featureOff
+        : (_isInNightBlockWindow ? localizations.active : localizations.usageStatusStandby);
+    final nightProgress = !appProvider.nightBlockActive
+        ? 0.05
+        : (_isInNightBlockWindow ? 0.95 : 0.35);
+
+    final mandatoryStatus = !appProvider.mandatoryBreaksActive
+        ? localizations.featureOff
+        : (_minutesToNextMandatoryPause != null
+            ? '${localizations.nextIn} $_minutesToNextMandatoryPause ${localizations.minutesShort}'
+            : localizations.usageStatusStandby);
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -820,73 +960,34 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
             ),
           ),
           const SizedBox(height: 16),
-          Consumer<AppProvider>(
-            builder: (context, appProvider, child) {
-              // Calcular tiempo usado y restante
-              final usedMinutes = appProvider.todayUsageMinutes;
-              final limitMinutes = appProvider.dailyUsageLimit;
-              final remainingMinutes = (limitMinutes - usedMinutes).clamp(0, limitMinutes);
-              
-              // Formatear límite
-              String limitText;
-              if (limitMinutes >= 60) {
-                final hours = limitMinutes ~/ 60;
-                final mins = limitMinutes % 60;
-                if (mins > 0) {
-                  limitText = '${hours}h ${mins}m';
-                } else {
-                  limitText = '$hours ${localizations.hours}';
-                }
-              } else {
-                limitText = '$limitMinutes ${localizations.minutesShort}';
-              }
-              
-              // Formatear tiempo restante
-              String remainingText;
-              if (remainingMinutes >= 60) {
-                final hours = remainingMinutes ~/ 60;
-                final mins = remainingMinutes % 60;
-                if (mins > 0) {
-                  remainingText = '${hours}h ${mins}m';
-                } else {
-                  remainingText = '${hours}h';
-                }
-              } else {
-                remainingText = '${remainingMinutes}m';
-              }
-              
-              final progress = limitMinutes > 0 ? usedMinutes / limitMinutes : 0.0;
-              
-              return GestureDetector(
-                onTap: () => _showTimeRemainingDialog(localizations),
-                child: _buildLimitItem(
-                  localizations.dailyLimitHome,
-                  limitText,
-                  '$remainingText ${localizations.remaining}',
-                  Icons.access_time,
-                  AppColors.accentBlue,
-                  progress.clamp(0.0, 1.0),
-                ),
-              );
-            },
+          GestureDetector(
+            onTap: () => _showTimeRemainingDialog(localizations),
+            child: _buildLimitItem(
+              localizations.dailyLimitHome,
+              limitText,
+              '$remainingText ${localizations.remaining}',
+              Icons.access_time,
+              AppColors.accentBlue,
+              progress.clamp(0.0, 1.0),
+            ),
           ),
           const SizedBox(height: 12),
           _buildLimitItem(
             localizations.nightBlock,
-            '22:00 - 07:00',
-            localizations.active,
+            appProvider.nightBlockActive ? _nightWindowLabel : '—',
+            nightStatus,
             Icons.bedtime,
             AppColors.accentPurple,
-            1.0, // 100% activo
+            nightProgress,
           ),
           const SizedBox(height: 12),
           _buildLimitItem(
             localizations.mandatoryBreaks,
-            'Cada 30 min',
-            '${localizations.nextIn} 15 min',
+            appProvider.mandatoryBreaksActive ? _pauseIntervalLabel : '—',
+            mandatoryStatus,
             Icons.pause,
             Colors.orange,
-            0.5, // 50% del tiempo transcurrido
+            _mandatoryBreakProgress(appProvider.mandatoryBreaksActive),
           ),
         ],
       ),
@@ -1067,7 +1168,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
             ),
             child: FractionallySizedBox(
               alignment: Alignment.centerLeft,
-              widthFactor: 0.75,
+              widthFactor: _weeklyProgressFactor.clamp(0.0, 1.0),
               child: Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(colors: AppColors.accentGradient),
@@ -1088,7 +1189,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                '5 ${localizations.ofWord} 7 ${localizations.daysCompleted}',
+                '$_weeklyDaysWithUsage/7 ${localizations.days}',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
@@ -1096,7 +1197,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                 ),
               ),
               Text(
-                '75%',
+                '${(_weeklyProgressFactor * 100).round()}%',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
