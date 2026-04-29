@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:nofacezone/src/Custom/AppColors.dart';
 import 'package:nofacezone/src/Custom/AppLocalizations.dart';
 import 'package:nofacezone/src/Custom/AppMessages.dart';
 import 'package:nofacezone/src/Custom/CustomSnackBar.dart';
+import 'package:nofacezone/src/Custom/ProAnimations.dart';
 import 'package:nofacezone/src/Providers/AppProvider.dart';
 import 'package:nofacezone/src/Services/RewardService.dart';
 import 'package:nofacezone/src/Services/PointsService.dart';
@@ -22,11 +24,22 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
   bool _isLoading = true;
   List<Map<String, dynamic>> _allRewards = [];
   List<Map<String, dynamic>> _userRewards = [];
+  int _lastTabIndex = 0;
+
+  void _hapticTap() => HapticFeedback.selectionClick();
+  void _hapticSuccess() => HapticFeedback.mediumImpact();
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
+    _lastTabIndex = _tabController.index;
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging && _lastTabIndex != _tabController.index) {
+        _lastTabIndex = _tabController.index;
+        _hapticTap();
+      }
+    });
     _loadData();
   }
 
@@ -108,10 +121,14 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
         leading: IconButton(
           tooltip: MaterialLocalizations.of(context).backButtonTooltip,
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () {
+            _hapticTap();
+            Navigator.of(context).pop();
+          },
         ),
         bottom: TabBar(
           controller: _tabController,
+          onTap: (_) => _hapticTap(),
           labelColor: AppColors.textLight,
           unselectedLabelColor: AppColors.textLight.withValues(alpha: 0.6),
           indicatorColor: AppColors.accentBlue,
@@ -147,17 +164,23 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
           child: Column(
             children: [
               // Barra de puntos
-              _buildPointsBar(),
+              ProEntrance(
+                delayMs: 60,
+                child: _buildPointsBar(),
+              ),
               // Contenido de las pestañas
               Expanded(
-                child: TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildThemesTab(),
-                    _buildFontsTab(),
-                    _buildMessagesTab(),
-                    _buildBadgesTab(),
-                  ],
+                child: ProEntrance(
+                  delayMs: 120,
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _buildThemesTab(),
+                      _buildFontsTab(),
+                      _buildMessagesTab(),
+                      _buildBadgesTab(),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -358,9 +381,108 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
     }
   }
 
+  Widget _buildLoadingPlaceholder({bool grid = false}) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSkeletonBlock(height: 24, widthFactor: 0.45),
+          const SizedBox(height: 10),
+          _buildSkeletonBlock(height: 14, widthFactor: 0.7),
+          const SizedBox(height: 22),
+          if (grid)
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+                childAspectRatio: 0.85,
+              ),
+              itemCount: 4,
+              itemBuilder: (context, index) => _buildSkeletonCard(height: 180, delayMs: index * 60),
+            )
+          else
+            ...List.generate(
+              5,
+              (index) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _buildSkeletonCard(height: 108, delayMs: index * 50),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSkeletonCard({required double height, int delayMs = 0}) {
+    return ProEntrance(
+      delayMs: delayMs,
+      child: TweenAnimationBuilder<double>(
+        duration: const Duration(milliseconds: 1100),
+        tween: Tween<double>(begin: 0.45, end: 0.75),
+        curve: Curves.easeInOut,
+        builder: (context, value, child) => Opacity(opacity: value, child: child),
+        child: Container(
+          height: height,
+          decoration: BoxDecoration(
+            color: AppColors.textLight.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.textLight.withValues(alpha: 0.16)),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSkeletonBlock({required double height, required double widthFactor}) {
+    return FractionallySizedBox(
+      widthFactor: widthFactor,
+      child: Container(
+        height: height,
+        decoration: BoxDecoration(
+          color: AppColors.textLight.withValues(alpha: 0.14),
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(String message, {IconData icon = Icons.hourglass_empty_rounded}) {
+    return Center(
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 340),
+        child: Container(
+          key: ValueKey<String>(message),
+          margin: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: AppColors.textLight.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.textLight.withValues(alpha: 0.2)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: AppColors.textLight.withValues(alpha: 0.85), size: 28),
+              const SizedBox(height: 10),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AppColors.textLight, fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildThemesTab() {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return _buildLoadingPlaceholder(grid: true);
     }
 
     return Builder(
@@ -388,12 +510,7 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
         }).toList();
         
         if (themes.isEmpty) {
-          return Center(
-            child: Text(
-              'No hay temas disponibles',
-              style: TextStyle(color: AppColors.textLight),
-            ),
-          );
+          return _buildEmptyState('No hay temas disponibles', icon: Icons.palette_outlined);
         }
 
         return SingleChildScrollView(
@@ -429,7 +546,10 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
                 ),
                 itemCount: themes.length,
                 itemBuilder: (context, index) {
-                  return _buildThemeCard(themes[index]);
+                  return ProEntrance(
+                    delayMs: 60 + (index * 45),
+                    child: _buildThemeCard(themes[index]),
+                  );
                 },
               ),
             ],
@@ -447,8 +567,9 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
         final currentTheme = Provider.of<AppProvider>(context).colorTheme;
         final isSelected = currentTheme == theme.id;
 
-        return GestureDetector(
+        return ProPressable(
           onTap: () async {
+            _hapticTap();
             // Verificar si está desbloqueada (actualizar verificación en tiempo real)
             final isUnlocked = _isRewardUnlocked(theme.id);
             
@@ -458,6 +579,7 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
               if (userPoints >= theme.price) {
                 final result = await RewardService.purchaseReward(theme.id);
                 if (result['success'] == true) {
+                  _hapticSuccess();
                   // Actualizar puntos inmediatamente
                   userPoints = (result['puntos_restantes'] ?? userPoints - theme.price) as int;
                   
@@ -530,7 +652,7 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
               }
             }
           },
-        child: Container(
+          child: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
@@ -673,7 +795,7 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
 
   Widget _buildFontsTab() {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return _buildLoadingPlaceholder();
     }
 
     return Builder(
@@ -698,12 +820,7 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
         }).toList();
         
         if (fonts.isEmpty) {
-          return Center(
-            child: Text(
-              'No hay fuentes disponibles',
-              style: TextStyle(color: AppColors.textLight),
-            ),
-          );
+          return _buildEmptyState('No hay fuentes disponibles', icon: Icons.text_fields_rounded);
         }
 
         return SingleChildScrollView(
@@ -728,9 +845,12 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
                 ),
               ),
               const SizedBox(height: 20),
-              ...fonts.map((font) => Padding(
+              ...fonts.asMap().entries.map((entry) => Padding(
                     padding: const EdgeInsets.only(bottom: 12),
-                    child: _buildFontCard(font),
+                    child: ProEntrance(
+                      delayMs: 60 + (entry.key * 40),
+                      child: _buildFontCard(entry.value),
+                    ),
                   )),
             ],
           ),
@@ -747,8 +867,9 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
         final currentFont = Provider.of<AppProvider>(context).fontFamily;
         final isSelected = currentFont == font.id;
 
-        return GestureDetector(
+        return ProPressable(
           onTap: () async {
+            _hapticTap();
             // Obtener el ID de la BD para verificar/comprar
             final fontReward = _allRewards.firstWhere(
               (r) => r['tipo_recompensa_id'] == 'font' && _mapFontId(r['id'] as String) == font.id,
@@ -766,6 +887,7 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
               if (userPoints >= font.price) {
                 final result = await RewardService.purchaseReward(dbFontId);
                 if (result['success'] == true) {
+                  _hapticSuccess();
                   // Actualizar puntos inmediatamente
                   userPoints = (result['puntos_restantes'] ?? userPoints - font.price) as int;
                   
@@ -822,7 +944,7 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
               }
             }
           },
-      child: Container(
+          child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: AppColors.textLight.withValues(alpha: 0.15),
@@ -941,14 +1063,14 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
           ],
         ),
       ),
-    );
+        );
       },
     );
   }
 
   Widget _buildMessagesTab() {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return _buildLoadingPlaceholder();
     }
 
     return Builder(
@@ -980,11 +1102,9 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
         }).toList();
         
         if (messages.isEmpty) {
-          return Center(
-            child: Text(
-              'No hay colecciones de mensajes disponibles',
-              style: TextStyle(color: AppColors.textLight),
-            ),
+          return _buildEmptyState(
+            'No hay colecciones de mensajes disponibles',
+            icon: Icons.mark_email_unread_outlined,
           );
         }
 
@@ -1010,9 +1130,12 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
                 ),
               ),
               const SizedBox(height: 20),
-              ...messages.map((message) => Padding(
+              ...messages.asMap().entries.map((entry) => Padding(
                     padding: const EdgeInsets.only(bottom: 16),
-                    child: _buildMessageCard(message),
+                    child: ProEntrance(
+                      delayMs: 60 + (entry.key * 35),
+                      child: _buildMessageCard(entry.value),
+                    ),
                   )),
             ],
           ),
@@ -1029,8 +1152,9 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
         final activeCollections = Provider.of<AppProvider>(context).activeMessageCollections;
         final isActive = activeCollections.contains(message.id);
 
-        return GestureDetector(
+        return ProPressable(
           onTap: () async {
+            _hapticTap();
             // Obtener el ID de la BD para verificar/comprar
             final messageReward = _allRewards.firstWhere(
               (r) => r['tipo_recompensa_id'] == 'message' && _mapMessageId(r['id'] as String) == message.id,
@@ -1049,6 +1173,7 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
               if (userPoints >= message.price) {
                 final result = await RewardService.purchaseReward(dbMessageId);
                 if (result['success'] == true) {
+                  _hapticSuccess();
                   // Actualizar puntos inmediatamente
                   userPoints = (result['puntos_restantes'] ?? userPoints - message.price) as int;
                   
@@ -1111,7 +1236,7 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
               }
             }
           },
-      child: Container(
+          child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: AppColors.textLight.withValues(alpha: 0.15),
@@ -1248,14 +1373,14 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
         ],
         ),
       ),
-    );
+        );
       },
     );
   }
 
   Widget _buildBadgesTab() {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return _buildLoadingPlaceholder();
     }
 
     return FutureBuilder<int>(
@@ -1306,18 +1431,13 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
           })),
           builder: (context, badgesSnapshot) {
             if (!badgesSnapshot.hasData) {
-              return const Center(child: CircularProgressIndicator());
+              return _buildLoadingPlaceholder();
             }
             
             final badges = badgesSnapshot.data!;
             
             if (badges.isEmpty) {
-              return Center(
-                child: Text(
-                  'No hay badges disponibles',
-                  style: TextStyle(color: AppColors.textLight),
-                ),
-              );
+              return _buildEmptyState('No hay badges disponibles', icon: Icons.workspace_premium_outlined);
             }
 
             return SingleChildScrollView(
@@ -1342,9 +1462,12 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
                     ),
                   ),
                   const SizedBox(height: 20),
-                  ...badges.map((badge) => Padding(
+                  ...badges.asMap().entries.map((entry) => Padding(
                         padding: const EdgeInsets.only(bottom: 16),
-                        child: _buildBadgeCard(badge),
+                        child: ProEntrance(
+                          delayMs: 60 + (entry.key * 35),
+                          child: _buildBadgeCard(entry.value),
+                        ),
                       )),
                 ],
               ),

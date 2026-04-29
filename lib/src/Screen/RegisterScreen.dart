@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:nofacezone/src/Custom/AppColors.dart';
 import 'package:nofacezone/src/Custom/AppLocalizations.dart';
+import 'package:nofacezone/src/Custom/ProAnimations.dart';
 import 'package:nofacezone/src/Services/UserService.dart';
 import 'package:nofacezone/src/Providers/AppProvider.dart';
 
@@ -81,6 +82,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _confirmPasswordVisible = false;
   bool _isLoading = false;
   bool _autoValidate = false; // Controla si se muestra la validación automática
+
+  void _hapticTap() => HapticFeedback.selectionClick();
+  void _hapticSuccess() => HapticFeedback.mediumImpact();
 
   // Validators
     final RegExp nameRegex = RegExp(r'^[A-Za-zÀ-ÿ]+( [A-Za-zÀ-ÿ]+)*?$', unicode: true);
@@ -316,6 +320,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
 
       if (result['success'] == true) {
+        _hapticSuccess();
         if (!mounted) return;
         
         // Mostrar diálogo de éxito mejorado
@@ -402,6 +407,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   child: FilledButton(
                     onPressed: () {
+                      _hapticTap();
                       Navigator.of(ctx).pop();
                       Navigator.of(context).pop();
                     },
@@ -588,7 +594,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
         leading: IconButton(
           tooltip: MaterialLocalizations.of(context).backButtonTooltip,
           icon: const Icon(Icons.arrow_back, color: AppColors.textLight),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () {
+            _hapticTap();
+            Navigator.of(context).pop();
+          },
         ),
         title: Text(
           localizations.register,
@@ -609,12 +618,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
         ),
         child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Form(
-            key: _formKey,
-            autovalidateMode: _autoValidate ? AutovalidateMode.always : AutovalidateMode.disabled,
-            child: Column(
+          child: ProEntrance(
+            delayMs: 80,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Form(
+              key: _formKey,
+              autovalidateMode: _autoValidate ? AutovalidateMode.always : AutovalidateMode.disabled,
+              child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
                 TextFormField(
@@ -640,6 +651,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ))
                       .toList(),
                   onChanged: (String? v) {
+                    _hapticTap();
                     setState(() {
                       _selectedAge = v;
                       _ageController.text = v ?? '';
@@ -659,7 +671,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             child: Text(e, style: const TextStyle(color: AppColors.textLight)),
                           ))
                       .toList(),
-                  onChanged: (String? v) => setState(() => _selectedGender = v),
+                  onChanged: (String? v) {
+                    _hapticTap();
+                    setState(() => _selectedGender = v);
+                  },
                   decoration: _getInputDecoration(localizations.gender),
                   validator: (value) => _validateGender(value, localizations),
                 ),
@@ -685,6 +700,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       .toList(),
                   onChanged: (String? v) async {
                     if (v != null) {
+                      _hapticTap();
                       setState(() => _selectedLanguage = v);
                       // Cambiar el idioma de la app cuando se selecciona
                       await appProvider.setLanguage(v);
@@ -708,7 +724,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             child: Text(e, style: const TextStyle(color: AppColors.textLight)),
                           ))
                       .toList(),
-                  onChanged: (String? v) => setState(() => _selectedFrequency = v),
+                  onChanged: (String? v) {
+                    _hapticTap();
+                    setState(() => _selectedFrequency = v);
+                  },
                   decoration: _getInputDecoration(localizations.facebookUsageFrequency),
                   validator: (value) => _validateFrequency(value, localizations),
                 ),
@@ -725,7 +744,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         _passwordVisible ? Icons.lock_open : Icons.lock,
                         color: AppColors.textLight.withValues(alpha: 0.7),
                       ),
-                      onPressed: () => setState(() => _passwordVisible = !_passwordVisible),
+                      onPressed: () {
+                        _hapticTap();
+                        setState(() => _passwordVisible = !_passwordVisible);
+                      },
                     ),
                   ),
                   obscureText: !_passwordVisible,
@@ -740,11 +762,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       Row(
                         children: [
                           Expanded(
-                            child: LinearProgressIndicator(
-                              value: _calculatePasswordStrength(_passwordController.text) / 5,
-                              backgroundColor: Colors.grey[300],
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                _getPasswordStrengthColor(_calculatePasswordStrength(_passwordController.text)),
+                            child: TweenAnimationBuilder<double>(
+                              duration: const Duration(milliseconds: 280),
+                              curve: Curves.easeOutCubic,
+                              tween: Tween<double>(
+                                begin: 0,
+                                end: _calculatePasswordStrength(_passwordController.text) / 5,
+                              ),
+                              builder: (context, value, _) => LinearProgressIndicator(
+                                value: value,
+                                backgroundColor: Colors.grey[300],
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  _getPasswordStrengthColor(_calculatePasswordStrength(_passwordController.text)),
+                                ),
                               ),
                             ),
                           ),
@@ -784,7 +814,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         _confirmPasswordVisible ? Icons.lock_open : Icons.lock,
                         color: AppColors.textLight.withValues(alpha: 0.7),
                       ),
-                      onPressed: () => setState(() => _confirmPasswordVisible = !_confirmPasswordVisible),
+                      onPressed: () {
+                        _hapticTap();
+                        setState(() => _confirmPasswordVisible = !_confirmPasswordVisible);
+                      },
                     ),
                   ),
                   obscureText: !_confirmPasswordVisible,
@@ -799,7 +832,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     boxShadow: AppColors.cardShadow,
                   ),
                   child: FilledButton(
-                    onPressed: _isLoading ? null : _registerUser,
+                    onPressed: _isLoading
+                        ? null
+                        : () {
+                            _hapticTap();
+                            _registerUser();
+                          },
                     style: FilledButton.styleFrom(
                       backgroundColor: Colors.transparent,
                       shadowColor: Colors.transparent,
@@ -829,6 +867,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 const SizedBox(height: 12),
                 TextButton(
                   onPressed: () {
+                    _hapticTap();
                     Navigator.of(context).pop();
                   },
                   child: Text(
@@ -839,6 +878,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ],
             ),
             ),
+          ),
           ),
         ),
       ),

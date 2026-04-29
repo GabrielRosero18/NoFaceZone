@@ -7,6 +7,7 @@ import 'package:nofacezone/src/Custom/AppColors.dart';
 import 'package:nofacezone/src/Custom/AppLocalizations.dart';
 import 'package:nofacezone/src/Custom/AppMessages.dart';
 import 'package:nofacezone/src/Custom/CustomSnackBar.dart';
+import 'package:nofacezone/src/Custom/ProAnimations.dart';
 import 'package:nofacezone/src/Providers/UserProvider.dart';
 import 'package:nofacezone/src/Providers/AppProvider.dart';
 import 'package:nofacezone/src/Services/PointsService.dart';
@@ -1008,31 +1009,31 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Header con saludo y perfil
-                    _buildHeader(),
+                    _buildStaggeredSection(index: 0, child: _buildHeader()),
                     const SizedBox(height: 24),
                     
                     // Mensaje motivacional
-                    _buildMotivationalMessage(),
+                    _buildStaggeredSection(index: 1, child: _buildMotivationalMessage()),
                     const SizedBox(height: 24),
                     
                     // Resumen de uso
-                    _buildUsageSummary(),
+                    _buildStaggeredSection(index: 2, child: _buildUsageSummary()),
                     const SizedBox(height: 24),
                     
                     // Límites de uso
-                    _buildUsageLimits(),
+                    _buildStaggeredSection(index: 3, child: _buildUsageLimits()),
                     const SizedBox(height: 24),
 
                     // Recomendaciones de actividad
-                    _buildActivityRecommendations(),
+                    _buildStaggeredSection(index: 4, child: _buildActivityRecommendations()),
                     const SizedBox(height: 24),
                     
                     // Progreso semanal
-                    _buildWeeklyProgress(),
+                    _buildStaggeredSection(index: 5, child: _buildWeeklyProgress()),
                     const SizedBox(height: 24),
                     
                     // Navegación rápida
-                    _buildQuickNavigation(),
+                    _buildStaggeredSection(index: 6, child: _buildQuickNavigation()),
                   ],
                 ),
               ),
@@ -1042,6 +1043,35 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       ),
     );
       },
+    );
+  }
+
+  Widget _buildStaggeredSection({
+    required int index,
+    required Widget child,
+  }) {
+    if (MediaQuery.disableAnimationsOf(context)) {
+      return child;
+    }
+
+    return ProScrollReveal(
+      delayMs: 40 + (index * 55),
+      child: AnimatedBuilder(
+        animation: _animationController,
+        builder: (context, _) {
+          final start = (index * 0.1).clamp(0.0, 0.75);
+          final curve = Interval(start, 1.0, curve: Curves.easeOutCubic);
+          final t = curve.transform(_animationController.value.clamp(0.0, 1.0));
+          final dy = (1 - t) * 22;
+          return Opacity(
+            opacity: t.clamp(0.0, 1.0),
+            child: Transform.translate(
+              offset: Offset(0, dy),
+              child: child,
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -1099,37 +1129,43 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                   }
                 },
                 child: ExcludeSemantics(
-                  child: Container(
-                    width: 56,
-                    height: 56,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: LinearGradient(colors: AppColors.accentGradient),
-                      boxShadow: AppColors.cardShadow,
-                    ),
-                    child: Container(
-                      margin: const EdgeInsets.all(2),
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: AppColors.darkSurface,
-                      ),
-                      child: user?.profileImage != null && user!.profileImage!.isNotEmpty
-                          ? Container(
-                              width: 52,
-                              height: 52,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                image: DecorationImage(
-                                  image: networkAvatarProvider(user.profileImage!, logicalDiameter: 52),
-                                  fit: BoxFit.cover,
+                  child: Hero(
+                    tag: 'profile_avatar_hero',
+                    child: Material(
+                      color: Colors.transparent,
+                      child: Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(colors: AppColors.accentGradient),
+                          boxShadow: AppColors.cardShadow,
+                        ),
+                        child: Container(
+                          margin: const EdgeInsets.all(2),
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: AppColors.darkSurface,
+                          ),
+                          child: user?.profileImage != null && user!.profileImage!.isNotEmpty
+                              ? Container(
+                                  width: 52,
+                                  height: 52,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    image: DecorationImage(
+                                      image: networkAvatarProvider(user.profileImage!, logicalDiameter: 52),
+                                      fit: BoxFit.cover,
+                                    ),
+                                  ),
+                                )
+                              : const Icon(
+                                  Icons.person,
+                                  color: AppColors.textLight,
+                                  size: 28,
                                 ),
-                              ),
-                            )
-                          : const Icon(
-                              Icons.person,
-                              color: AppColors.textLight,
-                              size: 28,
-                            ),
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -1294,6 +1330,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
 
   Widget _buildUsageSummary() {
     final localizations = AppLocalizations.of(context)!;
+    if (_isLoadingUsageData) {
+      return _buildUsageSectionSkeleton(titleEmoji: '📱');
+    }
     final recordHours = PreferencesService.getRecordTimeWithoutFacebook();
     final blocked = PreferencesService.getBlockedSessionsCount();
     final app = Provider.of<AppProvider>(context, listen: false);
@@ -1424,6 +1463,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
 
   Widget _buildUsageLimits() {
     final localizations = AppLocalizations.of(context)!;
+    if (_isLoadingUsageData) {
+      return _buildUsageSectionSkeleton(titleEmoji: '⏰');
+    }
     final appProvider = Provider.of<AppProvider>(context, listen: false);
     final usedMinutes = appProvider.todayUsageMinutes;
     final limitMinutes = appProvider.dailyUsageLimit;
@@ -1639,6 +1681,61 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildUsageSectionSkeleton({required String titleEmoji}) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.textLight.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.textLight.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildHomeSkeletonLine(widthFactor: 0.45, height: 20),
+          const SizedBox(height: 14),
+          Text(
+            '$titleEmoji',
+            style: TextStyle(
+              color: AppColors.textLight.withValues(alpha: 0.6),
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 12),
+          ...List.generate(
+            3,
+            (index) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: ProEntrance(
+                delayMs: 40 + (index * 45),
+                child: Container(
+                  height: 86,
+                  decoration: BoxDecoration(
+                    color: AppColors.textLight.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHomeSkeletonLine({required double widthFactor, required double height}) {
+    return FractionallySizedBox(
+      widthFactor: widthFactor,
+      child: Container(
+        height: height,
+        decoration: BoxDecoration(
+          color: AppColors.textLight.withValues(alpha: 0.16),
+          borderRadius: BorderRadius.circular(10),
+        ),
       ),
     );
   }

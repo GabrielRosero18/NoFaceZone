@@ -629,49 +629,55 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   Center(
                     child: Stack(
                       children: [
-                        Container(
-                          width: 120,
-                          height: 120,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: LinearGradient(colors: AppColors.accentGradient),
-                            boxShadow: AppColors.cardShadow,
-                          ),
-                          child: Container(
-                            margin: const EdgeInsets.all(4),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: AppColors.darkSurface,
-                            ),
-                            child: _profileImage != null
-                                ? Container(
-                                    width: 112,
-                                    height: 112,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      image: DecorationImage(
-                                        image: fileAvatarProvider(_profileImage!, logicalDiameter: 112),
-                                        fit: BoxFit.cover,
-                                      ),
-                                    ),
-                                  )
-                                : _profileImageUrl != null
+                        Hero(
+                          tag: 'profile_avatar_hero',
+                          child: Material(
+                            color: Colors.transparent,
+                            child: Container(
+                              width: 120,
+                              height: 120,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: LinearGradient(colors: AppColors.accentGradient),
+                                boxShadow: AppColors.cardShadow,
+                              ),
+                              child: Container(
+                                margin: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: AppColors.darkSurface,
+                                ),
+                                child: _profileImage != null
                                     ? Container(
                                         width: 112,
                                         height: 112,
                                         decoration: BoxDecoration(
                                           shape: BoxShape.circle,
                                           image: DecorationImage(
-                                            image: networkAvatarProvider(_profileImageUrl!, logicalDiameter: 112),
+                                            image: fileAvatarProvider(_profileImage!, logicalDiameter: 112),
                                             fit: BoxFit.cover,
                                           ),
                                         ),
                                       )
-                                    : const Icon(
-                                        Icons.person,
-                                        color: AppColors.textLight,
-                                        size: 60,
-                                      ),
+                                    : _profileImageUrl != null
+                                        ? Container(
+                                            width: 112,
+                                            height: 112,
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              image: DecorationImage(
+                                                image: networkAvatarProvider(_profileImageUrl!, logicalDiameter: 112),
+                                                fit: BoxFit.cover,
+                                              ),
+                                            ),
+                                          )
+                                        : const Icon(
+                                            Icons.person,
+                                            color: AppColors.textLight,
+                                            size: 60,
+                                          ),
+                              ),
+                            ),
                           ),
                         ),
                         Positioned(

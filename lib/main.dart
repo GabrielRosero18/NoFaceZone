@@ -19,6 +19,41 @@ Future<void> main() async {
   runApp(const MyApp());
 }
 
+class _GodPageTransitionsBuilder extends PageTransitionsBuilder {
+  const _GodPageTransitionsBuilder();
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+    final fade = CurvedAnimation(parent: animation, curve: Curves.easeInOut);
+    final slide = Tween<Offset>(
+      begin: const Offset(0, 0.05),
+      end: Offset.zero,
+    ).animate(curved);
+    final scale = Tween<double>(
+      begin: 0.985,
+      end: 1.0,
+    ).animate(curved);
+
+    return FadeTransition(
+      opacity: fade,
+      child: SlideTransition(
+        position: slide,
+        child: ScaleTransition(
+          scale: scale,
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -87,6 +122,15 @@ class MyApp extends StatelessWidget {
               useMaterial3: true,
               fontFamily: fontFamily,
               textTheme: textTheme,
+              pageTransitionsTheme: const PageTransitionsTheme(
+                builders: {
+                  TargetPlatform.android: _GodPageTransitionsBuilder(),
+                  TargetPlatform.iOS: _GodPageTransitionsBuilder(),
+                  TargetPlatform.linux: _GodPageTransitionsBuilder(),
+                  TargetPlatform.macOS: _GodPageTransitionsBuilder(),
+                  TargetPlatform.windows: _GodPageTransitionsBuilder(),
+                },
+              ),
               colorScheme: ColorScheme.fromSeed(
                 seedColor: AppColors.primaryPurple,
                 brightness: Brightness.light,
@@ -101,6 +145,15 @@ class MyApp extends StatelessWidget {
               useMaterial3: true,
               fontFamily: fontFamily,
               textTheme: textTheme,
+              pageTransitionsTheme: const PageTransitionsTheme(
+                builders: {
+                  TargetPlatform.android: _GodPageTransitionsBuilder(),
+                  TargetPlatform.iOS: _GodPageTransitionsBuilder(),
+                  TargetPlatform.linux: _GodPageTransitionsBuilder(),
+                  TargetPlatform.macOS: _GodPageTransitionsBuilder(),
+                  TargetPlatform.windows: _GodPageTransitionsBuilder(),
+                },
+              ),
               colorScheme: ColorScheme.fromSeed(
                 seedColor: AppColors.primaryPurple,
                 brightness: Brightness.dark,

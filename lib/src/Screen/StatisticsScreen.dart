@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:nofacezone/src/Custom/AppColors.dart';
 import 'package:nofacezone/src/Custom/AppLocalizations.dart';
+import 'package:nofacezone/src/Custom/ProAnimations.dart';
 import 'package:nofacezone/src/Providers/AppProvider.dart';
 import 'package:nofacezone/src/Services/PreferencesService.dart';
 import 'package:nofacezone/src/Services/UsageLimitsService.dart';
@@ -476,77 +477,58 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
             ),
             child: SafeArea(
               child: _loading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? _buildStatisticsLoadingState()
                   : _loadError != null
-                      ? Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(24),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  loc.errorGettingInfo,
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(color: AppColors.textLight),
-                                ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  _loadError!,
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: AppColors.textLight.withValues(alpha: 0.8),
-                                    fontSize: 12,
-                                  ),
-                                ),
-                                const SizedBox(height: 20),
-                                FilledButton(
-                                  onPressed: _loadStatistics,
-                                  child: Text(loc.refresh),
-                                ),
-                              ],
-                            ),
-                          ),
-                        )
+                      ? _buildStatisticsErrorState(loc)
                       : Column(
                           children: [
                             if (!_loggedIn)
-                              Padding(
-                                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                                child: Material(
-                                  color: Colors.amber.withValues(alpha: 0.2),
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(12),
-                                    child: Row(
-                                      children: [
-                                        const Icon(Icons.info_outline, color: Colors.amber),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: Text(
-                                            loc.statisticsSignInHint,
-                                            style: const TextStyle(
-                                              color: AppColors.textLight,
-                                              fontSize: 13,
+                              ProEntrance(
+                                delayMs: 40,
+                                child: Padding(
+                                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                                  child: Material(
+                                    color: Colors.amber.withValues(alpha: 0.2),
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(12),
+                                      child: Row(
+                                        children: [
+                                          const Icon(Icons.info_outline, color: Colors.amber),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: Text(
+                                              loc.statisticsSignInHint,
+                                              style: const TextStyle(
+                                                color: AppColors.textLight,
+                                                fontSize: 13,
+                                              ),
                                             ),
                                           ),
-                                        ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                              child: _buildDashboardHero(loc),
+                            ProEntrance(
+                              delayMs: 90,
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                                child: _buildDashboardHero(loc),
+                              ),
                             ),
                             Expanded(
-                              child: TabBarView(
-                                controller: _tabController,
-                                children: [
-                                  _wrapRefresh(_buildTodayTab(loc)),
-                                  _wrapRefresh(_buildWeekTab(loc)),
-                                  _wrapRefresh(_buildMonthTab(loc)),
-                                ],
+                              child: ProEntrance(
+                                delayMs: 130,
+                                child: TabBarView(
+                                  controller: _tabController,
+                                  children: [
+                                    _wrapRefresh(_buildTodayTab(loc)),
+                                    _wrapRefresh(_buildWeekTab(loc)),
+                                    _wrapRefresh(_buildMonthTab(loc)),
+                                  ],
+                                ),
                               ),
                             ),
                           ],
@@ -555,6 +537,103 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
           ),
         );
       },
+    );
+  }
+
+  Widget _buildStatisticsLoadingState() {
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _skeletonLine(widthFactor: 0.42, height: 24),
+          const SizedBox(height: 10),
+          _skeletonLine(widthFactor: 0.68, height: 13),
+          const SizedBox(height: 18),
+          _skeletonCard(height: 170, delayMs: 20),
+          const SizedBox(height: 14),
+          _skeletonCard(height: 130, delayMs: 70),
+          const SizedBox(height: 14),
+          _skeletonCard(height: 190, delayMs: 120),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatisticsErrorState(AppLocalizations loc) {
+    return Center(
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 320),
+        child: Container(
+          key: ValueKey<String>(_loadError ?? 'stats_error'),
+          margin: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: AppColors.textLight.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 28),
+              const SizedBox(height: 10),
+              Text(
+                loc.errorGettingInfo,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AppColors.textLight, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _loadError ?? '',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: AppColors.textLight.withValues(alpha: 0.8),
+                  fontSize: 12,
+                ),
+              ),
+              const SizedBox(height: 14),
+              FilledButton(
+                onPressed: _loadStatistics,
+                child: Text(loc.refresh),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _skeletonCard({required double height, int delayMs = 0}) {
+    return ProEntrance(
+      delayMs: delayMs,
+      child: TweenAnimationBuilder<double>(
+        duration: const Duration(milliseconds: 1100),
+        tween: Tween<double>(begin: 0.45, end: 0.75),
+        curve: Curves.easeInOut,
+        builder: (context, value, child) => Opacity(opacity: value, child: child),
+        child: Container(
+          height: height,
+          decoration: BoxDecoration(
+            color: AppColors.textLight.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.textLight.withValues(alpha: 0.18)),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _skeletonLine({required double widthFactor, required double height}) {
+    return FractionallySizedBox(
+      widthFactor: widthFactor,
+      child: Container(
+        height: height,
+        decoration: BoxDecoration(
+          color: AppColors.textLight.withValues(alpha: 0.14),
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
     );
   }
 
@@ -1070,41 +1149,54 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(24),
       children: [
-        _buildDailyProgressHero(
-          loc: loc,
-          usedProgress: usedProgress,
-          remainingMinutes: remaining,
+        _buildRevealSection(
+          0,
+          _buildDailyProgressHero(
+            loc: loc,
+            usedProgress: usedProgress,
+            remainingMinutes: remaining,
+          ),
         ),
         const SizedBox(height: 24),
-        _buildSummaryCard(
-          '📊 ${loc.daySummary}',
-          [
-            _buildStatItem(
-              loc.freeTimeFromFacebook,
-              _formatMinutesAsHm(loc, freeToday),
-              Icons.access_time,
-              Colors.blue,
-            ),
-            _buildStatItem(
-              loc.blockedSessions,
-              '$_blockedSessions',
-              Icons.block,
-              Colors.red,
-            ),
-            _buildStatItem(
-              loc.timeSaved,
-              _formatMinutesAsHm(loc, savedToday),
-              Icons.savings,
-              Colors.green,
-            ),
-          ],
+        _buildRevealSection(
+          1,
+          _buildSummaryCard(
+            '📊 ${loc.daySummary}',
+            [
+              _buildStatItem(
+                loc.freeTimeFromFacebook,
+                _formatMinutesAsHm(loc, freeToday),
+                Icons.access_time,
+                Colors.blue,
+              ),
+              _buildStatItem(
+                loc.blockedSessions,
+                '$_blockedSessions',
+                Icons.block,
+                Colors.red,
+              ),
+              _buildStatItem(
+                loc.timeSaved,
+                _formatMinutesAsHm(loc, savedToday),
+                Icons.savings,
+                Colors.green,
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 24),
-        _buildActivityChart(loc),
+        _buildRevealSection(2, _buildActivityChart(loc)),
         const SizedBox(height: 24),
-        _buildMetricsGrid(loc, effLabel),
+        _buildRevealSection(3, _buildMetricsGrid(loc, effLabel)),
         const SizedBox(height: 24),
       ],
+    );
+  }
+
+  Widget _buildRevealSection(int index, Widget child) {
+    return ProScrollReveal(
+      delayMs: 35 + (index * 45),
+      child: child,
     );
   }
 
@@ -1114,35 +1206,38 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(24),
       children: [
-        _buildSummaryCard(
-          '📈 ${loc.weeklySummary}',
-          [
-            _buildStatItem(
-              loc.totalFreeTime,
-              _formatMinutesAsHm(loc, _thisWeekFreeTotal),
-              Icons.calendar_today,
-              Colors.blue,
-            ),
-            _buildStatItem(
-              loc.consecutiveDays,
-              '$_consecutiveSuccessDays',
-              Icons.calendar_view_week,
-              Colors.orange,
-            ),
-            _buildStatItem(
-              loc.dailyAverage,
-              _formatMinutesAsHm(loc, _weekAvgFreeDaily),
-              Icons.trending_up,
-              Colors.green,
-            ),
-          ],
+        _buildRevealSection(
+          0,
+          _buildSummaryCard(
+            '📈 ${loc.weeklySummary}',
+            [
+              _buildStatItem(
+                loc.totalFreeTime,
+                _formatMinutesAsHm(loc, _thisWeekFreeTotal),
+                Icons.calendar_today,
+                Colors.blue,
+              ),
+              _buildStatItem(
+                loc.consecutiveDays,
+                '$_consecutiveSuccessDays',
+                Icons.calendar_view_week,
+                Colors.orange,
+              ),
+              _buildStatItem(
+                loc.dailyAverage,
+                _formatMinutesAsHm(loc, _weekAvgFreeDaily),
+                Icons.trending_up,
+                Colors.green,
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 24),
-        _buildWeeklyBarChart(loc, labels),
+        _buildRevealSection(1, _buildWeeklyBarChart(loc, labels)),
         const SizedBox(height: 24),
-        _buildWeekInsightCard(loc),
+        _buildRevealSection(2, _buildWeekInsightCard(loc)),
         const SizedBox(height: 24),
-        _buildWeeklyComparison(loc),
+        _buildRevealSection(3, _buildWeeklyComparison(loc)),
       ],
     );
   }
@@ -1152,35 +1247,38 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(24),
       children: [
-        _buildSummaryCard(
-          '🏆 ${loc.monthlySummary}',
-          [
-            _buildStatItem(
-              loc.totalFreeTime,
-              _formatMinutesAsHm(loc, _monthFreeTotal),
-              Icons.calendar_month,
-              Colors.purple,
-            ),
-            _buildStatItem(
-              loc.bestStreak,
-              '$_monthBestStreak ${loc.days}',
-              Icons.local_fire_department,
-              Colors.orange,
-            ),
-            _buildStatItem(
-              loc.successRate,
-              '${_monthSuccessPct.clamp(0, 100)}%',
-              Icons.check_circle,
-              Colors.green,
-            ),
-          ],
+        _buildRevealSection(
+          0,
+          _buildSummaryCard(
+            '🏆 ${loc.monthlySummary}',
+            [
+              _buildStatItem(
+                loc.totalFreeTime,
+                _formatMinutesAsHm(loc, _monthFreeTotal),
+                Icons.calendar_month,
+                Colors.purple,
+              ),
+              _buildStatItem(
+                loc.bestStreak,
+                '$_monthBestStreak ${loc.days}',
+                Icons.local_fire_department,
+                Colors.orange,
+              ),
+              _buildStatItem(
+                loc.successRate,
+                '${_monthSuccessPct.clamp(0, 100)}%',
+                Icons.check_circle,
+                Colors.green,
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 24),
-        _buildMonthlyChart(loc),
+        _buildRevealSection(1, _buildMonthlyChart(loc)),
         const SizedBox(height: 24),
-        _buildMonthPerformanceCard(loc),
+        _buildRevealSection(2, _buildMonthPerformanceCard(loc)),
         const SizedBox(height: 24),
-        _buildAchievementsSection(loc),
+        _buildRevealSection(3, _buildAchievementsSection(loc)),
       ],
     );
   }

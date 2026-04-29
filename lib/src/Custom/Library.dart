@@ -80,16 +80,19 @@ void navigate(BuildContext mContext, CustomScreen mScreen, {bool finishCurrent =
 Route _goScreen(Widget screen, TypeAnimation animationType) {
   return PageRouteBuilder(
     pageBuilder: (BuildContext context, Animation<double> animation, Animation<double> secondaryAnimation) => screen,
-    transitionDuration: const Duration(milliseconds: 450),
+    transitionDuration: const Duration(milliseconds: 600),
     transitionsBuilder: (context, animation, secondaryAnimation, child) {
       final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
       switch (animationType) {
         case TypeAnimation.transition:
           return FadeTransition(
-            opacity: CurvedAnimation(parent: animation, curve: Curves.easeIn),
+            opacity: CurvedAnimation(parent: animation, curve: Curves.easeInOut),
             child: SlideTransition(
               position: Tween<Offset>(begin: const Offset(0, 0.08), end: Offset.zero).animate(curved),
-              child: child,
+              child: ScaleTransition(
+                scale: Tween<double>(begin: 0.985, end: 1.0).animate(curved),
+                child: child,
+              ),
             ),
           );
       }

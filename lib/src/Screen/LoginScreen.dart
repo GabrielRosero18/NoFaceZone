@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'RegisterScreen.dart';
 import 'package:nofacezone/src/Custom/AppColors.dart';
 import 'package:nofacezone/src/Custom/AppLocalizations.dart';
 import 'package:nofacezone/src/Custom/CustomSnackBar.dart';
+import 'package:nofacezone/src/Custom/ProAnimations.dart';
 import 'package:nofacezone/src/Services/UserService.dart';
 import 'package:nofacezone/src/Custom/Library.dart';
 import 'package:nofacezone/src/Providers/UserProvider.dart';
@@ -23,6 +25,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool _passwordVisible = false;
   bool _isLoading = false;
+
+  void _hapticTap() => HapticFeedback.selectionClick();
+  void _hapticSuccess() => HapticFeedback.mediumImpact();
 
   String? _validateEmail(String? value) {
     final String v = (value ?? '').trim();
@@ -54,6 +59,7 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       if (result['success'] == true) {
+        _hapticSuccess();
         if (!mounted) return;
         
         // Actualizar el UserProvider con los datos del usuario desde Supabase
@@ -120,7 +126,10 @@ class _LoginScreenState extends State<LoginScreen> {
         content: Text(message),
         actions: <Widget>[
           TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
+            onPressed: () {
+              _hapticTap();
+              Navigator.of(ctx).pop();
+            },
             child: const Text('Aceptar'),
           ),
         ],
@@ -151,7 +160,10 @@ class _LoginScreenState extends State<LoginScreen> {
         leading: IconButton(
           tooltip: backLabel,
           icon: const Icon(Icons.arrow_back, color: AppColors.textLight),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () {
+            _hapticTap();
+            Navigator.of(context).pop();
+          },
         ),
         title: const Text(
           'Iniciar Sesión',
@@ -172,11 +184,13 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
         child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Form(
-            key: _formKey,
-            child: Column(
+          child: ProEntrance(
+            delayMs: 80,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Form(
+              key: _formKey,
+              child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
                 const SizedBox(height: 32),
@@ -252,7 +266,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         _passwordVisible ? Icons.lock_open : Icons.lock,
                         color: AppColors.textLight.withValues(alpha: 0.7),
                       ),
-                      onPressed: () => setState(() => _passwordVisible = !_passwordVisible),
+                      onPressed: () {
+                        _hapticTap();
+                        setState(() => _passwordVisible = !_passwordVisible);
+                      },
                     ),
                   ),
                   obscureText: !_passwordVisible,
@@ -265,6 +282,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   alignment: Alignment.centerRight,
                   child: TextButton(
                     onPressed: () {
+                      _hapticTap();
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text(AppLocalizations.of(context)!.passwordRecoveryNotImplemented)),
                       );
@@ -285,7 +303,12 @@ class _LoginScreenState extends State<LoginScreen> {
                     boxShadow: AppColors.cardShadow,
                   ),
                   child: FilledButton(
-                    onPressed: _isLoading ? null : _loginUser,
+                    onPressed: _isLoading
+                        ? null
+                        : () {
+                            _hapticTap();
+                            _loginUser();
+                          },
                     style: FilledButton.styleFrom(
                       backgroundColor: Colors.transparent,
                       shadowColor: Colors.transparent,
@@ -337,6 +360,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   height: 56,
                   child: OutlinedButton(
                     onPressed: () {
+                      _hapticTap();
                       Navigator.of(context).push(
                         MaterialPageRoute(builder: (context) => const RegisterScreen()),
                       );
@@ -393,6 +417,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ],
             ),
             ),
+          ),
           ),
         ),
       ),

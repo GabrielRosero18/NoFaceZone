@@ -10,6 +10,7 @@ import 'package:nofacezone/src/Custom/Config.dart';
 import 'package:nofacezone/src/Custom/AppLocalizations.dart';
 import 'package:nofacezone/src/Custom/CustomSnackBar.dart';
 import 'package:nofacezone/src/Custom/TimeLimitSlider.dart';
+import 'package:nofacezone/src/Custom/ProAnimations.dart';
 import 'package:nofacezone/src/Providers/AppProvider.dart';
 import 'package:nofacezone/src/Providers/UserProvider.dart';
 import 'package:nofacezone/src/Screen/EditProfileScreen.dart';
@@ -87,13 +88,16 @@ class _SettingsState extends State<Settings> {
               ),
             ),
             child: SafeArea(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    RepaintBoundary(child: _buildUsageLimitsSection()),
-                  ],
+              child: ProEntrance(
+                delayMs: 90,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      RepaintBoundary(child: _buildUsageLimitsSection()),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -639,12 +643,19 @@ class _SettingsState extends State<Settings> {
     bool value,
     Function(bool) onChanged,
   ) {
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.textLight.withValues(alpha: 0.15),
+        color: AppColors.textLight.withValues(alpha: value ? 0.18 : 0.15),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.textLight.withValues(alpha: 0.3), width: 1.5),
+        border: Border.all(
+          color: value
+              ? AppColors.accentBlue.withValues(alpha: 0.45)
+              : AppColors.textLight.withValues(alpha: 0.3),
+          width: 1.5,
+        ),
         boxShadow: [
           BoxShadow(
             color: AppColors.textLight.withValues(alpha: 0.1),
@@ -690,7 +701,10 @@ class _SettingsState extends State<Settings> {
           ),
           Switch(
             value: value,
-            onChanged: onChanged,
+            onChanged: (nextValue) {
+              HapticFeedback.selectionClick();
+              onChanged(nextValue);
+            },
             activeThumbColor: AppColors.accentBlue,
             activeTrackColor: AppColors.accentBlue.withValues(alpha: 0.3),
             inactiveThumbColor: AppColors.textLight.withValues(alpha: 0.5),
@@ -708,7 +722,7 @@ class _SettingsState extends State<Settings> {
     String? value,
     VoidCallback? onTap,
   ) {
-    return GestureDetector(
+    return ProPressable(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(16),
