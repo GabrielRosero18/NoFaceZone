@@ -25,6 +25,12 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
   List<Map<String, dynamic>> _allRewards = [];
   List<Map<String, dynamic>> _userRewards = [];
   int _lastTabIndex = 0;
+  final Map<String, _RewardsFilter> _tabFilters = {
+    'theme': _RewardsFilter.all,
+    'font': _RewardsFilter.all,
+    'message': _RewardsFilter.all,
+    'badge': _RewardsFilter.all,
+  };
 
   void _hapticTap() => HapticFeedback.selectionClick();
   void _hapticSuccess() => HapticFeedback.mediumImpact();
@@ -96,6 +102,21 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
       setState(() {
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _refreshUserRewardsAndPoints() async {
+    try {
+      final pointsData = await RewardService.getUserPoints();
+      if (pointsData != null) {
+        userPoints = pointsData['puntos_actuales'] ?? 0;
+      }
+      _userRewards = await RewardService.getUserRewards();
+      if (mounted) {
+        setState(() {});
+      }
+    } catch (e) {
+      debugPrint('Error al refrescar puntos/recompensas: $e');
     }
   }
 
@@ -193,15 +214,34 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
   }
 
   Widget _buildPointsBar() {
+    final pointsToNextTier = 1000 - (userPoints % 1000);
+    final progress = (userPoints % 1000) / 1000;
     return Container(
       margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: AppColors.textLight.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.textLight.withValues(alpha: 0.3), width: 1.5),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.textLight.withValues(alpha: 0.2),
+            AppColors.textLight.withValues(alpha: 0.1),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.textLight.withValues(alpha: 0.28), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.accentBlue.withValues(alpha: 0.18),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
           children: [
           Container(
             padding: const EdgeInsets.all(10),
@@ -252,6 +292,32 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
                   },
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+          const SizedBox(height: 12),
+          Builder(
+            builder: (context) {
+              final localizations = AppLocalizations.of(context)!;
+              return Text(
+                'Te faltan $pointsToNextTier ${localizations.pointsText} para el siguiente nivel',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textLight.withValues(alpha: 0.85),
+                  fontWeight: FontWeight.w600,
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: LinearProgressIndicator(
+              minHeight: 8,
+              value: progress,
+              backgroundColor: AppColors.textLight.withValues(alpha: 0.16),
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.accentBlue),
             ),
           ),
         ],
@@ -391,6 +457,48 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
     }
   }
 
+  String _normalizeRewardType(dynamic rawType) {
+    final value = (rawType ?? '').toString().trim().toLowerCase();
+    switch (value) {
+      case 'theme':
+      case 'themes':
+      case 'tema':
+      case 'temas':
+        return 'theme';
+      case 'font':
+      case 'fonts':
+      case 'fuente':
+      case 'fuentes':
+        return 'font';
+      case 'message':
+      case 'messages':
+      case 'mensaje':
+      case 'mensajes':
+        return 'message';
+      case 'badge':
+      case 'badges':
+      case 'insignia':
+      case 'insignias':
+        return 'badge';
+      default:
+        return value;
+    }
+  }
+
+  String _getRewardType(Map<String, dynamic> reward) {
+    final directType = _normalizeRewardType(reward['tipo_recompensa_id']);
+    if (directType.isNotEmpty) return directType;
+    final nestedType = _normalizeRewardType((reward['tipos_recompensas'] as Map?)?['name']);
+    if (nestedType.isNotEmpty) return nestedType;
+
+    final rewardId = (reward['id'] ?? '').toString().toLowerCase();
+    if (rewardId.startsWith('theme_')) return 'theme';
+    if (rewardId.startsWith('font_')) return 'font';
+    if (rewardId.startsWith('message_')) return 'message';
+    if (rewardId.startsWith('badge_')) return 'badge';
+    return '';
+  }
+
   Widget _buildLoadingPlaceholder({bool grid = false}) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -500,7 +608,7 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
         final localizations = AppLocalizations.of(context)!;
         
         // Filtrar solo temas
-        final themeRewards = _allRewards.where((r) => r['tipo_recompensa_id'] == 'theme').toList();
+        final themeRewards = _allRewards.where((r) => _getRewardType(r) == 'theme').toList();
         
         final themes = themeRewards.map((reward) {
           final rewardId = reward['id'] as String;
@@ -519,7 +627,23 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
           );
         }).toList();
         
-        if (themes.isEmpty) {
+        final filteredThemes = themes.where((theme) {
+          final filter = _tabFilters['theme'] ?? _RewardsFilter.all;
+          switch (filter) {
+            case _RewardsFilter.unlocked:
+              return theme.unlocked;
+            case _RewardsFilter.affordable:
+              return !theme.unlocked && userPoints >= theme.price;
+            case _RewardsFilter.active:
+              return currentThemeId(context) == theme.id.replaceFirst('theme_', '');
+            case _RewardsFilter.all:
+              return true;
+          }
+        }).toList();
+
+        final visibleThemes = filteredThemes.isEmpty && themes.isNotEmpty ? themes : filteredThemes;
+
+        if (visibleThemes.isEmpty) {
           return _buildEmptyState('No hay temas disponibles', icon: Icons.palette_outlined);
         }
 
@@ -545,6 +669,16 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
                 ),
               ),
               const SizedBox(height: 20),
+              _buildFilterChips(
+                tabKey: 'theme',
+                available: const {
+                  _RewardsFilter.all,
+                  _RewardsFilter.unlocked,
+                  _RewardsFilter.affordable,
+                  _RewardsFilter.active,
+                },
+              ),
+              const SizedBox(height: 14),
               GridView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
@@ -554,11 +688,11 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
                   mainAxisSpacing: 12,
                   childAspectRatio: 0.85,
                 ),
-                itemCount: themes.length,
+                itemCount: visibleThemes.length,
                 itemBuilder: (context, index) {
                   return ProEntrance(
                     delayMs: 60 + (index * 45),
-                    child: _buildThemeCard(themes[index]),
+                    child: _buildThemeCard(visibleThemes[index]),
                   );
                 },
               ),
@@ -580,21 +714,37 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
         return ProPressable(
           onTap: () async {
             _hapticTap();
+            await RewardService.trackRewardEvent(
+              eventType: 'theme_click',
+              rewardId: theme.id,
+            );
             // Verificar si está desbloqueada (actualizar verificación en tiempo real)
             final isUnlocked = _isRewardUnlocked(theme.id);
             
             // Si no está desbloqueada, intentar comprarla
             if (!isUnlocked && !theme.unlocked) {
+              if (!context.mounted) return;
               // Si tiene puntos suficientes, comprarla
+              final shouldBuy = await _confirmPurchase(
+                context: context,
+                rewardName: theme.name,
+                price: theme.price,
+              );
+              if (!shouldBuy) return;
+
               if (userPoints >= theme.price) {
                 final result = await RewardService.purchaseReward(theme.id);
                 if (result['success'] == true) {
+                  await RewardService.trackRewardEvent(
+                    eventType: 'purchase_success',
+                    rewardId: theme.id,
+                    metadata: {'type': 'theme', 'price': theme.price},
+                  );
                   _hapticSuccess();
                   // Actualizar puntos inmediatamente
                   userPoints = (result['puntos_restantes'] ?? userPoints - theme.price) as int;
                   
-                  // Recargar datos para actualizar el estado de recompensas
-                  await _loadData();
+                  await _refreshUserRewardsAndPoints();
                   
                   // Mapear el ID de la base de datos (theme_ocean) al ID de AppColors (ocean)
                   final themeId = theme.id.startsWith('theme_') 
@@ -650,6 +800,10 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
               
               debugPrint('🎨 Aplicando tema: ${theme.id} -> $themeId');
               await appProvider.setColorTheme(themeId);
+              await RewardService.trackRewardEvent(
+                eventType: 'theme_apply',
+                rewardId: theme.id,
+              );
               
               if (context.mounted) {
                 CustomSnackBar.showTheme(
@@ -813,7 +967,7 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
         final localizations = AppLocalizations.of(context)!;
         
         // Filtrar solo fuentes
-        final fontRewards = _allRewards.where((r) => r['tipo_recompensa_id'] == 'font').toList();
+        final fontRewards = _allRewards.where((r) => _getRewardType(r) == 'font').toList();
         
         final fonts = fontRewards.map((reward) {
           final rewardId = reward['id'] as String;
@@ -829,7 +983,23 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
           );
         }).toList();
         
-        if (fonts.isEmpty) {
+        final filteredFonts = fonts.where((font) {
+          final filter = _tabFilters['font'] ?? _RewardsFilter.all;
+          switch (filter) {
+            case _RewardsFilter.unlocked:
+              return font.unlocked;
+            case _RewardsFilter.affordable:
+              return !font.unlocked && userPoints >= font.price;
+            case _RewardsFilter.active:
+              return Provider.of<AppProvider>(context, listen: false).fontFamily == font.id;
+            case _RewardsFilter.all:
+              return true;
+          }
+        }).toList();
+
+        final visibleFonts = filteredFonts.isEmpty && fonts.isNotEmpty ? fonts : filteredFonts;
+
+        if (visibleFonts.isEmpty) {
           return _buildEmptyState('No hay fuentes disponibles', icon: Icons.text_fields_rounded);
         }
 
@@ -855,7 +1025,17 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
                 ),
               ),
               const SizedBox(height: 20),
-              ...fonts.asMap().entries.map((entry) => Padding(
+              _buildFilterChips(
+                tabKey: 'font',
+                available: const {
+                  _RewardsFilter.all,
+                  _RewardsFilter.unlocked,
+                  _RewardsFilter.affordable,
+                  _RewardsFilter.active,
+                },
+              ),
+              const SizedBox(height: 14),
+              ...visibleFonts.asMap().entries.map((entry) => Padding(
                     padding: const EdgeInsets.only(bottom: 12),
                     child: ProEntrance(
                       delayMs: 60 + (entry.key * 40),
@@ -880,9 +1060,13 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
         return ProPressable(
           onTap: () async {
             _hapticTap();
+            await RewardService.trackRewardEvent(
+              eventType: 'font_click',
+              rewardId: font.id,
+            );
             // Obtener el ID de la BD para verificar/comprar
             final fontReward = _allRewards.firstWhere(
-              (r) => r['tipo_recompensa_id'] == 'font' && _mapFontId(r['id'] as String) == font.id,
+              (r) => _getRewardType(r) == 'font' && _mapFontId(r['id'] as String) == font.id,
               orElse: () => <String, dynamic>{},
             );
             
@@ -893,16 +1077,27 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
             
             // Si no está desbloqueada, intentar comprarla
             if (!isUnlocked && !font.unlocked) {
+              if (!context.mounted) return;
               // Si tiene puntos suficientes, comprarla
+              final shouldBuy = await _confirmPurchase(
+                context: context,
+                rewardName: font.name,
+                price: font.price,
+              );
+              if (!shouldBuy) return;
               if (userPoints >= font.price) {
                 final result = await RewardService.purchaseReward(dbFontId);
                 if (result['success'] == true) {
+                  await RewardService.trackRewardEvent(
+                    eventType: 'purchase_success',
+                    rewardId: dbFontId,
+                    metadata: {'type': 'font', 'price': font.price},
+                  );
                   _hapticSuccess();
                   // Actualizar puntos inmediatamente
                   userPoints = (result['puntos_restantes'] ?? userPoints - font.price) as int;
                   
-                  // Recargar datos para actualizar el estado
-                  await _loadData();
+                  await _refreshUserRewardsAndPoints();
                   
                   // Aplicar la fuente inmediatamente después de comprarla
                   await appProvider.setFontFamily(font.id);
@@ -944,6 +1139,10 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
             // Si está desbloqueada, aplicarla directamente
             if (isUnlocked || font.unlocked) {
               await appProvider.setFontFamily(font.id);
+              await RewardService.trackRewardEvent(
+                eventType: 'font_apply',
+                rewardId: dbFontId,
+              );
               if (context.mounted) {
                 CustomSnackBar.showSuccess(
                   context,
@@ -1088,7 +1287,7 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
         final localizations = AppLocalizations.of(context)!;
         
         // Filtrar solo mensajes
-        final messageRewards = _allRewards.where((r) => r['tipo_recompensa_id'] == 'message').toList();
+        final messageRewards = _allRewards.where((r) => _getRewardType(r) == 'message').toList();
         
         final messages = messageRewards.map((reward) {
           final rewardId = reward['id'] as String;
@@ -1111,7 +1310,25 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
           );
         }).toList();
         
-        if (messages.isEmpty) {
+        final filteredMessages = messages.where((message) {
+          final filter = _tabFilters['message'] ?? _RewardsFilter.all;
+          switch (filter) {
+            case _RewardsFilter.unlocked:
+              return message.unlocked;
+            case _RewardsFilter.affordable:
+              return !message.unlocked && userPoints >= message.price;
+            case _RewardsFilter.active:
+              return Provider.of<AppProvider>(context, listen: false)
+                  .activeMessageCollections
+                  .contains(message.id);
+            case _RewardsFilter.all:
+              return true;
+          }
+        }).toList();
+
+        final visibleMessages = filteredMessages.isEmpty && messages.isNotEmpty ? messages : filteredMessages;
+
+        if (visibleMessages.isEmpty) {
           return _buildEmptyState(
             'No hay colecciones de mensajes disponibles',
             icon: Icons.mark_email_unread_outlined,
@@ -1140,7 +1357,17 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
                 ),
               ),
               const SizedBox(height: 20),
-              ...messages.asMap().entries.map((entry) => Padding(
+              _buildFilterChips(
+                tabKey: 'message',
+                available: const {
+                  _RewardsFilter.all,
+                  _RewardsFilter.unlocked,
+                  _RewardsFilter.affordable,
+                  _RewardsFilter.active,
+                },
+              ),
+              const SizedBox(height: 14),
+              ...visibleMessages.asMap().entries.map((entry) => Padding(
                     padding: const EdgeInsets.only(bottom: 16),
                     child: ProEntrance(
                       delayMs: 60 + (entry.key * 35),
@@ -1165,9 +1392,13 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
         return ProPressable(
           onTap: () async {
             _hapticTap();
+            await RewardService.trackRewardEvent(
+              eventType: 'message_click',
+              rewardId: message.id,
+            );
             // Obtener el ID de la BD para verificar/comprar
             final messageReward = _allRewards.firstWhere(
-              (r) => r['tipo_recompensa_id'] == 'message' && _mapMessageId(r['id'] as String) == message.id,
+              (r) => _getRewardType(r) == 'message' && _mapMessageId(r['id'] as String) == message.id,
               orElse: () => <String, dynamic>{},
             );
             
@@ -1179,16 +1410,27 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
             
             // Si no está desbloqueada, intentar comprarla
             if (!isUnlocked && !message.unlocked) {
+              if (!context.mounted) return;
               // Si tiene puntos suficientes, comprarla
+              final shouldBuy = await _confirmPurchase(
+                context: context,
+                rewardName: message.title,
+                price: message.price,
+              );
+              if (!shouldBuy) return;
               if (userPoints >= message.price) {
                 final result = await RewardService.purchaseReward(dbMessageId);
                 if (result['success'] == true) {
+                  await RewardService.trackRewardEvent(
+                    eventType: 'purchase_success',
+                    rewardId: dbMessageId,
+                    metadata: {'type': 'message', 'price': message.price},
+                  );
                   _hapticSuccess();
                   // Actualizar puntos inmediatamente
                   userPoints = (result['puntos_restantes'] ?? userPoints - message.price) as int;
                   
-                  // Recargar datos para actualizar el estado
-                  await _loadData();
+                  await _refreshUserRewardsAndPoints();
                   
                   // Activar la colección después de comprarla
                   await appProvider.addMessageCollection(message.id);
@@ -1229,6 +1471,10 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
             // Si está desbloqueada, activar/desactivar
             if (isUnlocked || message.unlocked) {
               await appProvider.toggleMessageCollection(message.id);
+              await RewardService.trackRewardEvent(
+                eventType: isActive ? 'message_deactivate' : 'message_activate',
+                rewardId: dbMessageId,
+              );
               if (context.mounted) {
                 if (isActive) {
                   CustomSnackBar.showWarning(
@@ -1400,7 +1646,7 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
         final localizations = AppLocalizations.of(context)!;
         
         // Filtrar solo badges
-        final badgeRewards = _allRewards.where((r) => r['tipo_recompensa_id'] == 'badge').toList();
+        final badgeRewards = _allRewards.where((r) => _getRewardType(r) == 'badge').toList();
         
         return FutureBuilder<List<_RewardBadge>>(
           future: Future.wait(badgeRewards.map((reward) async {
@@ -1445,8 +1691,23 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
             }
             
             final badges = badgesSnapshot.data!;
+            final filter = _tabFilters['badge'] ?? _RewardsFilter.all;
+            final filteredBadges = badges.where((badge) {
+              switch (filter) {
+                case _RewardsFilter.unlocked:
+                  return badge.unlocked;
+                case _RewardsFilter.affordable:
+                  return false;
+                case _RewardsFilter.active:
+                  return badge.progress >= 0.6 && !badge.unlocked;
+                case _RewardsFilter.all:
+                  return true;
+              }
+            }).toList();
             
-            if (badges.isEmpty) {
+            final visibleBadges = filteredBadges.isEmpty && badges.isNotEmpty ? badges : filteredBadges;
+
+            if (visibleBadges.isEmpty) {
               return _buildEmptyState('No hay badges disponibles', icon: Icons.workspace_premium_outlined);
             }
 
@@ -1472,7 +1733,16 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
                     ),
                   ),
                   const SizedBox(height: 20),
-                  ...badges.asMap().entries.map((entry) => Padding(
+                  _buildFilterChips(
+                    tabKey: 'badge',
+                    available: const {
+                      _RewardsFilter.all,
+                      _RewardsFilter.unlocked,
+                      _RewardsFilter.active,
+                    },
+                  ),
+                  const SizedBox(height: 14),
+                  ...visibleBadges.asMap().entries.map((entry) => Padding(
                         padding: const EdgeInsets.only(bottom: 16),
                         child: ProEntrance(
                           delayMs: 60 + (entry.key * 35),
@@ -1594,6 +1864,76 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
       ),
     );
   }
+
+  String currentThemeId(BuildContext context) =>
+      Provider.of<AppProvider>(context, listen: false).colorTheme;
+
+  Future<bool> _confirmPurchase({
+    required BuildContext context,
+    required String rewardName,
+    required int price,
+  }) async {
+    return await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Confirmar compra'),
+            content: Text('Comprar "$rewardName" por $price puntos?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Cancelar'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('Comprar'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+  }
+
+  Widget _buildFilterChips({
+    required String tabKey,
+    required Set<_RewardsFilter> available,
+  }) {
+    final selected = _tabFilters[tabKey] ?? _RewardsFilter.all;
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: available.map((filter) {
+        final isSelected = selected == filter;
+        return ChoiceChip(
+          label: Text(_filterLabel(filter)),
+          selected: isSelected,
+          onSelected: (_) {
+            _hapticTap();
+            setState(() => _tabFilters[tabKey] = filter);
+          },
+          labelStyle: TextStyle(
+            color: isSelected ? AppColors.primaryBlue : AppColors.textLight,
+            fontWeight: FontWeight.w700,
+          ),
+          selectedColor: AppColors.textLight,
+          backgroundColor: AppColors.textLight.withValues(alpha: 0.12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        );
+      }).toList(),
+    );
+  }
+
+  String _filterLabel(_RewardsFilter filter) {
+    switch (filter) {
+      case _RewardsFilter.unlocked:
+        return 'Desbloqueadas';
+      case _RewardsFilter.affordable:
+        return 'Comprables';
+      case _RewardsFilter.active:
+        return 'Activas';
+      case _RewardsFilter.all:
+        return 'Todo';
+    }
+  }
 }
 
 // Modelos de datos
@@ -1670,3 +2010,5 @@ class _RewardBadge {
     required this.progress,
   });
 }
+
+enum _RewardsFilter { all, unlocked, affordable, active }

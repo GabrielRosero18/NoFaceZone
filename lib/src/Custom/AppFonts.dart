@@ -7,6 +7,10 @@ class AppFonts {
     'modern': 'Poppins', // Moderna y minimalista
     'friendly': 'Comfortaa', // Amigable y redondeada
     'bold': 'Montserrat', // Audaz y llamativa
+    'inter': 'Inter', // Limpia para UI
+    'nunito': 'Nunito', // Suave y amigable
+    'manrope': 'Manrope', // Moderna y legible
+    'space': 'Space Grotesk', // Tecnológica y distintiva
   };
 
   // Fuente actual (se actualiza dinámicamente)

@@ -1,6 +1,7 @@
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:nofacezone/src/Services/PreferencesService.dart';
+import 'package:nofacezone/src/Services/RewardService.dart';
 import 'package:nofacezone/src/Services/UsageLimitsService.dart';
 import 'package:nofacezone/src/Custom/AppColors.dart';
 import 'package:nofacezone/src/Custom/AppFonts.dart';
@@ -232,6 +233,11 @@ class AppProvider extends ChangeNotifier {
       await PreferencesService.setColorTheme(themeId);
       _colorTheme = themeId;
       AppColors.setTheme(themeId);
+      await RewardService.saveRewardLoadout(
+        activeThemeId: _colorTheme,
+        activeFontId: _fontFamily,
+        activeMessageCollections: _activeMessageCollections,
+      );
       notifyListeners();
     } catch (e) {
       debugPrint('Error setting color theme: $e');
@@ -243,6 +249,11 @@ class AppProvider extends ChangeNotifier {
     try {
       await PreferencesService.setFontFamily(fontId);
       _fontFamily = fontId;
+      await RewardService.saveRewardLoadout(
+        activeThemeId: _colorTheme,
+        activeFontId: _fontFamily,
+        activeMessageCollections: _activeMessageCollections,
+      );
       notifyListeners();
     } catch (e) {
       debugPrint('Error setting font family: $e');
@@ -255,6 +266,11 @@ class AppProvider extends ChangeNotifier {
       await PreferencesService.setActiveMessageCollections(collectionIds);
       _activeMessageCollections = collectionIds;
       AppMessages.setActiveCollections(collectionIds);
+      await RewardService.saveRewardLoadout(
+        activeThemeId: _colorTheme,
+        activeFontId: _fontFamily,
+        activeMessageCollections: _activeMessageCollections,
+      );
       notifyListeners();
     } catch (e) {
       debugPrint('Error setting active message collections: $e');

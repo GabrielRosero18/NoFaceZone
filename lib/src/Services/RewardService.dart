@@ -2,6 +2,47 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:nofacezone/src/Services/UserService.dart';
 
+class RewardCatalogItem {
+  final String id;
+  final String type;
+  final String name;
+  final String description;
+  final int price;
+  final bool isDefault;
+  final bool isActive;
+  final int displayOrder;
+  final String? iconName;
+  final Map<String, dynamic>? metadata;
+
+  const RewardCatalogItem({
+    required this.id,
+    required this.type,
+    required this.name,
+    required this.description,
+    required this.price,
+    required this.isDefault,
+    required this.isActive,
+    required this.displayOrder,
+    this.iconName,
+    this.metadata,
+  });
+
+  factory RewardCatalogItem.fromMap(Map<String, dynamic> map) {
+    return RewardCatalogItem(
+      id: map['id'] as String? ?? '',
+      type: map['tipo_recompensa_id'] as String? ?? '',
+      name: (map['name_es'] ?? map['name'] ?? '') as String,
+      description: (map['description_es'] ?? map['description'] ?? '') as String,
+      price: map['price'] as int? ?? 0,
+      isDefault: map['is_default'] == true,
+      isActive: map['is_active'] != false,
+      displayOrder: map['display_order'] as int? ?? 0,
+      iconName: map['icon_name'] as String?,
+      metadata: map['metadata'] as Map<String, dynamic>?,
+    );
+  }
+}
+
 /// Servicio para manejar operaciones de recompensas con Supabase
 class RewardService {
   static final SupabaseClient _supabase = Supabase.instance.client;
@@ -9,17 +50,32 @@ class RewardService {
   /// Obtener todas las recompensas disponibles
   static Future<List<Map<String, dynamic>>> getAllRewards() async {
     try {
-      final response = await _supabase
-          .from('recompensas')
-          .select('*, tipos_recompensas(name)')
-          .eq('is_active', true)
-          .order('display_order');
-
-      return List<Map<String, dynamic>>.from(response);
+      try {
+        final response = await _supabase
+            .from('recompensas')
+            .select('*, tipos_recompensas(name)')
+            .eq('is_active', true)
+            .order('display_order');
+        return List<Map<String, dynamic>>.from(response);
+      } catch (_) {
+        // Fallback para esquemas donde el join o columna anidada difiere.
+        final fallback = await _supabase
+            .from('recompensas')
+            .select()
+            .eq('is_active', true)
+            .order('display_order');
+        return List<Map<String, dynamic>>.from(fallback);
+      }
     } catch (e) {
       debugPrint('Error al obtener recompensas: $e');
       return [];
     }
+  }
+
+  /// Obtener catálogo tipado (mejor para UI compleja)
+  static Future<List<RewardCatalogItem>> getCatalogItems() async {
+    final rows = await getAllRewards();
+    return rows.map(RewardCatalogItem.fromMap).toList();
   }
 
   /// Obtener recompensas de un usuario específico
@@ -113,6 +169,63 @@ class RewardService {
         'success': false,
         'error': 'Error al comprar la recompensa: $e',
       };
+    }
+  }
+
+  /// Registrar evento de interacción en rewards (analytics)
+  static Future<void> trackRewardEvent({
+    required String eventType,
+    String? rewardId,
+    Map<String, dynamic>? metadata,
+  }) async {
+    try {
+      final authUser = _supabase.auth.currentUser;
+      if (authUser == null) return;
+      await _supabase.from('reward_events').insert({
+        'usuario_id': authUser.id,
+        'recompensa_id': rewardId,
+        'event_type': eventType,
+        'metadata': metadata ?? <String, dynamic>{},
+      });
+    } catch (e) {
+      debugPrint('No se pudo registrar reward event: $e');
+    }
+  }
+
+  /// Obtener configuración activa de personalización del usuario
+  static Future<Map<String, dynamic>?> getRewardLoadout() async {
+    try {
+      final authUser = _supabase.auth.currentUser;
+      if (authUser == null) return null;
+      final row = await _supabase
+          .from('reward_loadout')
+          .select()
+          .eq('usuario_id', authUser.id)
+          .maybeSingle();
+      return row == null ? null : Map<String, dynamic>.from(row);
+    } catch (e) {
+      debugPrint('Error al obtener reward_loadout: $e');
+      return null;
+    }
+  }
+
+  /// Upsert de loadout activo (tema/fuente/colecciones)
+  static Future<void> saveRewardLoadout({
+    String? activeThemeId,
+    String? activeFontId,
+    List<String>? activeMessageCollections,
+  }) async {
+    try {
+      final authUser = _supabase.auth.currentUser;
+      if (authUser == null) return;
+      await _supabase.from('reward_loadout').upsert({
+        'usuario_id': authUser.id,
+        'active_theme_id': activeThemeId,
+        'active_font_id': activeFontId,
+        'active_message_collections': activeMessageCollections ?? <String>[],
+      }, onConflict: 'usuario_id');
+    } catch (e) {
+      debugPrint('Error al guardar reward_loadout: $e');
     }
   }
 

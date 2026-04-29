@@ -90,6 +90,18 @@ class MyApp extends StatelessWidget {
                 case 'Montserrat':
                   textTheme = GoogleFonts.montserratTextTheme();
                   break;
+                case 'Inter':
+                  textTheme = GoogleFonts.interTextTheme();
+                  break;
+                case 'Nunito':
+                  textTheme = GoogleFonts.nunitoTextTheme();
+                  break;
+                case 'Manrope':
+                  textTheme = GoogleFonts.manropeTextTheme();
+                  break;
+                case 'Space Grotesk':
+                  textTheme = GoogleFonts.spaceGroteskTextTheme();
+                  break;
                 default:
                   textTheme = null;
               }

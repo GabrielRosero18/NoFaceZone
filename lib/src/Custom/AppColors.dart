@@ -119,6 +119,51 @@ class AppColors {
       primaryColor: Color(0xFF5A6F99),
       accentColor: Color(0xFF6E82B0),
     ),
+    'aurora': const ColorTheme(
+      id: 'aurora',
+      name: 'Aurora',
+      backgroundGradient: [
+        Color(0xFF111E2A),
+        Color(0xFF173445),
+        Color(0xFF1E4A61),
+      ],
+      accentGradient: [
+        Color(0xFF45E0C5),
+        Color(0xFF7DFFE3),
+      ],
+      primaryColor: Color(0xFF2EA18D),
+      accentColor: Color(0xFF45E0C5),
+    ),
+    'neon': const ColorTheme(
+      id: 'neon',
+      name: 'Neon Pulse',
+      backgroundGradient: [
+        Color(0xFF1A102B),
+        Color(0xFF241743),
+        Color(0xFF2F1F5B),
+      ],
+      accentGradient: [
+        Color(0xFFFF5FDB),
+        Color(0xFF8E74FF),
+      ],
+      primaryColor: Color(0xFFB65FFF),
+      accentColor: Color(0xFFFF5FDB),
+    ),
+    'ember': const ColorTheme(
+      id: 'ember',
+      name: 'Ember Glow',
+      backgroundGradient: [
+        Color(0xFF231711),
+        Color(0xFF3A2218),
+        Color(0xFF4D2E1F),
+      ],
+      accentGradient: [
+        Color(0xFFFF9259),
+        Color(0xFFFFC16E),
+      ],
+      primaryColor: Color(0xFFD46A3F),
+      accentColor: Color(0xFFFF9259),
+    ),
   };
 
   /// Obtener el tema actual
