@@ -4,8 +4,11 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:nofacezone/src/Custom/AppColors.dart';
+import 'package:nofacezone/src/Custom/AuthTheme.dart';
+import 'package:nofacezone/src/Custom/AuthWidgets.dart';
 import 'package:nofacezone/src/Custom/AppLocalizations.dart';
 import 'package:nofacezone/src/Custom/CustomSnackBar.dart';
+import 'package:nofacezone/src/Custom/ProAnimations.dart';
 import 'package:nofacezone/src/Providers/UserProvider.dart';
 import 'package:nofacezone/src/Providers/AppProvider.dart';
 import 'package:nofacezone/src/Services/UserService.dart';
@@ -357,24 +360,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
-  InputDecoration _getInputDecoration(String labelText, {Widget? suffixIcon}) {
-    return InputDecoration(
-      labelText: labelText,
-      labelStyle: TextStyle(color: AppColors.textLight.withValues(alpha: 0.7)),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: AppColors.textLight.withValues(alpha: 0.3)),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: AppColors.textLight.withValues(alpha: 0.3)),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: AppColors.accentBlue, width: 2),
-      ),
-      filled: true,
-      fillColor: AppColors.textLight.withValues(alpha: 0.1),
+  InputDecoration _getInputDecoration(
+    String labelText, {
+    Widget? suffixIcon,
+    IconData icon = Icons.edit_outlined,
+  }) {
+    return AuthTheme.inputDecoration(
+      label: labelText,
+      icon: icon,
       suffixIcon: suffixIcon,
     );
   }
@@ -597,34 +590,61 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(localizations.editProfileTitle),
+        title: Text(
+          localizations.editProfileTitle,
+          style: const TextStyle(color: AppColors.textLight, fontWeight: FontWeight.w700),
+        ),
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
           tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back, color: AppColors.textLight),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
+      extendBodyBehindAppBar: true,
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: AppColors.backgroundGradient,
-          ),
-        ),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Form(
-              key: _formKey,
-              autovalidateMode: _autoValidate ? AutovalidateMode.always : AutovalidateMode.disabled,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
+        decoration: AuthTheme.backgroundDecoration(),
+        child: Stack(
+          children: [
+            ...AuthTheme.buildBackgroundOrbs(),
+            SafeArea(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(24, 18, 24, 24),
+                child: Form(
+                  key: _formKey,
+                  autovalidateMode: _autoValidate ? AutovalidateMode.always : AutovalidateMode.disabled,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const ProEntrance(
+                        delayMs: 40,
+                        child: AuthHeaderChip(
+                          icon: Icons.edit_note_rounded,
+                          text: 'Personaliza tu perfil',
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      ProEntrance(
+                        delayMs: 90,
+                        child: Text(
+                          localizations.editProfileTitle,
+                          style: const TextStyle(
+                            fontSize: 30,
+                            fontWeight: FontWeight.w900,
+                            color: AppColors.textLight,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      ProEntrance(
+                        delayMs: 140,
+                        child: AuthGlassCard(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
                   // Foto de perfil
                   Center(
                     child: Stack(
@@ -702,13 +722,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 28),
                   
                   // Nombre
-                  TextFormField(
+                  AuthInputField(
                     controller: _nameController,
-                    style: const TextStyle(color: AppColors.textLight),
-                    decoration: _getInputDecoration(localizations.fullName),
+                    label: localizations.fullName,
+                    icon: Icons.person_outline_rounded,
                     textInputAction: TextInputAction.next,
                     validator: (value) => _validateName(value, localizations),
                     inputFormatters: [NameCapitalizationFormatter()],
@@ -716,10 +736,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   const SizedBox(height: 16),
                   
                   // Edad
-                  DropdownButtonFormField<String>(
-                    initialValue: _selectedAge,
-                    dropdownColor: AppColors.darkSurface,
-                    style: const TextStyle(color: AppColors.textLight),
+                  AuthSelectField<String>(
+                    value: _selectedAge,
+                    label: localizations.ageOver18,
+                    icon: Icons.cake_outlined,
                     items: ageRanges
                         .map((String e) => DropdownMenuItem<String>(
                               value: e,
@@ -735,7 +755,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         _ageController.text = v ?? '';
                       });
                     },
-                    decoration: _getInputDecoration(localizations.ageOver18),
                     validator: (String? v) => _validateAge(v ?? '', localizations),
                   ),
                   const SizedBox(height: 16),
@@ -764,16 +783,19 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   TextFormField(
                     controller: _emailController,
                     style: TextStyle(color: AppColors.textLight.withValues(alpha: 0.6)),
-                    decoration: _getInputDecoration(localizations.emailCannotChange),
+                    decoration: _getInputDecoration(
+                      localizations.emailCannotChange,
+                      icon: Icons.lock_outline_rounded,
+                    ),
                     enabled: false,
                   ),
                   const SizedBox(height: 16),
                   
                   // Idioma
-                  DropdownButtonFormField<String>(
-                    initialValue: _selectedLanguage ?? (appProvider.language == 'es' ? 'es' : 'en'),
-                    dropdownColor: AppColors.darkSurface,
-                    style: const TextStyle(color: AppColors.textLight),
+                  AuthSelectField<String>(
+                    value: _selectedLanguage ?? (appProvider.language == 'es' ? 'es' : 'en'),
+                    label: localizations.language,
+                    icon: Icons.language_rounded,
                     items: languageCodes
                         .map((String code) => DropdownMenuItem<String>(
                               value: code,
@@ -821,7 +843,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         });
                       }
                     },
-                    decoration: _getInputDecoration(localizations.language),
                     validator: (String? v) => v == null || v.isEmpty ? localizations.selectLanguageField : null,
                   ),
                   const SizedBox(height: 16),
@@ -847,45 +868,21 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   const SizedBox(height: 32),
                   
                   // Botón guardar
-                  Container(
-                    height: 56,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(colors: AppColors.accentGradient),
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: AppColors.cardShadow,
-                    ),
-                    child: FilledButton(
-                      onPressed: _isLoading ? null : _saveProfile,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: Colors.transparent,
-                        shadowColor: Colors.transparent,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: _isLoading
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(AppColors.textLight),
-                              ),
-                            )
-                          : Text(
-                              localizations.saveChanges,
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textLight,
-                              ),
-                            ),
-                    ),
+                  AuthPrimaryButton(
+                    text: localizations.saveChanges,
+                    isLoading: _isLoading,
+                    onPressed: _saveProfile,
                   ),
                 ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
-          ),
+          ],
         ),
       ),
     );
