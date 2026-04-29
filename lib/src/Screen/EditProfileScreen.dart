@@ -560,24 +560,28 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _lastLanguage = currentLanguage;
     
     // Obtener traducciones dinámicamente según el idioma actual
-    final List<String> genders = <String>[
-      localizations.male,
-      localizations.female,
-      localizations.nonBinary,
-      localizations.preferNotSay
-    ];
+    // NOTE: Campo de género oculto temporalmente en esta versión.
+    // Mantener esta lista comentada para una futura reintegración.
+    // final List<String> genders = <String>[
+    //   localizations.male,
+    //   localizations.female,
+    //   localizations.nonBinary,
+    //   localizations.preferNotSay
+    // ];
     // Usar códigos de idioma para el valor del dropdown, pero mostrar las traducciones
     final Map<String, String> languageMap = {
       'es': localizations.spanish,
       'en': localizations.english,
     };
     final List<String> languageCodes = ['es', 'en'];
-    final List<String> frequencies = <String>[
-      localizations.veryFrequent,
-      localizations.frequent,
-      localizations.moderate,
-      localizations.lowFrequency
-    ];
+    // NOTE: Campo de frecuencia de uso oculto temporalmente en esta versión.
+    // Mantener esta lista comentada para una futura reintegración.
+    // final List<String> frequencies = <String>[
+    //   localizations.veryFrequent,
+    //   localizations.frequent,
+    //   localizations.moderate,
+    //   localizations.lowFrequency
+    // ];
     
     // Rangos de edad para mayores de 18 años (autocontrol)
     final List<String> ageRanges = <String>[
@@ -730,24 +734,25 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ),
                   const SizedBox(height: 16),
                   
-                  // Género
-                  DropdownButtonFormField<String>(
-                    initialValue: _selectedGender != null && genders.contains(_selectedGender) 
-                        ? _selectedGender 
-                        : null,
-                    dropdownColor: AppColors.darkSurface,
-                    style: const TextStyle(color: AppColors.textLight),
-                    items: genders
-                        .map((String e) => DropdownMenuItem<String>(
-                              value: e,
-                              child: Text(e, style: const TextStyle(color: AppColors.textLight)),
-                            ))
-                        .toList(),
-                    onChanged: (String? v) => setState(() => _selectedGender = v),
-                    decoration: _getInputDecoration(localizations.gender),
-                    validator: (String? v) => v == null || v.isEmpty ? localizations.selectGender : null,
-                  ),
-                  const SizedBox(height: 16),
+                  // NOTE: Campo de género oculto temporalmente por esencialización de software.
+                  // Si se requiere en una versión posterior, descomentar este bloque.
+                  // DropdownButtonFormField<String>(
+                  //   initialValue: _selectedGender != null && genders.contains(_selectedGender)
+                  //       ? _selectedGender
+                  //       : null,
+                  //   dropdownColor: AppColors.darkSurface,
+                  //   style: const TextStyle(color: AppColors.textLight),
+                  //   items: genders
+                  //       .map((String e) => DropdownMenuItem<String>(
+                  //             value: e,
+                  //             child: Text(e, style: const TextStyle(color: AppColors.textLight)),
+                  //           ))
+                  //       .toList(),
+                  //   onChanged: (String? v) => setState(() => _selectedGender = v),
+                  //   decoration: _getInputDecoration(localizations.gender),
+                  //   validator: (String? v) => v == null || v.isEmpty ? localizations.selectGender : null,
+                  // ),
+                  // const SizedBox(height: 16),
                   
                   // Email (solo lectura)
                   TextFormField(
@@ -815,23 +820,24 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ),
                   const SizedBox(height: 16),
                   
-                  // Frecuencia de uso
-                  DropdownButtonFormField<String>(
-                    initialValue: _selectedFrequency != null && frequencies.contains(_selectedFrequency) 
-                        ? _selectedFrequency 
-                        : null,
-                    dropdownColor: AppColors.darkSurface,
-                    style: const TextStyle(color: AppColors.textLight),
-                    items: frequencies
-                        .map((String e) => DropdownMenuItem<String>(
-                              value: e,
-                              child: Text(e, style: const TextStyle(color: AppColors.textLight)),
-                            ))
-                        .toList(),
-                    onChanged: (String? v) => setState(() => _selectedFrequency = v),
-                    decoration: _getInputDecoration(localizations.facebookUsageFrequency),
-                    validator: (String? v) => v == null || v.isEmpty ? localizations.selectFrequency : null,
-                  ),
+                  // NOTE: Campo de frecuencia de uso oculto temporalmente por esencialización de software.
+                  // Si se requiere en una versión posterior, descomentar este bloque.
+                  // DropdownButtonFormField<String>(
+                  //   initialValue: _selectedFrequency != null && frequencies.contains(_selectedFrequency)
+                  //       ? _selectedFrequency
+                  //       : null,
+                  //   dropdownColor: AppColors.darkSurface,
+                  //   style: const TextStyle(color: AppColors.textLight),
+                  //   items: frequencies
+                  //       .map((String e) => DropdownMenuItem<String>(
+                  //             value: e,
+                  //             child: Text(e, style: const TextStyle(color: AppColors.textLight)),
+                  //           ))
+                  //       .toList(),
+                  //   onChanged: (String? v) => setState(() => _selectedFrequency = v),
+                  //   decoration: _getInputDecoration(localizations.facebookUsageFrequency),
+                  //   validator: (String? v) => v == null || v.isEmpty ? localizations.selectFrequency : null,
+                  // ),
                   const SizedBox(height: 32),
                   
                   // Botón guardar

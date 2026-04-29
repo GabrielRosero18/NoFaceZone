@@ -12,8 +12,11 @@ import 'package:nofacezone/src/Services/PointsService.dart';
 import 'package:nofacezone/src/Services/UsageLimitsService.dart';
 import 'package:nofacezone/src/Services/PreferencesService.dart';
 import 'package:nofacezone/src/Screen/UsageLimitBlockedScreen.dart';
+import 'package:nofacezone/src/Screen/EditProfileScreen.dart';
 import 'package:nofacezone/src/Custom/Library.dart';
 import 'package:nofacezone/src/Custom/AppImageProviders.dart';
+
+enum _BlockReason { dailyLimit, nightBlock, mandatoryBreak }
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -30,9 +33,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
   int _remainingMinutes = 0;
   int _dailyLimitMinutes = 60;
   int? _currentSessionId;
+  DateTime? _localSessionStartAt;
   bool _isBlockedScreenShown = false;
   bool _isLoadingUsageData = false;
-  DateTime? _blockDismissedTime; // Tiempo cuando se quitó el bloqueo
+  DateTime? _blockDismissedTime; // Ventana de gracia temporal para bloqueo diario
+  DateTime? _dailyBlockDismissedUntil; // "Quitar bloqueo por hoy" (hasta fin del día)
+  DateTime? _nightBlockDismissedTime;
+  DateTime? _mandatoryBreakDismissedTime;
   /// Última carga completa de uso (para espaciar llamadas a red desde el timer periódico).
   DateTime? _lastUsageDataFetchAt;
 
@@ -90,7 +97,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         _loadUsageData().then((_) {
           // Verificar límite después de cargar datos iniciales
           if (mounted && _remainingMinutes <= 0) {
-            _showBlockedScreen();
+            _showBlockedScreen(_BlockReason.dailyLimit);
           }
         });
       }
@@ -150,6 +157,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       final sessionId = await UsageLimitsService.startUsageSession();
       if (sessionId != null) {
         _currentSessionId = sessionId;
+        _localSessionStartAt = DateTime.now();
         
         if (!mounted) return;
         // Actualizar AppProvider
@@ -173,6 +181,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         await appProvider.finishUsageSession();
         
         _currentSessionId = null;
+        _localSessionStartAt = null;
       }
     } catch (e) {
       debugPrint('Error ending app session: $e');
@@ -212,7 +221,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       final used = todayUsage['tiempo_usado_minutos'] as int? ?? 0;
       
       // Calcular tiempo restante considerando sesiones activas
-      final remaining = await UsageLimitsService.getRemainingTimeToday();
+      final remainingFromService = await UsageLimitsService.getRemainingTimeToday();
+
+      // Fallback local: sumar minutos de sesión activa en vivo para evitar
+      // depender totalmente de la sincronización de Supabase.
+      int localActiveMinutes = 0;
+      if (_localSessionStartAt != null) {
+        final elapsed = DateTime.now().difference(_localSessionStartAt!).inMinutes;
+        localActiveMinutes = elapsed.clamp(0, 24 * 60);
+      }
+      final localRemaining = (limit - (used + localActiveMinutes)).clamp(0, limit);
+      final remaining = remainingFromService < localRemaining
+          ? remainingFromService
+          : localRemaining;
       
       if (mounted) {
         // Solo loggear si hay cambios significativos para mejorar rendimiento
@@ -221,6 +242,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
           debugPrint('📊 Datos de uso actualizados:');
           debugPrint('   Límite: $limit minutos');
           debugPrint('   Usado: $used minutos');
+          debugPrint('   Sesión local activa: $localActiveMinutes minutos');
+          debugPrint('   Restante (servicio): $remainingFromService minutos');
+          debugPrint('   Restante (local): $localRemaining minutos');
           debugPrint('   Restante: $remaining minutos');
         }
         
@@ -241,12 +265,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         }
         if (!mounted) return;
         
-        // Verificar si se alcanzó el límite y mostrar pantalla de bloqueo
-        // No mostrar si se quitó el bloqueo recientemente (últimos 1 minuto)
-        final minutosDesdeBloqueoQuitado = _blockDismissedTime != null 
-            ? DateTime.now().difference(_blockDismissedTime!).inMinutes 
-            : 999;
-        final canShowBlock = _blockDismissedTime == null || minutosDesdeBloqueoQuitado >= 1;
+        // Verificar si se alcanzó el límite y mostrar pantalla de bloqueo.
+        // Respeta "quitar bloqueo por hoy" y una gracia corta después de sumar tiempo.
+        final now = DateTime.now();
+        final isDailySnoozedForToday = _dailyBlockDismissedUntil != null &&
+            now.isBefore(_dailyBlockDismissedUntil!);
+        final isInDailyGraceWindow = _blockDismissedTime != null &&
+            now.difference(_blockDismissedTime!).inMinutes < 3;
+        final canShowBlock = !isDailySnoozedForToday && !isInDailyGraceWindow;
         
         // Solo loggear si hay cambios significativos
         if (remaining <= 0 || (remaining != _remainingMinutes && _remainingMinutes > 0)) {
@@ -259,7 +285,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         // Verificar si el tiempo se acabó
         if (remaining <= 0 && !_isBlockedScreenShown && canShowBlock) {
           debugPrint('🚨 Tiempo agotado. Mostrando pantalla de bloqueo');
-          _showBlockedScreen();
+          _showBlockedScreen(_BlockReason.dailyLimit);
         } else if (remaining > 0 && _isBlockedScreenShown) {
           // Si hay tiempo restante y la pantalla está mostrada, cerrarla
           debugPrint('✅ Hay tiempo restante ($remaining min), cerrando bloqueo');
@@ -268,6 +294,33 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
           if (Navigator.of(context).canPop()) {
             Navigator.of(context).pop();
           }
+        }
+
+        // Bloqueo automático por horario nocturno (con cooldown de 5 min al quitar)
+        final isInNightBlock = await UsageLimitsService.isInNightBlockTime();
+        final canShowNightBlock = _nightBlockDismissedTime == null ||
+            DateTime.now().difference(_nightBlockDismissedTime!).inMinutes >= 5;
+
+        if (isInNightBlock && !_isBlockedScreenShown && remaining > 0 && canShowNightBlock) {
+          debugPrint('🌙 Bloqueo nocturno activo. Mostrando pantalla de bloqueo.');
+          _showBlockedScreen(_BlockReason.nightBlock);
+        }
+
+        // Bloqueo automático por pausas obligatorias (cuando llegue a 0 min al próximo descanso)
+        final minutesToBreak = await UsageLimitsService.getTimeUntilNextBreak();
+        final shouldShowBreakBlock = appProvider.mandatoryBreaksActive &&
+            minutesToBreak != null &&
+            minutesToBreak <= 0;
+        final canShowBreakBlock = _mandatoryBreakDismissedTime == null ||
+            DateTime.now().difference(_mandatoryBreakDismissedTime!).inMinutes >= 5;
+
+        if (shouldShowBreakBlock &&
+            !_isBlockedScreenShown &&
+            remaining > 0 &&
+            !isInNightBlock &&
+            canShowBreakBlock) {
+          debugPrint('⏸️ Pausa obligatoria alcanzada. Mostrando pantalla de bloqueo.');
+          _showBlockedScreen(_BlockReason.mandatoryBreak);
         }
 
         await _refreshHomeSummaryMetrics();
@@ -282,11 +335,23 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
   }
 
   /// Mostrar pantalla de bloqueo cuando se alcanza el límite
-  void _showBlockedScreen() {
+  void _showBlockedScreen(_BlockReason reason) {
     if (!mounted || _isBlockedScreenShown) return;
     
     _isBlockedScreenShown = true;
     PreferencesService.incrementBlockedSessionsCount();
+
+    final isDailyLimit = reason == _BlockReason.dailyLimit;
+    final title = switch (reason) {
+      _BlockReason.dailyLimit => '⏰ Límite Alcanzado',
+      _BlockReason.nightBlock => '🌙 Bloqueo Nocturno',
+      _BlockReason.mandatoryBreak => '⏸️ Pausa Obligatoria',
+    };
+    final message = switch (reason) {
+      _BlockReason.dailyLimit => '¡Has alcanzado tu límite diario de uso! 🌟',
+      _BlockReason.nightBlock => 'Estás dentro del horario de descanso nocturno configurado. Es momento de desconectarte.',
+      _BlockReason.mandatoryBreak => 'Llegó la pausa obligatoria. Toma un descanso breve para cuidar tu bienestar.',
+    };
     
     // Mostrar como overlay/modal
     showDialog(
@@ -296,82 +361,28 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       builder: (context) => PopScope(
         canPop: false, // Prevenir cierre con botón atrás
         child: UsageLimitBlockedScreen(
+          title: title,
+          message: message,
+          showAddTimeButton: isDailyLimit,
+          showDismissButton: true,
           onTimeAdded: () async {
-            // Cuando se agrega tiempo, marcar que el bloqueo fue quitado
+            if (!isDailyLimit) return;
+            // Al sumar tiempo, dar una ventana de gracia para evitar reaparición inmediata
+            // mientras se sincronizan los datos.
             _isBlockedScreenShown = false;
-            
-            // IMPORTANTE: NO marcar el tiempo de bloqueo quitado inmediatamente
-            // En su lugar, permitir que el bloqueo se muestre de nuevo después de 1 minuto
-            // si el tiempo realmente se acaba. Esto permite que el contador se actualice
-            // y muestre el tiempo agregado, y cuando se acabe, se bloquee de nuevo
-            _blockDismissedTime = DateTime.now().subtract(const Duration(minutes: 1));
-            debugPrint('✅ Bloqueo quitado. Se puede mostrar de nuevo después de 1 minuto si el tiempo se acaba');
-            
-            // Esperar un momento para que la BD se actualice completamente
-            await Future.delayed(const Duration(milliseconds: 1500));
-            
-            // Recargar datos usando el método normal (que ahora incluye sesiones activas)
+            _blockDismissedTime = DateTime.now();
+            _dailyBlockDismissedUntil = null;
+
+            await Future.delayed(const Duration(milliseconds: 1200));
             await _loadUsageData();
-            
-            // Verificar el límite actualizado (no solo el tiempo restante)
-            final todayUsage = await UsageLimitsService.getOrCreateTodayUsage();
-            int nuevoLimite = 0;
-            int tiempoUsado = 0;
-            if (todayUsage != null) {
-              nuevoLimite = todayUsage['limite_del_dia_minutos'] as int? ?? 0;
-              tiempoUsado = todayUsage['tiempo_usado_minutos'] as int? ?? 0;
-              debugPrint('📊 Después de agregar tiempo:');
-              debugPrint('   Límite del día: $nuevoLimite minutos');
-              debugPrint('   Tiempo usado (BD): $tiempoUsado minutos');
-              
-              // Actualizar el límite diario en el estado local
-              if (mounted) {
-                setState(() {
-                  _dailyLimitMinutes = nuevoLimite;
-                });
-              }
-            }
-            
-            // Verificar que el tiempo se actualizó correctamente (múltiples intentos)
-            int remaining = 0;
-            for (int i = 0; i < 3; i++) {
-              remaining = await UsageLimitsService.getRemainingTimeToday();
-              debugPrint('🔄 Callback onTimeAdded - Verificación ${i + 1}:');
-              debugPrint('   Tiempo restante: $remaining minutos');
-              
-              if (remaining > 0) {
-                break;
-              } else if (i < 2) {
-                await Future.delayed(const Duration(milliseconds: 1000));
-              }
-            }
-            
-            // Si el tiempo restante es 0 pero el límite aumentó, 
-            // significa que el tiempo usado ya excedía el límite anterior
-            // En este caso, el bloqueo se puede mostrar de nuevo después de 1 minuto
-            // para que el usuario vea que el tiempo se agotó
-            if (remaining <= 0 && nuevoLimite > 0) {
-              debugPrint('⚠️ Tiempo restante es 0, pero el límite aumentó a $nuevoLimite minutos');
-              debugPrint('   El tiempo usado ($tiempoUsado min) excede el límite');
-              debugPrint('   El bloqueo se puede mostrar de nuevo después de 1 minuto');
-              
-              // Permitir que el bloqueo se muestre de nuevo después de 1 minuto
-              // Esto permite que el usuario vea el cambio y cuando el tiempo se acabe, se bloquee
-              _blockDismissedTime = DateTime.now().subtract(const Duration(minutes: 1));
-            } else if (remaining > 0) {
-              // Si hay tiempo restante, marcar el tiempo para no mostrar el bloqueo por más tiempo
-              _blockDismissedTime = DateTime.now();
-              debugPrint('✅ Hay tiempo restante ($remaining min), bloqueo no se mostrará por 5 minutos');
-            }
-            
-            // Actualizar el estado local
+
+            final remaining = await UsageLimitsService.getRemainingTimeToday();
             if (mounted) {
               setState(() {
                 _remainingMinutes = remaining;
               });
             }
-            
-            // Recargar datos de nuevo después de un momento para asegurar sincronización
+
             Future.delayed(const Duration(seconds: 2), () {
               if (mounted) {
                 _loadUsageData();
@@ -379,11 +390,25 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
             });
           },
           onBlockRemoved: () {
-            // Cuando se quita el bloqueo, marcar el tiempo para no mostrar de nuevo por 5 minutos
             _isBlockedScreenShown = false;
-            _blockDismissedTime = DateTime.now();
-            debugPrint('🚫 Bloqueo quitado. No se mostrará de nuevo por 5 minutos');
-            // No recargar datos inmediatamente para evitar que se muestre de nuevo
+            switch (reason) {
+              case _BlockReason.dailyLimit:
+                // "Quitar bloqueo por hoy": no volver a mostrar hasta fin del día.
+                final now = DateTime.now();
+                _dailyBlockDismissedUntil =
+                    DateTime(now.year, now.month, now.day, 23, 59, 59);
+                _blockDismissedTime = now;
+                debugPrint('🚫 Bloqueo diario quitado por hoy.');
+                break;
+              case _BlockReason.nightBlock:
+                _nightBlockDismissedTime = DateTime.now();
+                debugPrint('🚫 Bloqueo nocturno quitado manualmente por el usuario.');
+                break;
+              case _BlockReason.mandatoryBreak:
+                _mandatoryBreakDismissedTime = DateTime.now();
+                debugPrint('🚫 Pausa obligatoria omitida manualmente por el usuario.');
+                break;
+            }
           },
         ),
       ),
@@ -570,39 +595,52 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                 ],
               ),
             ),
-            // Avatar (foto decorativa junto al nombre: se oculta a semántica duplicada).
-            ExcludeSemantics(
-              child: Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(colors: AppColors.accentGradient),
-                  boxShadow: AppColors.cardShadow,
-                ),
-                child: Container(
-                  margin: const EdgeInsets.all(2),
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppColors.darkSurface,
-                  ),
-                  child: user?.profileImage != null && user!.profileImage!.isNotEmpty
-                      ? Container(
-                          width: 52,
-                          height: 52,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            image: DecorationImage(
-                              image: networkAvatarProvider(user.profileImage!, logicalDiameter: 52),
-                              fit: BoxFit.cover,
+            Semantics(
+              button: true,
+              label: localizations.editProfile,
+              child: GestureDetector(
+                onTap: () async {
+                  await Navigator.of(context).push(
+                    MaterialPageRoute(builder: (context) => const EditProfileScreen()),
+                  );
+                  if (mounted) {
+                    setState(() {});
+                  }
+                },
+                child: ExcludeSemantics(
+                  child: Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(colors: AppColors.accentGradient),
+                      boxShadow: AppColors.cardShadow,
+                    ),
+                    child: Container(
+                      margin: const EdgeInsets.all(2),
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.darkSurface,
+                      ),
+                      child: user?.profileImage != null && user!.profileImage!.isNotEmpty
+                          ? Container(
+                              width: 52,
+                              height: 52,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                image: DecorationImage(
+                                  image: networkAvatarProvider(user.profileImage!, logicalDiameter: 52),
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                            )
+                          : const Icon(
+                              Icons.person,
+                              color: AppColors.textLight,
+                              size: 28,
                             ),
-                          ),
-                        )
-                      : const Icon(
-                          Icons.person,
-                          color: AppColors.textLight,
-                          size: 28,
-                        ),
+                    ),
+                  ),
                 ),
               ),
             ),

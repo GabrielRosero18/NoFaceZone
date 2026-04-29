@@ -1,3 +1,5 @@
+// ignore_for_file: unused_element
+
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -13,6 +15,7 @@ import 'package:nofacezone/src/Providers/UserProvider.dart';
 import 'package:nofacezone/src/Screen/EditProfileScreen.dart';
 import 'package:nofacezone/src/Screen/ReportsScreen.dart';
 import 'package:nofacezone/src/Services/PreferencesService.dart';
+import 'package:nofacezone/src/Services/UsageLimitsService.dart';
 import 'package:nofacezone/src/Custom/AppImageProviders.dart';
 
 class Settings extends StatefulWidget {
@@ -23,6 +26,36 @@ class Settings extends StatefulWidget {
 }
 
 class _SettingsState extends State<Settings> {
+  bool _nightBlockActive = false;
+  bool _mandatoryBreaksActive = false;
+  String _nightBlockStart = '22:00:00';
+  String _nightBlockEnd = '07:00:00';
+  int _breakIntervalMinutes = 30;
+  int _breakDurationMinutes = 5;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBlockSettings();
+  }
+
+  Future<void> _loadBlockSettings() async {
+    try {
+      final limits = await UsageLimitsService.getOrCreateUsageLimits();
+      if (!mounted || limits == null) return;
+      setState(() {
+        _nightBlockActive = limits['bloqueo_nocturno_activo'] as bool? ?? false;
+        _mandatoryBreaksActive = limits['pausas_obligatorias_activas'] as bool? ?? false;
+        _nightBlockStart = limits['bloqueo_nocturno_inicio'] as String? ?? '22:00:00';
+        _nightBlockEnd = limits['bloqueo_nocturno_fin'] as String? ?? '07:00:00';
+        _breakIntervalMinutes = limits['intervalo_pausa_minutos'] as int? ?? 30;
+        _breakDurationMinutes = limits['duracion_pausa_minutos'] as int? ?? 5;
+      });
+    } catch (_) {
+      // Ignorar y mantener valores por defecto.
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Selector<AppProvider, String>(
@@ -59,17 +92,7 @@ class _SettingsState extends State<Settings> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    RepaintBoundary(child: _buildProfileSection()),
-                    const SizedBox(height: 32),
-                    RepaintBoundary(child: _buildNotificationsSection()),
-                    const SizedBox(height: 24),
                     RepaintBoundary(child: _buildUsageLimitsSection()),
-                    const SizedBox(height: 24),
-                    RepaintBoundary(child: _buildAppearanceSection()),
-                    const SizedBox(height: 24),
-                    RepaintBoundary(child: _buildAdvancedSection()),
-                    const SizedBox(height: 24),
-                    RepaintBoundary(child: _buildAboutSection()),
                   ],
                 ),
               ),
@@ -263,16 +286,202 @@ class _SettingsState extends State<Settings> {
               () => _showDailyLimitDialog(appProvider),
             ),
             const SizedBox(height: 12),
+            _buildSettingItem(
+              localizations.nightBlock,
+              'Activar horario de bloqueo nocturno',
+              Icons.bedtime,
+              _nightBlockActive,
+              (value) => _toggleNightBlock(value),
+            ),
+            const SizedBox(height: 12),
             _buildSettingItemWithValue(
-              localizations.weeklyGoalTitle,
-              localizations.weeklyGoalDescription,
-              Icons.track_changes,
-              formatWeeklyGoal(appProvider.weeklyGoal),
-              () => _showWeeklyGoalDialog(appProvider),
+              'Horario de bloqueo nocturno',
+              'Define la hora de inicio y fin del bloqueo',
+              Icons.schedule,
+              '${_formatShortTime(_nightBlockStart)} - ${_formatShortTime(_nightBlockEnd)}',
+              _showNightBlockTimeDialog,
+            ),
+            const SizedBox(height: 12),
+            _buildSettingItem(
+              localizations.mandatoryBreaks,
+              'Activar pausas obligatorias durante el uso',
+              Icons.pause_circle,
+              _mandatoryBreaksActive,
+              (value) => _toggleMandatoryBreaks(value),
+            ),
+            const SizedBox(height: 12),
+            _buildSettingItemWithValue(
+              'Configuración de pausas',
+              'Intervalo y duración de cada pausa',
+              Icons.timer,
+              'Cada $_breakIntervalMinutes min · $_breakDurationMinutes min',
+              _showMandatoryBreaksDialog,
             ),
           ],
         );
       },
+    );
+  }
+
+  String _formatShortTime(String timeValue) {
+    final parts = timeValue.split(':');
+    if (parts.length < 2) return timeValue;
+    return '${parts[0]}:${parts[1]}';
+  }
+
+  Future<void> _toggleNightBlock(bool active) async {
+    final success = await UsageLimitsService.updateNightBlock(
+      active: active,
+      startTime: _nightBlockStart,
+      endTime: _nightBlockEnd,
+    );
+    if (!mounted) return;
+    if (success) {
+      await UsageLimitsService.resetTodayUsageCounter();
+      setState(() => _nightBlockActive = active);
+      await Provider.of<AppProvider>(context, listen: false).refreshUsageLimits();
+    }
+  }
+
+  Future<void> _toggleMandatoryBreaks(bool active) async {
+    final success = await UsageLimitsService.updateMandatoryBreaks(
+      active: active,
+      intervalMinutes: _breakIntervalMinutes,
+      durationMinutes: _breakDurationMinutes,
+    );
+    if (!mounted) return;
+    if (success) {
+      await UsageLimitsService.resetTodayUsageCounter();
+      setState(() => _mandatoryBreaksActive = active);
+      await Provider.of<AppProvider>(context, listen: false).refreshUsageLimits();
+    }
+  }
+
+  Future<void> _showNightBlockTimeDialog() async {
+    final startParts = _nightBlockStart.split(':');
+    final endParts = _nightBlockEnd.split(':');
+    final currentStart = TimeOfDay(
+      hour: int.tryParse(startParts[0]) ?? 22,
+      minute: int.tryParse(startParts[1]) ?? 0,
+    );
+    final currentEnd = TimeOfDay(
+      hour: int.tryParse(endParts[0]) ?? 7,
+      minute: int.tryParse(endParts[1]) ?? 0,
+    );
+
+    final start = await showTimePicker(
+      context: context,
+      initialTime: currentStart,
+      helpText: 'Hora de inicio',
+    );
+    if (start == null || !mounted) return;
+
+    final end = await showTimePicker(
+      context: context,
+      initialTime: currentEnd,
+      helpText: 'Hora de fin',
+    );
+    if (end == null || !mounted) return;
+
+    final newStart = '${start.hour.toString().padLeft(2, '0')}:${start.minute.toString().padLeft(2, '0')}:00';
+    final newEnd = '${end.hour.toString().padLeft(2, '0')}:${end.minute.toString().padLeft(2, '0')}:00';
+
+    final success = await UsageLimitsService.updateNightBlock(
+      active: _nightBlockActive,
+      startTime: newStart,
+      endTime: newEnd,
+    );
+    if (!mounted || !success) return;
+
+    await UsageLimitsService.resetTodayUsageCounter();
+    setState(() {
+      _nightBlockStart = newStart;
+      _nightBlockEnd = newEnd;
+    });
+    await Provider.of<AppProvider>(context, listen: false).refreshUsageLimits();
+  }
+
+  Future<void> _showMandatoryBreaksDialog() async {
+    int selectedInterval = _breakIntervalMinutes;
+    int selectedDuration = _breakDurationMinutes;
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setStateDialog) => AlertDialog(
+          backgroundColor: const Color(0xFF1A1F3A),
+          title: const Text(
+            'Pausas obligatorias',
+            style: TextStyle(color: AppColors.textLight),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<int>(
+                initialValue: selectedInterval,
+                decoration: _getInputDecorationLite('Intervalo (minutos)'),
+                dropdownColor: const Color(0xFF1A1F3A),
+                items: const [15, 20, 30, 45, 60]
+                    .map((v) => DropdownMenuItem<int>(value: v, child: Text('$v min', style: TextStyle(color: AppColors.textLight))))
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    setStateDialog(() => selectedInterval = value);
+                  }
+                },
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<int>(
+                initialValue: selectedDuration,
+                decoration: _getInputDecorationLite('Duración de pausa'),
+                dropdownColor: const Color(0xFF1A1F3A),
+                items: const [3, 5, 10, 15]
+                    .map((v) => DropdownMenuItem<int>(value: v, child: Text('$v min', style: TextStyle(color: AppColors.textLight))))
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    setStateDialog(() => selectedDuration = value);
+                  }
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
+            TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Guardar')),
+          ],
+        ),
+      ),
+    );
+
+    if (result != true || !mounted) return;
+    final success = await UsageLimitsService.updateMandatoryBreaks(
+      active: _mandatoryBreaksActive,
+      intervalMinutes: selectedInterval,
+      durationMinutes: selectedDuration,
+    );
+    if (!mounted || !success) return;
+
+    await UsageLimitsService.resetTodayUsageCounter();
+    setState(() {
+      _breakIntervalMinutes = selectedInterval;
+      _breakDurationMinutes = selectedDuration;
+    });
+    await Provider.of<AppProvider>(context, listen: false).refreshUsageLimits();
+  }
+
+  InputDecoration _getInputDecorationLite(String label) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle: TextStyle(color: AppColors.textLight.withValues(alpha: 0.8)),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: BorderSide(color: AppColors.textLight.withValues(alpha: 0.3)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: BorderSide(color: AppColors.accentBlue),
+      ),
     );
   }
 

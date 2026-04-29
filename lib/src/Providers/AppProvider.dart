@@ -321,6 +321,8 @@ class AppProvider extends ChangeNotifier {
       // Actualizar en Supabase
       final success = await UsageLimitsService.updateDailyLimit(minutes);
       if (success) {
+        // Reiniciar contador del día para aplicar el nuevo límite desde cero.
+        await UsageLimitsService.resetTodayUsageCounter(limitForToday: minutes);
         _dailyUsageLimit = minutes;
         // También guardar en PreferencesService como respaldo
         await PreferencesService.setDailyUsageLimit(minutes);

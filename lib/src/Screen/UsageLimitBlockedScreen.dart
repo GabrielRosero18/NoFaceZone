@@ -10,11 +10,19 @@ import 'package:nofacezone/src/Providers/AppProvider.dart';
 class UsageLimitBlockedScreen extends StatefulWidget {
   final VoidCallback? onTimeAdded;
   final VoidCallback? onBlockRemoved;
+  final String title;
+  final String message;
+  final bool showAddTimeButton;
+  final bool showDismissButton;
 
   const UsageLimitBlockedScreen({
     super.key,
     this.onTimeAdded,
     this.onBlockRemoved,
+    this.title = '⏰ Límite Alcanzado',
+    this.message = '¡Has alcanzado tu límite diario de uso! 🌟',
+    this.showAddTimeButton = true,
+    this.showDismissButton = true,
   });
 
   @override
@@ -316,34 +324,19 @@ class _UsageLimitBlockedScreenState extends State<UsageLimitBlockedScreen>
         debugPrint('   Tiempo restante (método normal): $verifyRemaining minutos');
       }
 
-      // Si el límite se actualizó correctamente, considerar éxito
-      // Incluso si el tiempo restante es 0 (puede ser por sesión activa larga)
-      // El límite se actualizó correctamente, así que cerrar la pantalla
+      // Si el límite se actualizó correctamente, cerrar el bloqueo y dejar
+      // que HomeScreen refresque estado. Esto evita el "bucle" de bloqueo
+      // cuando hay desfases temporales entre límite/uso en BD.
       if (limiteActualizado) {
         debugPrint('✅ Límite aumentó de $limiteAnterior a $newLimit minutos');
         debugPrint('   Tiempo restante calculado: $verifyRemaining minutos');
-        
-        // Si el tiempo restante es 0, puede ser por una sesión activa que está sumando tiempo
-        // Pero el límite se actualizó correctamente, así que el usuario puede seguir usando la app
-        if (verifyRemaining <= 0) {
-          debugPrint('⚠️ Tiempo restante es 0, pero el límite se actualizó correctamente');
-          debugPrint('   Esto puede deberse a una sesión activa que está sumando tiempo');
-          debugPrint('   El límite aumentó, así que cuando la sesión se finalice habrá más tiempo disponible');
-        }
-        
-        // Cerrar la pantalla de bloqueo ya que el límite se actualizó correctamente
+
         if (mounted) {
-          debugPrint('✅ Cerrando pantalla de bloqueo. Límite actualizado correctamente.');
-          
-          // Llamar callback ANTES de cerrar para que HomeScreen actualice sus datos
-          // Pasar información de que el límite se actualizó correctamente
           if (widget.onTimeAdded != null) {
             widget.onTimeAdded!();
           }
-          
-          // Esperar un momento para que el callback se ejecute
-          await Future.delayed(const Duration(milliseconds: 500));
 
+          await Future.delayed(const Duration(milliseconds: 500));
           if (!mounted) return;
           Navigator.of(context).pop();
           return;
@@ -437,7 +430,7 @@ class _UsageLimitBlockedScreenState extends State<UsageLimitBlockedScreen>
 
                       // Título
                       Text(
-                        '⏰ Límite Alcanzado',
+                        widget.title,
                         style: const TextStyle(
                           fontSize: 32,
                           fontWeight: FontWeight.w900,
@@ -467,7 +460,7 @@ class _UsageLimitBlockedScreenState extends State<UsageLimitBlockedScreen>
                         child: Column(
                           children: [
                             Text(
-                              '¡Has alcanzado tu límite diario de uso! 🌟',
+                              widget.message,
                               style: const TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.w700,
@@ -504,58 +497,40 @@ class _UsageLimitBlockedScreenState extends State<UsageLimitBlockedScreen>
                       ),
                       const SizedBox(height: 32),
 
-                      // Botones: Quitar bloqueo y Agregar 10 minutos
                       Row(
                         children: [
-                          // Botón para quitar el bloqueo
-                          Expanded(
-                            child: Container(
-                              height: 60,
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    Colors.grey.shade700,
-                                    Colors.grey.shade900,
-                                  ],
-                                ),
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.3),
-                                  width: 1.5,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.3),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 2),
+                          if (widget.showDismissButton) ...[
+                            Expanded(
+                              child: Container(
+                                height: 60,
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      Colors.grey.shade700,
+                                      Colors.grey.shade900,
+                                    ],
                                   ),
-                                ],
-                              ),
-                              child: Material(
-                                color: Colors.transparent,
-                                child: Semantics(
-                                  button: true,
-                                  label: 'Quitar bloqueo y cerrar',
-                                  child: InkWell(
-                                  onTap: () {
-                                    // Llamar callback si existe
-                                    if (widget.onBlockRemoved != null) {
-                                      widget.onBlockRemoved!();
-                                    }
-                                    Navigator.of(context).pop();
-                                  },
                                   borderRadius: BorderRadius.circular(16),
-                                  child: Center(
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        const Icon(
-                                          Icons.close,
-                                          color: Colors.white,
-                                          size: 24,
-                                        ),
-                                        const SizedBox(width: 8),
-                                        const Text(
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: 0.3),
+                                    width: 1.5,
+                                  ),
+                                ),
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: Semantics(
+                                    button: true,
+                                    label: 'Quitar bloqueo y cerrar',
+                                    child: InkWell(
+                                      onTap: () {
+                                        if (widget.onBlockRemoved != null) {
+                                          widget.onBlockRemoved!();
+                                        }
+                                        Navigator.of(context).pop();
+                                      },
+                                      borderRadius: BorderRadius.circular(16),
+                                      child: const Center(
+                                        child: Text(
                                           'Quitar bloqueo',
                                           style: TextStyle(
                                             fontSize: 16,
@@ -564,79 +539,79 @@ class _UsageLimitBlockedScreenState extends State<UsageLimitBlockedScreen>
                                             letterSpacing: 0.5,
                                           ),
                                         ),
-                                      ],
+                                      ),
                                     ),
                                   ),
                                 ),
-                                ),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 12),
-                          // Botón para agregar 10 minutos
-                          Expanded(
-                            child: Container(
-                              height: 60,
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    Colors.green,
-                                    Colors.green.shade700,
+                          ],
+                          if (widget.showDismissButton && widget.showAddTimeButton) const SizedBox(width: 12),
+                          if (widget.showAddTimeButton) ...[
+                            Expanded(
+                              child: Container(
+                                height: 60,
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      Colors.green,
+                                      Colors.green.shade700,
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(16),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.green.withValues(alpha: 0.4),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 4),
+                                    ),
                                   ],
                                 ),
-                                borderRadius: BorderRadius.circular(16),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.green.withValues(alpha: 0.4),
-                                    blurRadius: 12,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: Material(
-                                color: Colors.transparent,
-                                child: Semantics(
-                                  button: true,
-                                  label: 'Agregar diez minutos al límite de hoy',
-                                  child: InkWell(
-                                  onTap: _isAddingTime ? null : _addExtraTime,
-                                  borderRadius: BorderRadius.circular(16),
-                                  child: Center(
-                                    child: _isAddingTime
-                                        ? const SizedBox(
-                                            width: 24,
-                                            height: 24,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                            ),
-                                          )
-                                        : Row(
-                                            mainAxisAlignment: MainAxisAlignment.center,
-                                            children: [
-                                              const Icon(
-                                                Icons.add_circle_outline,
-                                                color: Colors.white,
-                                                size: 24,
-                                              ),
-                                              const SizedBox(width: 8),
-                                              const Text(
-                                                '+10 min',
-                                                style: TextStyle(
-                                                  fontSize: 16,
-                                                  fontWeight: FontWeight.w700,
-                                                  color: Colors.white,
-                                                  letterSpacing: 0.5,
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: Semantics(
+                                    button: true,
+                                    label: 'Agregar diez minutos al límite de hoy',
+                                    child: InkWell(
+                                      onTap: _isAddingTime ? null : _addExtraTime,
+                                      borderRadius: BorderRadius.circular(16),
+                                      child: Center(
+                                        child: _isAddingTime
+                                            ? const SizedBox(
+                                                width: 24,
+                                                height: 24,
+                                                child: CircularProgressIndicator(
+                                                  strokeWidth: 2,
+                                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                                                 ),
+                                              )
+                                            : const Row(
+                                                mainAxisAlignment: MainAxisAlignment.center,
+                                                children: [
+                                                  Icon(
+                                                    Icons.add_circle_outline,
+                                                    color: Colors.white,
+                                                    size: 24,
+                                                  ),
+                                                  SizedBox(width: 8),
+                                                  Text(
+                                                    '+10 min',
+                                                    style: TextStyle(
+                                                      fontSize: 16,
+                                                      fontWeight: FontWeight.w700,
+                                                      color: Colors.white,
+                                                      letterSpacing: 0.5,
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
-                                            ],
-                                          ),
+                                      ),
+                                    ),
                                   ),
-                                ),
                                 ),
                               ),
                             ),
-                          ),
+                          ],
                         ],
                       ),
                       const SizedBox(height: 16),
