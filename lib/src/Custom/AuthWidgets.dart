@@ -162,6 +162,64 @@ class AuthGlassCard extends StatelessWidget {
   }
 }
 
+class AuthSectionTitle extends StatelessWidget {
+  final String title;
+  final String? subtitle;
+
+  const AuthSectionTitle({
+    super.key,
+    required this.title,
+    this.subtitle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.w800,
+            color: AppColors.textLight,
+          ),
+        ),
+        if (subtitle != null) ...[
+          const SizedBox(height: 6),
+          Text(
+            subtitle!,
+            style: TextStyle(
+              fontSize: 14,
+              color: AppColors.textLight.withValues(alpha: 0.82),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class AuthSurfaceCard extends StatelessWidget {
+  final Widget child;
+  final EdgeInsetsGeometry? padding;
+
+  const AuthSurfaceCard({
+    super.key,
+    required this.child,
+    this.padding,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: padding ?? const EdgeInsets.all(14),
+      decoration: AuthTheme.softCardDecoration(),
+      child: child,
+    );
+  }
+}
+
 class AuthInputField extends StatelessWidget {
   final TextEditingController controller;
   final String label;

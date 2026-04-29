@@ -177,22 +177,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       text: 'Modo enfoque activado',
                     ),
                     const SizedBox(height: 20),
-                    Text(
-                      '¡Bienvenido de vuelta!',
-                      style: TextStyle(
-                        fontSize: 31,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textLight,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Inicia sesión para continuar con tu progreso diario.',
-                      style: TextStyle(
-                        fontSize: 15,
-                        color: AppColors.textLight.withValues(alpha: 0.82),
-                        height: 1.35,
-                      ),
+                    const AuthSectionTitle(
+                      title: '¡Bienvenido de vuelta!',
+                      subtitle: 'Inicia sesión para continuar con tu progreso diario.',
                     ),
                     const SizedBox(height: 20),
                     AuthGlassCard(

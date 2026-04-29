@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:nofacezone/src/Custom/AppColors.dart';
 
 class AuthTheme {
+  static const double screenPadding = 24;
+  static const double sectionSpacing = 18;
   static const double fieldRadius = 16;
   static const double cardRadius = 26;
   static const double buttonRadius = 16;
+  static const double smallRadius = 14;
 
   static BoxDecoration backgroundDecoration() {
     return BoxDecoration(
@@ -57,6 +60,14 @@ class AuthTheme {
           offset: const Offset(0, 12),
         ),
       ],
+    );
+  }
+
+  static BoxDecoration softCardDecoration() {
+    return BoxDecoration(
+      color: AppColors.textLight.withValues(alpha: 0.09),
+      borderRadius: BorderRadius.circular(smallRadius),
+      border: Border.all(color: AppColors.textLight.withValues(alpha: 0.14)),
     );
   }
 

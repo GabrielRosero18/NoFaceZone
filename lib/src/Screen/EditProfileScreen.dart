@@ -629,13 +629,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       const SizedBox(height: 14),
                       ProEntrance(
                         delayMs: 90,
-                        child: Text(
-                          localizations.editProfileTitle,
-                          style: const TextStyle(
-                            fontSize: 30,
-                            fontWeight: FontWeight.w900,
-                            color: AppColors.textLight,
-                          ),
+                        child: AuthSectionTitle(
+                          title: localizations.editProfileTitle,
+                          subtitle: localizations.profileUpdatedSuccessfully,
                         ),
                       ),
                       const SizedBox(height: 18),

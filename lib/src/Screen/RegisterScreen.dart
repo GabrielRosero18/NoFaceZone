@@ -563,22 +563,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       text: 'Cuenta segura en 1 minuto',
                     ),
                     const SizedBox(height: 20),
-                    Text(
-                      localizations.register,
-                      style: const TextStyle(
-                        fontSize: 31,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textLight,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      localizations.accountCreatedMessage,
-                      style: TextStyle(
-                        fontSize: 15,
-                        color: AppColors.textLight.withValues(alpha: 0.82),
-                        height: 1.35,
-                      ),
+                    AuthSectionTitle(
+                      title: localizations.register,
+                      subtitle: localizations.accountCreatedMessage,
                     ),
                     const SizedBox(height: 20),
                     AuthGlassCard(

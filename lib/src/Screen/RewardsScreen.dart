@@ -202,7 +202,7 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
         border: Border.all(color: AppColors.textLight.withValues(alpha: 0.3), width: 1.5),
       ),
       child: Row(
-        children: [
+          children: [
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
@@ -235,6 +235,16 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
                             color: AppColors.textLight,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: LinearProgressIndicator(
+                            minHeight: 7,
+                            value: (userPoints % 1000) / 1000,
+                            backgroundColor: AppColors.textLight.withValues(alpha: 0.16),
+                            valueColor: AlwaysStoppedAnimation<Color>(AppColors.accentBlue),
                           ),
                         ),
                       ],

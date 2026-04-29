@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:nofacezone/src/Custom/AppColors.dart';
+import 'package:nofacezone/src/Custom/AuthTheme.dart';
+import 'package:nofacezone/src/Custom/AuthWidgets.dart';
 import 'package:nofacezone/src/Custom/Library.dart';
 import 'package:nofacezone/src/Custom/Config.dart';
 import 'package:nofacezone/src/Custom/AppLocalizations.dart';
@@ -68,38 +70,55 @@ class _SettingsState extends State<Settings> {
 
         return Scaffold(
           appBar: AppBar(
-            title: Text(AppLocalizations.of(context)?.settings ?? 'Configuración'),
+            title: Text(
+              AppLocalizations.of(context)?.settings ?? 'Configuración',
+              style: const TextStyle(color: AppColors.textLight, fontWeight: FontWeight.w700),
+            ),
             backgroundColor: Colors.transparent,
             elevation: 0,
             leading: IconButton(
               tooltip: backLabel,
-              icon: const Icon(Icons.arrow_back),
+              icon: const Icon(Icons.arrow_back, color: AppColors.textLight),
               onPressed: () => Navigator.of(context).pop(),
             ),
           ),
+          extendBodyBehindAppBar: true,
           body: Container(
             width: double.infinity,
             height: double.infinity,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: AppColors.backgroundGradient,
-              ),
-            ),
-            child: SafeArea(
-              child: ProEntrance(
-                delayMs: 90,
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      RepaintBoundary(child: _buildUsageLimitsSection()),
-                    ],
+            decoration: AuthTheme.backgroundDecoration(),
+            child: Stack(
+              children: [
+                ...AuthTheme.buildBackgroundOrbs(),
+                SafeArea(
+                  child: ProEntrance(
+                    delayMs: 90,
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const AuthHeaderChip(
+                            icon: Icons.tune_rounded,
+                            text: 'Configuracion avanzada',
+                          ),
+                          const SizedBox(height: 14),
+                          AuthSectionTitle(
+                            title: AppLocalizations.of(context)?.settings ?? 'Configuración',
+                            subtitle: 'Ajusta limites, pausas y preferencias de uso',
+                          ),
+                          const SizedBox(height: 16),
+                          RepaintBoundary(
+                            child: AuthGlassCard(
+                              child: _buildUsageLimitsSection(),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-              ),
+              ],
             ),
           ),
         );
