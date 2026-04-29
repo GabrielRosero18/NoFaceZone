@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -167,9 +169,7 @@ int _bestSuccessStreakForRecords(Iterable<Map<String, dynamic>> records, int fal
   return best;
 }
 
-class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-
+class _StatisticsScreenState extends State<StatisticsScreen> {
   bool _loading = true;
   String? _loadError;
 
@@ -207,14 +207,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
     _loadStatistics();
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
   }
 
   Future<void> _loadStatistics() async {
@@ -436,35 +429,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
         }
 
         return Scaffold(
-          appBar: AppBar(
-            title: Text(loc.statistics),
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            leading: IconButton(
-              tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-              icon: const Icon(Icons.arrow_back),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-            actions: [
-              IconButton(
-                tooltip: loc.refresh,
-                icon: const Icon(Icons.refresh),
-                onPressed: _loading ? null : _loadStatistics,
-              ),
-            ],
-            bottom: TabBar(
-              controller: _tabController,
-              labelColor: AppColors.textLight,
-              unselectedLabelColor: AppColors.textLight.withValues(alpha: 0.6),
-              indicatorColor: AppColors.accentBlue,
-              indicatorWeight: 3,
-              tabs: [
-                Tab(text: loc.today),
-                Tab(text: loc.week),
-                Tab(text: loc.month),
-              ],
-            ),
-          ),
           body: Container(
             width: double.infinity,
             height: double.infinity,
@@ -480,59 +444,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
                   ? _buildStatisticsLoadingState()
                   : _loadError != null
                       ? _buildStatisticsErrorState(loc)
-                      : Column(
-                          children: [
-                            if (!_loggedIn)
-                              ProEntrance(
-                                delayMs: 40,
-                                child: Padding(
-                                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                                  child: Material(
-                                    color: Colors.amber.withValues(alpha: 0.2),
-                                    borderRadius: BorderRadius.circular(12),
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(12),
-                                      child: Row(
-                                        children: [
-                                          const Icon(Icons.info_outline, color: Colors.amber),
-                                          const SizedBox(width: 12),
-                                          Expanded(
-                                            child: Text(
-                                              loc.statisticsSignInHint,
-                                              style: const TextStyle(
-                                                color: AppColors.textLight,
-                                                fontSize: 13,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ProEntrance(
-                              delayMs: 90,
-                              child: Padding(
-                                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                                child: _buildDashboardHero(loc),
-                              ),
-                            ),
-                            Expanded(
-                              child: ProEntrance(
-                                delayMs: 130,
-                                child: TabBarView(
-                                  controller: _tabController,
-                                  children: [
-                                    _wrapRefresh(_buildTodayTab(loc)),
-                                    _wrapRefresh(_buildWeekTab(loc)),
-                                    _wrapRefresh(_buildMonthTab(loc)),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                      : _wrapRefresh(_buildDashboardScrollView(loc)),
             ),
           ),
         );
@@ -815,14 +727,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
             runSpacing: 8,
             children: [
               _buildQuickActionButton(
-                label: loc.week,
-                icon: Icons.calendar_view_week,
-                onTap: () => _tabController.animateTo(1),
-              ),
-              _buildQuickActionButton(
-                label: loc.month,
-                icon: Icons.calendar_month,
-                onTap: () => _tabController.animateTo(2),
+                label: loc.weeklyComparison,
+                icon: Icons.insights,
+                onTap: _showWeeklyComparisonSheet,
               ),
               _buildQuickActionButton(
                 label: loc.smartPlan,
@@ -1037,12 +944,41 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
                   child: FilledButton.icon(
                     onPressed: () {
                       Navigator.of(context).pop();
-                      _tabController.animateTo(1);
                     },
                     icon: const Icon(Icons.analytics),
                     label: Text(loc.weeklyComparison),
                   ),
                 ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showWeeklyComparisonSheet() {
+    final loc = AppLocalizations.of(context)!;
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF1A1F3A),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  loc.weeklyComparison,
+                  style: const TextStyle(color: AppColors.textLight, fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+                _buildWeeklyComparison(loc),
               ],
             ),
           ),
@@ -1136,18 +1072,202 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
     );
   }
 
-  Widget _buildTodayTab(AppLocalizations loc) {
+  Widget _buildUnifiedDashboard(AppLocalizations loc) {
+    final effLabel = !_loggedIn ? loc.effectivenessNoData : '${_effectivenessPct.clamp(0, 100)}%';
+    final noData = _loggedIn &&
+        _todayUsed == 0 &&
+        _blockedSessions == 0 &&
+        _thisWeekFreeTotal == 0 &&
+        _monthFreeTotal == 0;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
+      child: Column(
+        children: [
+        if (!_loggedIn)
+          ProEntrance(
+            delayMs: 40,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Material(
+                color: Colors.amber.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.info_outline, color: Colors.amber),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          loc.statisticsSignInHint,
+                          style: const TextStyle(color: AppColors.textLight, fontSize: 13),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ProEntrance(
+          delayMs: 80,
+          child: _buildDashboardHero(loc),
+        ),
+        if (noData) ...[
+          const SizedBox(height: 12),
+          _buildNoDataHintCard(loc),
+        ],
+        const SizedBox(height: 18),
+        _buildSectionTitle(loc.today),
+        _buildTodaySection(loc, effLabel),
+        const SizedBox(height: 18),
+        _buildSectionTitle(loc.week),
+        _buildWeekSection(loc),
+        const SizedBox(height: 18),
+        _buildSectionTitle(loc.month),
+        _buildMonthSection(loc),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNoDataHintCard(AppLocalizations loc) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.textLight.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.textLight.withValues(alpha: 0.22)),
+      ),
+      child: Text(
+        '${loc.noDataShort}. ${loc.statisticsSignInHint}',
+        style: TextStyle(
+          color: AppColors.textLight.withValues(alpha: 0.9),
+          fontSize: _responsiveFontSize(context, base: 12.5),
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDashboardScrollView(AppLocalizations loc) {
+    final subtitle = _buildAppBarSubtitle(loc);
+    return CustomScrollView(
+      physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+      slivers: [
+        SliverAppBar(
+          pinned: true,
+          floating: true,
+          snap: true,
+          elevation: 0,
+          expandedHeight: 126,
+          backgroundColor: Colors.transparent,
+          leading: IconButton(
+            tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+          actions: [
+            IconButton(
+              tooltip: loc.refresh,
+              icon: const Icon(Icons.refresh),
+              onPressed: _loading ? null : _loadStatistics,
+            ),
+          ],
+          flexibleSpace: LayoutBuilder(
+            builder: (context, constraints) {
+              final min = kToolbarHeight + MediaQuery.paddingOf(context).top;
+              final max = 126.0;
+              final t = ((constraints.maxHeight - min) / (max - min)).clamp(0.0, 1.0);
+              final bgAlpha = 0.1 + ((1 - t) * 0.2);
+              final blur = 5.0 + ((1 - t) * 5.0);
+              return ClipRect(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
+                  child: Container(
+                    color: Colors.black.withValues(alpha: bgAlpha),
+                    child: FlexibleSpaceBar(
+                      titlePadding: const EdgeInsetsDirectional.only(start: 18, bottom: 12, end: 18),
+                      title: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            loc.statistics,
+                            style: TextStyle(
+                              fontSize: _responsiveFontSize(context, base: 16.8),
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textLight,
+                            ),
+                          ),
+                          if (t > 0.32)
+                            Text(
+                              subtitle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: _responsiveFontSize(context, base: 10.6),
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.textLight.withValues(alpha: 0.82),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        SliverToBoxAdapter(child: _buildUnifiedDashboard(loc)),
+      ],
+    );
+  }
+
+  double _responsiveFontSize(BuildContext context, {required double base}) {
+    final width = MediaQuery.sizeOf(context).width;
+    final textScale = MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 1.2);
+    final widthFactor = width >= 720 ? 1.08 : 1.0;
+    return base * widthFactor * textScale;
+  }
+
+  String _buildAppBarSubtitle(AppLocalizations loc) {
+    if (!_loggedIn) return loc.statisticsSignInHint;
+    final risk = _computeRiskLevel().$1;
+    final projection = _formatMinutesAsHm(loc, _projectedWeekFreeMinutes());
+    final width = MediaQuery.sizeOf(context).width;
+    if (width < 390) {
+      return '${loc.riskToday}: $risk';
+    }
+    if (width < 470) {
+      return '${loc.riskToday}: $risk · $projection';
+    }
+    return '${loc.riskToday}: $risk  ·  ${loc.weeklyProjection}: $projection';
+  }
+
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10, left: 2),
+      child: Text(
+        title,
+        style: TextStyle(
+          color: AppColors.textLight.withValues(alpha: 0.92),
+          fontSize: 17,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.2,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTodaySection(AppLocalizations loc, String effLabel) {
     final freeToday = _freeMinutesFromUsed(_todayUsed);
     final savedToday = _todayLimit > 0 ? (_todayLimit - _todayUsed).clamp(0, _todayLimit) : 0;
-    final effLabel = !_loggedIn
-        ? loc.effectivenessNoData
-        : '${_effectivenessPct.clamp(0, 100)}%';
     final usedProgress = _todayLimit > 0 ? (_todayUsed / _todayLimit).clamp(0.0, 1.0) : 0.0;
     final remaining = _todayLimit > 0 ? (_todayLimit - _todayUsed).clamp(0, _todayLimit) : 0;
-
-    return ListView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.all(24),
+    return Column(
       children: [
         _buildRevealSection(
           0,
@@ -1157,41 +1277,75 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
             remainingMinutes: remaining,
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 12),
         _buildRevealSection(
           1,
           _buildSummaryCard(
-            '📊 ${loc.daySummary}',
+            loc.daySummary,
             [
-              _buildStatItem(
-                loc.freeTimeFromFacebook,
-                _formatMinutesAsHm(loc, freeToday),
-                Icons.access_time,
-                Colors.blue,
-              ),
-              _buildStatItem(
-                loc.blockedSessions,
-                '$_blockedSessions',
-                Icons.block,
-                Colors.red,
-              ),
-              _buildStatItem(
-                loc.timeSaved,
-                _formatMinutesAsHm(loc, savedToday),
-                Icons.savings,
-                Colors.green,
-              ),
+              _buildStatItem(loc.freeTimeFromFacebook, _formatMinutesAsHm(loc, freeToday), Icons.access_time, Colors.blue),
+              _buildStatItem(loc.blockedSessions, '$_blockedSessions', Icons.block, Colors.red),
+              _buildStatItem(loc.timeSaved, _formatMinutesAsHm(loc, savedToday), Icons.savings, Colors.green),
             ],
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 12),
         _buildRevealSection(2, _buildActivityChart(loc)),
-        const SizedBox(height: 24),
+        const SizedBox(height: 12),
         _buildRevealSection(3, _buildMetricsGrid(loc, effLabel)),
-        const SizedBox(height: 24),
       ],
     );
   }
+
+  Widget _buildWeekSection(AppLocalizations loc) {
+    final labels = [loc.monday, loc.tuesday, loc.wednesday, loc.thursday, loc.friday, loc.saturday, loc.sunday];
+    return Column(
+      children: [
+        _buildRevealSection(
+          0,
+          _buildSummaryCard(
+            loc.weeklySummary,
+            [
+              _buildStatItem(loc.totalFreeTime, _formatMinutesAsHm(loc, _thisWeekFreeTotal), Icons.calendar_today, Colors.blue),
+              _buildStatItem(loc.consecutiveDays, '$_consecutiveSuccessDays', Icons.calendar_view_week, Colors.orange),
+              _buildStatItem(loc.dailyAverage, _formatMinutesAsHm(loc, _weekAvgFreeDaily), Icons.trending_up, Colors.green),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        _buildRevealSection(1, _buildWeeklyBarChart(loc, labels)),
+        const SizedBox(height: 12),
+        _buildRevealSection(2, _buildWeekInsightCard(loc)),
+        const SizedBox(height: 12),
+        _buildRevealSection(3, _buildWeeklyComparison(loc)),
+      ],
+    );
+  }
+
+  Widget _buildMonthSection(AppLocalizations loc) {
+    return Column(
+      children: [
+        _buildRevealSection(
+          0,
+          _buildSummaryCard(
+            loc.monthlySummary,
+            [
+              _buildStatItem(loc.totalFreeTime, _formatMinutesAsHm(loc, _monthFreeTotal), Icons.calendar_month, Colors.purple),
+              _buildStatItem(loc.bestStreak, '$_monthBestStreak ${loc.days}', Icons.local_fire_department, Colors.orange),
+              _buildStatItem(loc.successRate, '${_monthSuccessPct.clamp(0, 100)}%', Icons.check_circle, Colors.green),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        _buildRevealSection(1, _buildMonthlyChart(loc)),
+        const SizedBox(height: 12),
+        _buildRevealSection(2, _buildMonthPerformanceCard(loc)),
+        const SizedBox(height: 12),
+        _buildRevealSection(3, _buildAchievementsSection(loc)),
+      ],
+    );
+  }
+
 
   Widget _buildRevealSection(int index, Widget child) {
     return ProScrollReveal(
@@ -1200,88 +1354,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
     );
   }
 
-  Widget _buildWeekTab(AppLocalizations loc) {
-    final labels = [loc.monday, loc.tuesday, loc.wednesday, loc.thursday, loc.friday, loc.saturday, loc.sunday];
-    return ListView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.all(24),
-      children: [
-        _buildRevealSection(
-          0,
-          _buildSummaryCard(
-            '📈 ${loc.weeklySummary}',
-            [
-              _buildStatItem(
-                loc.totalFreeTime,
-                _formatMinutesAsHm(loc, _thisWeekFreeTotal),
-                Icons.calendar_today,
-                Colors.blue,
-              ),
-              _buildStatItem(
-                loc.consecutiveDays,
-                '$_consecutiveSuccessDays',
-                Icons.calendar_view_week,
-                Colors.orange,
-              ),
-              _buildStatItem(
-                loc.dailyAverage,
-                _formatMinutesAsHm(loc, _weekAvgFreeDaily),
-                Icons.trending_up,
-                Colors.green,
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 24),
-        _buildRevealSection(1, _buildWeeklyBarChart(loc, labels)),
-        const SizedBox(height: 24),
-        _buildRevealSection(2, _buildWeekInsightCard(loc)),
-        const SizedBox(height: 24),
-        _buildRevealSection(3, _buildWeeklyComparison(loc)),
-      ],
-    );
-  }
-
-  Widget _buildMonthTab(AppLocalizations loc) {
-    return ListView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.all(24),
-      children: [
-        _buildRevealSection(
-          0,
-          _buildSummaryCard(
-            '🏆 ${loc.monthlySummary}',
-            [
-              _buildStatItem(
-                loc.totalFreeTime,
-                _formatMinutesAsHm(loc, _monthFreeTotal),
-                Icons.calendar_month,
-                Colors.purple,
-              ),
-              _buildStatItem(
-                loc.bestStreak,
-                '$_monthBestStreak ${loc.days}',
-                Icons.local_fire_department,
-                Colors.orange,
-              ),
-              _buildStatItem(
-                loc.successRate,
-                '${_monthSuccessPct.clamp(0, 100)}%',
-                Icons.check_circle,
-                Colors.green,
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 24),
-        _buildRevealSection(1, _buildMonthlyChart(loc)),
-        const SizedBox(height: 24),
-        _buildRevealSection(2, _buildMonthPerformanceCard(loc)),
-        const SizedBox(height: 24),
-        _buildRevealSection(3, _buildAchievementsSection(loc)),
-      ],
-    );
-  }
 
   Widget _buildDailyProgressHero({
     required AppLocalizations loc,
@@ -1289,17 +1361,17 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
     required int remainingMinutes,
   }) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.textLight.withValues(alpha: 0.15),
+        color: AppColors.textLight.withValues(alpha: 0.13),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.textLight.withValues(alpha: 0.3), width: 1.5),
+        border: Border.all(color: AppColors.textLight.withValues(alpha: 0.26), width: 1.2),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '🎯 ${loc.effectivenessUnderLimit}',
+            loc.effectivenessUnderLimit,
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -1340,16 +1412,16 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
 
   Widget _buildSummaryCard(String title, List<Widget> items) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.textLight.withValues(alpha: 0.15),
+        color: AppColors.textLight.withValues(alpha: 0.13),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.textLight.withValues(alpha: 0.3), width: 1.5),
+        border: Border.all(color: AppColors.textLight.withValues(alpha: 0.26), width: 1.2),
         boxShadow: [
           BoxShadow(
-            color: AppColors.textLight.withValues(alpha: 0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: AppColors.textLight.withValues(alpha: 0.06),
+            blurRadius: 6,
+            offset: const Offset(0, 1),
           ),
         ],
       ),
@@ -1373,12 +1445,12 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
 
   Widget _buildStatItem(String label, String value, IconData icon, Color color) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.textLight.withValues(alpha: 0.1),
+        color: AppColors.textLight.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.3), width: 1.5),
+        border: Border.all(color: color.withValues(alpha: 0.25), width: 1.1),
       ),
       child: Row(
         children: [
@@ -1422,17 +1494,17 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
   Widget _buildActivityChart(AppLocalizations loc) {
     const labels = ['8', '10', '12', '14', '16', '18', '20'];
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.textLight.withValues(alpha: 0.15),
+        color: AppColors.textLight.withValues(alpha: 0.13),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.textLight.withValues(alpha: 0.3), width: 1.5),
+        border: Border.all(color: AppColors.textLight.withValues(alpha: 0.26), width: 1.2),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '📅 ${loc.hourlyActivity}',
+            loc.hourlyActivity,
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -1456,17 +1528,24 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
   Widget _buildBar(String label, double height, Color color) {
     return Column(
       children: [
-        Container(
-          width: 30,
-          height: 120 * height,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.bottomCenter,
-              end: Alignment.topCenter,
-              colors: [color, color.withValues(alpha: 0.6)],
-            ),
-            borderRadius: BorderRadius.circular(8),
-          ),
+        TweenAnimationBuilder<double>(
+          duration: const Duration(milliseconds: 650),
+          curve: Curves.easeOutCubic,
+          tween: Tween<double>(begin: 0.08, end: height),
+          builder: (context, value, child) {
+            return Container(
+              width: 30,
+              height: 120 * value,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                  colors: [color, color.withValues(alpha: 0.6)],
+                ),
+                borderRadius: BorderRadius.circular(8),
+              ),
+            );
+          },
         ),
         const SizedBox(height: 8),
         Text(
@@ -1485,58 +1564,71 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
     final mood = _moodLabel.isEmpty ? loc.good : _moodLabel;
     final mental = _mentalLabel.isEmpty ? loc.strong : _mentalLabel;
 
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 12,
-      crossAxisSpacing: 12,
-      childAspectRatio: 1.3,
-      children: [
-        _buildMetricCard('🎯 ${loc.effectiveness}', effectivenessValue, Icons.track_changes, Colors.orange),
-        _buildMetricCard('💪 ${loc.motivation}', mot, Icons.emoji_events, Colors.yellow),
-        _buildMetricCard('😊 ${loc.mood}', mood, Icons.mood, Colors.blue),
-        _buildMetricCard('🧠 ${loc.mentalStrength}', mental, Icons.fitness_center, Colors.green),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final wide = constraints.maxWidth >= 620;
+        return GridView.count(
+          crossAxisCount: wide ? 4 : 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: 12,
+          crossAxisSpacing: 12,
+          childAspectRatio: wide ? 1.15 : 1.3,
+          children: [
+            _buildMetricCard(loc.effectiveness, effectivenessValue, Icons.track_changes, Colors.orange),
+            _buildMetricCard(loc.motivation, mot, Icons.emoji_events, Colors.yellow),
+            _buildMetricCard(loc.mood, mood, Icons.mood, Colors.blue),
+            _buildMetricCard(loc.mentalStrength, mental, Icons.fitness_center, Colors.green),
+          ],
+        );
+      },
     );
   }
 
   Widget _buildMetricCard(String label, String value, IconData icon, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.textLight.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.4), width: 1.5),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: color, size: 28),
-          const SizedBox(height: 6),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textLight,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Flexible(
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                color: AppColors.textLight.withValues(alpha: 0.9),
+    return TweenAnimationBuilder<double>(
+      duration: const Duration(milliseconds: 380),
+      curve: Curves.easeOut,
+      tween: Tween<double>(begin: 0.96, end: 1.0),
+      builder: (context, scale, child) {
+        return Transform.scale(scale: scale, child: child);
+      },
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.textLight.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withValues(alpha: 0.4), width: 1.5),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 28),
+            const SizedBox(height: 6),
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textLight,
               ),
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
             ),
-          ),
-        ],
+            const SizedBox(height: 4),
+            Flexible(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textLight.withValues(alpha: 0.9),
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1553,7 +1645,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '📊 ${loc.weeklyActivity}',
+            loc.weeklyActivity,
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -1587,17 +1679,24 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
           ),
         ),
         const SizedBox(height: 6),
-        Container(
-          width: 35,
-          height: 140 * height,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.bottomCenter,
-              end: Alignment.topCenter,
-              colors: [AppColors.accentPurple, AppColors.accentBlue],
-            ),
-            borderRadius: BorderRadius.circular(8),
-          ),
+        TweenAnimationBuilder<double>(
+          duration: const Duration(milliseconds: 700),
+          curve: Curves.easeOutCubic,
+          tween: Tween<double>(begin: 0.12, end: height),
+          builder: (context, value, child) {
+            return Container(
+              width: 35,
+              height: 140 * value,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                  colors: [AppColors.accentPurple, AppColors.accentBlue],
+                ),
+                borderRadius: BorderRadius.circular(8),
+              ),
+            );
+          },
         ),
         const SizedBox(height: 8),
         Text(
@@ -1664,7 +1763,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '📉 ${loc.weeklyComparison}',
+            loc.weeklyComparison,
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -1762,7 +1861,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '📅 ${loc.monthlyProgress}',
+            loc.monthlyProgress,
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -1841,7 +1940,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '🏆 ${loc.monthlyAchievements}',
+            loc.monthlyAchievements,
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -1849,11 +1948,11 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
             ),
           ),
           const SizedBox(height: 16),
-          _buildAchievementBadge('🔥 ${loc.streak7Days}', Icons.local_fire_department, Colors.orange, _achStreak7),
+          _buildAchievementBadge(loc.streak7Days, Icons.local_fire_department, Colors.orange, _achStreak7),
           const SizedBox(height: 12),
-          _buildAchievementBadge('🎯 ${loc.weeklyGoalAchieved}', Icons.flag, Colors.blue, _achWeeklyGoal),
+          _buildAchievementBadge(loc.weeklyGoalAchieved, Icons.flag, Colors.blue, _achWeeklyGoal),
           const SizedBox(height: 12),
-          _buildAchievementBadge('⚡ ${loc.hours100Free}', Icons.bolt, Colors.yellow, _ach100hFree),
+          _buildAchievementBadge(loc.hours100Free, Icons.bolt, Colors.yellow, _ach100hFree),
         ],
       ),
     );
