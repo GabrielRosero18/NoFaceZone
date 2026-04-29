@@ -104,7 +104,8 @@ class AppProvider extends ChangeNotifier {
           await PreferencesService.setLanguage('es');
         }
       } else {
-        _language = PreferencesService.getLanguage();
+        final savedLanguage = PreferencesService.getLanguage();
+        _language = (savedLanguage == 'es' || savedLanguage == 'en') ? savedLanguage : 'es';
       }
       
       // Cargar tema de colores
@@ -216,8 +217,9 @@ class AppProvider extends ChangeNotifier {
   /// Cambiar idioma de la aplicación
   Future<void> setLanguage(String languageCode) async {
     try {
-      await PreferencesService.setLanguage(languageCode);
-      _language = languageCode;
+      final normalized = (languageCode == 'es' || languageCode == 'en') ? languageCode : 'es';
+      await PreferencesService.setLanguage(normalized);
+      _language = normalized;
       notifyListeners();
     } catch (e) {
       debugPrint('Error setting language: $e');

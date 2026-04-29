@@ -52,6 +52,205 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
   int _mandatoryPauseIntervalMinutes = 30;
   bool _isInNightBlockWindow = false;
 
+  List<_ActivityRecommendation> _getRecommendedActivities(
+    AppLocalizations loc,
+    AppProvider app,
+  ) {
+    final riskRatio = app.dailyUsageLimit > 0
+        ? (app.todayUsageMinutes / app.dailyUsageLimit)
+        : 0.0;
+
+    final highRisk = <_ActivityRecommendation>[
+      _ActivityRecommendation(
+        title: loc.activityBreathingTitle,
+        subtitle: loc.activityBreathingSubtitle,
+        minutes: 3,
+        icon: Icons.self_improvement,
+        color: Colors.purpleAccent,
+      ),
+      _ActivityRecommendation(
+        title: loc.activityWalkTitle,
+        subtitle: loc.activityWalkSubtitle,
+        minutes: 10,
+        icon: Icons.directions_walk,
+        color: Colors.green,
+      ),
+      _ActivityRecommendation(
+        title: loc.activityHydrateTitle,
+        subtitle: loc.activityHydrateSubtitle,
+        minutes: 2,
+        icon: Icons.local_drink,
+        color: Colors.blueAccent,
+      ),
+    ];
+
+    final mediumRisk = <_ActivityRecommendation>[
+      _ActivityRecommendation(
+        title: loc.activityStretchTitle,
+        subtitle: loc.activityStretchSubtitle,
+        minutes: 7,
+        icon: Icons.accessibility_new,
+        color: Colors.orange,
+      ),
+      _ActivityRecommendation(
+        title: loc.activityReadTitle,
+        subtitle: loc.activityReadSubtitle,
+        minutes: 12,
+        icon: Icons.menu_book,
+        color: Colors.teal,
+      ),
+      _ActivityRecommendation(
+        title: loc.activityJournalTitle,
+        subtitle: loc.activityJournalSubtitle,
+        minutes: 8,
+        icon: Icons.edit_note,
+        color: Colors.pinkAccent,
+      ),
+    ];
+
+    final lowRisk = <_ActivityRecommendation>[
+      _ActivityRecommendation(
+        title: loc.activityPlanDayTitle,
+        subtitle: loc.activityPlanDaySubtitle,
+        minutes: 10,
+        icon: Icons.event_note,
+        color: Colors.indigo,
+      ),
+      _ActivityRecommendation(
+        title: loc.activityTidyTitle,
+        subtitle: loc.activityTidySubtitle,
+        minutes: 15,
+        icon: Icons.cleaning_services,
+        color: Colors.cyan,
+      ),
+      _ActivityRecommendation(
+        title: loc.activityLearnTitle,
+        subtitle: loc.activityLearnSubtitle,
+        minutes: 20,
+        icon: Icons.lightbulb,
+        color: Colors.amber,
+      ),
+    ];
+
+    final source = riskRatio >= 0.9
+        ? highRisk
+        : (riskRatio >= 0.6 ? mediumRisk : lowRisk);
+    final offset = DateTime.now().day % source.length;
+    return List<_ActivityRecommendation>.generate(
+      source.length,
+      (i) => source[(i + offset) % source.length],
+    );
+  }
+
+  Widget _buildActivityRecommendations() {
+    final loc = AppLocalizations.of(context)!;
+    final app = Provider.of<AppProvider>(context, listen: false);
+    final recs = _getRecommendedActivities(loc, app);
+    final riskRatio = app.dailyUsageLimit > 0
+        ? (app.todayUsageMinutes / app.dailyUsageLimit)
+        : 0.0;
+
+    final reason = riskRatio >= 0.9
+        ? loc.activityReasonHighRisk
+        : (riskRatio >= 0.6 ? loc.activityReasonMediumRisk : loc.activityReasonLowRisk);
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.textLight.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.textLight.withValues(alpha: 0.25)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '🧩 ${loc.activityRecommendationsTitle}',
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textLight,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            reason,
+            style: TextStyle(
+              fontSize: 13,
+              color: AppColors.textLight.withValues(alpha: 0.85),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Column(
+            children: recs.take(3).map((rec) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: _buildActivityTile(rec, loc),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActivityTile(_ActivityRecommendation rec, AppLocalizations loc) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.textLight.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: rec.color.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: rec.color.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(rec.icon, color: rec.color, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  rec.title,
+                  style: const TextStyle(
+                    color: AppColors.textLight,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${rec.subtitle} • ${rec.minutes}${loc.minutesShort}',
+                  style: TextStyle(
+                    color: AppColors.textLight.withValues(alpha: 0.82),
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              CustomSnackBar.showTheme(
+                context,
+                '${loc.activityStartNow}: ${rec.title}',
+                icon: Icons.check_circle_outline,
+              );
+            },
+            child: Text(loc.activityDoIt),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -534,6 +733,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                     
                     // Límites de uso
                     _buildUsageLimits(),
+                    const SizedBox(height: 24),
+
+                    // Recomendaciones de actividad
+                    _buildActivityRecommendations(),
                     const SizedBox(height: 24),
                     
                     // Progreso semanal
@@ -1352,6 +1555,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       ),
     );
   }
+}
+
+class _ActivityRecommendation {
+  final String title;
+  final String subtitle;
+  final int minutes;
+  final IconData icon;
+  final Color color;
+
+  const _ActivityRecommendation({
+    required this.title,
+    required this.subtitle,
+    required this.minutes,
+    required this.icon,
+    required this.color,
+  });
 }
 
 /// Diálogo con reloj que muestra el tiempo restante

@@ -390,6 +390,50 @@ class AppLocalizations {
       'streak_7_days': 'Racha de 7 días',
       'weekly_goal_achieved': 'Meta semanal cumplida',
       '100_hours_free': '100 horas libres',
+      'activity_recommendations_title': 'Recomendaciones de actividad',
+      'activity_reason_high_risk': 'Estás cerca de tu límite: prueba actividades cortas para cortar el impulso.',
+      'activity_reason_medium_risk': 'Vas en zona media: cambiar de contexto ahora te ayuda a cerrar mejor el día.',
+      'activity_reason_low_risk': 'Buen ritmo: aprovecha este momento para reforzar hábitos positivos.',
+      'activity_start_now': 'Empieza ahora',
+      'activity_do_it': 'Hacer',
+      'activity_breathing_title': 'Respiración guiada',
+      'activity_breathing_subtitle': 'Inhala y exhala en ciclos',
+      'activity_walk_title': 'Caminata breve',
+      'activity_walk_subtitle': 'Despeja mente y cuerpo',
+      'activity_hydrate_title': 'Hidratación rápida',
+      'activity_hydrate_subtitle': 'Toma agua y estírate',
+      'activity_stretch_title': 'Estiramiento',
+      'activity_stretch_subtitle': 'Suelta tensión acumulada',
+      'activity_read_title': 'Lectura express',
+      'activity_read_subtitle': 'Lee 2-3 páginas',
+      'activity_journal_title': 'Mini journaling',
+      'activity_journal_subtitle': 'Escribe lo que sientes',
+      'activity_plan_day_title': 'Plan del día',
+      'activity_plan_day_subtitle': 'Prioriza 3 tareas clave',
+      'activity_tidy_title': 'Orden relámpago',
+      'activity_tidy_subtitle': 'Organiza tu espacio',
+      'activity_learn_title': 'Aprendizaje corto',
+      'activity_learn_subtitle': 'Video o lectura útil',
+      'dashboard_title': 'Dashboard de progreso',
+      'dashboard_subtitle': 'Vista rápida de riesgo, avance y plan de acción',
+      'dashboard_insight_prefix': 'Insight: tu mejor franja de control hoy fue',
+      'smart_plan': 'Plan inteligente',
+      'no_data_short': 'Sin datos',
+      'risk_low': 'Bajo',
+      'risk_medium': 'Medio',
+      'risk_high': 'Alto',
+      'tip_high_risk': 'Activa modo estricto y reduce 10-15 min tu límite mañana.',
+      'tip_medium_risk': 'Vas bien, evita picos en la tarde para cerrar el día en verde.',
+      'tip_low_risk': 'Gran control hoy, mantén la misma rutina en tu franja fuerte.',
+      'risk_today': 'Riesgo hoy',
+      'weekly_projection': 'Proyección semanal',
+      'remaining_goal': 'Meta restante',
+      'plan_tip_reduce_limit': 'Reduce mañana tu límite diario en 15 minutos.',
+      'plan_tip_maintain_routine': 'Mantén tu límite actual y repite rutina de enfoque.',
+      'plan_tip_block_distraction_slots': 'Bloquea 2 franjas de distracción: 30 min mañana y 30 min tarde.',
+      'plan_tip_emotional_checkin': 'Haz check-in emocional antes de abrir Facebook.',
+      'plan_tip_review_week_panel': 'Revisa tu panel de Semana al final del día.',
+      'smart_action_plan_title': 'Plan de acción inteligente',
       
       // Rewards Screen
       'themes': 'Temas',
@@ -879,6 +923,50 @@ class AppLocalizations {
       'streak_7_days': '7-day streak',
       'weekly_goal_achieved': 'Weekly goal achieved',
       '100_hours_free': '100 hours free',
+      'activity_recommendations_title': 'Activity recommendations',
+      'activity_reason_high_risk': 'You are near your limit: try short activities to break the impulse.',
+      'activity_reason_medium_risk': 'You are in the middle zone: changing context now helps end the day better.',
+      'activity_reason_low_risk': 'Great pace: use this moment to reinforce positive habits.',
+      'activity_start_now': 'Start now',
+      'activity_do_it': 'Do it',
+      'activity_breathing_title': 'Guided breathing',
+      'activity_breathing_subtitle': 'Inhale and exhale in cycles',
+      'activity_walk_title': 'Short walk',
+      'activity_walk_subtitle': 'Clear your mind and body',
+      'activity_hydrate_title': 'Quick hydration',
+      'activity_hydrate_subtitle': 'Drink water and stretch',
+      'activity_stretch_title': 'Stretching',
+      'activity_stretch_subtitle': 'Release accumulated tension',
+      'activity_read_title': 'Express reading',
+      'activity_read_subtitle': 'Read 2-3 pages',
+      'activity_journal_title': 'Mini journaling',
+      'activity_journal_subtitle': 'Write what you feel',
+      'activity_plan_day_title': 'Day planning',
+      'activity_plan_day_subtitle': 'Prioritize 3 key tasks',
+      'activity_tidy_title': 'Quick tidy up',
+      'activity_tidy_subtitle': 'Organize your space',
+      'activity_learn_title': 'Short learning',
+      'activity_learn_subtitle': 'Useful video or reading',
+      'dashboard_title': 'Progress dashboard',
+      'dashboard_subtitle': 'Quick view of risk, progress, and action plan',
+      'dashboard_insight_prefix': 'Insight: your best control window today was',
+      'smart_plan': 'Smart plan',
+      'no_data_short': 'No data',
+      'risk_low': 'Low',
+      'risk_medium': 'Medium',
+      'risk_high': 'High',
+      'tip_high_risk': 'Enable strict mode and reduce your daily limit by 10-15 min tomorrow.',
+      'tip_medium_risk': 'Good pace, avoid afternoon spikes to close the day in green.',
+      'tip_low_risk': 'Great control today, keep the same routine in your strongest time slot.',
+      'risk_today': 'Today risk',
+      'weekly_projection': 'Weekly projection',
+      'remaining_goal': 'Goal remaining',
+      'plan_tip_reduce_limit': 'Reduce your daily limit by 15 minutes tomorrow.',
+      'plan_tip_maintain_routine': 'Keep your current limit and repeat your focus routine.',
+      'plan_tip_block_distraction_slots': 'Block 2 distraction windows: 30 min morning and 30 min afternoon.',
+      'plan_tip_emotional_checkin': 'Do an emotional check-in before opening Facebook.',
+      'plan_tip_review_week_panel': 'Review your Week panel at the end of the day.',
+      'smart_action_plan_title': 'Smart action plan',
       
       // Rewards Screen
       'themes': 'Themes',
@@ -1296,6 +1384,50 @@ class AppLocalizations {
   String get streak7Days => translate('streak_7_days');
   String get weeklyGoalAchieved => translate('weekly_goal_achieved');
   String get hours100Free => translate('100_hours_free');
+  String get activityRecommendationsTitle => translate('activity_recommendations_title');
+  String get activityReasonHighRisk => translate('activity_reason_high_risk');
+  String get activityReasonMediumRisk => translate('activity_reason_medium_risk');
+  String get activityReasonLowRisk => translate('activity_reason_low_risk');
+  String get activityStartNow => translate('activity_start_now');
+  String get activityDoIt => translate('activity_do_it');
+  String get activityBreathingTitle => translate('activity_breathing_title');
+  String get activityBreathingSubtitle => translate('activity_breathing_subtitle');
+  String get activityWalkTitle => translate('activity_walk_title');
+  String get activityWalkSubtitle => translate('activity_walk_subtitle');
+  String get activityHydrateTitle => translate('activity_hydrate_title');
+  String get activityHydrateSubtitle => translate('activity_hydrate_subtitle');
+  String get activityStretchTitle => translate('activity_stretch_title');
+  String get activityStretchSubtitle => translate('activity_stretch_subtitle');
+  String get activityReadTitle => translate('activity_read_title');
+  String get activityReadSubtitle => translate('activity_read_subtitle');
+  String get activityJournalTitle => translate('activity_journal_title');
+  String get activityJournalSubtitle => translate('activity_journal_subtitle');
+  String get activityPlanDayTitle => translate('activity_plan_day_title');
+  String get activityPlanDaySubtitle => translate('activity_plan_day_subtitle');
+  String get activityTidyTitle => translate('activity_tidy_title');
+  String get activityTidySubtitle => translate('activity_tidy_subtitle');
+  String get activityLearnTitle => translate('activity_learn_title');
+  String get activityLearnSubtitle => translate('activity_learn_subtitle');
+  String get dashboardTitle => translate('dashboard_title');
+  String get dashboardSubtitle => translate('dashboard_subtitle');
+  String get dashboardInsightPrefix => translate('dashboard_insight_prefix');
+  String get smartPlan => translate('smart_plan');
+  String get noDataShort => translate('no_data_short');
+  String get riskLow => translate('risk_low');
+  String get riskMedium => translate('risk_medium');
+  String get riskHigh => translate('risk_high');
+  String get tipHighRisk => translate('tip_high_risk');
+  String get tipMediumRisk => translate('tip_medium_risk');
+  String get tipLowRisk => translate('tip_low_risk');
+  String get riskToday => translate('risk_today');
+  String get weeklyProjection => translate('weekly_projection');
+  String get remainingGoal => translate('remaining_goal');
+  String get planTipReduceLimit => translate('plan_tip_reduce_limit');
+  String get planTipMaintainRoutine => translate('plan_tip_maintain_routine');
+  String get planTipBlockDistractionSlots => translate('plan_tip_block_distraction_slots');
+  String get planTipEmotionalCheckin => translate('plan_tip_emotional_checkin');
+  String get planTipReviewWeekPanel => translate('plan_tip_review_week_panel');
+  String get smartActionPlanTitle => translate('smart_action_plan_title');
   String get themes => translate('themes');
   String get fonts => translate('fonts');
   String get messages => translate('messages');

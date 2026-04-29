@@ -430,7 +430,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
       builder: (context, appProvider, child) {
         AppColors.setTheme(appProvider.colorTheme);
         final loc = AppLocalizations.of(context)!;
-        if (_motivationLabel.isEmpty && _loggedIn) {
+        if (_loggedIn) {
           _applyTierLabels(loc);
         }
 
@@ -625,7 +625,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Dashboard de Progreso',
+                      loc.dashboardTitle,
                       style: const TextStyle(
                         color: AppColors.textLight,
                         fontSize: 18,
@@ -642,7 +642,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Vista rápida de riesgo, avance y plan de acción',
+                      loc.dashboardSubtitle,
                       style: TextStyle(
                         color: AppColors.textLight.withValues(alpha: 0.72),
                         fontSize: 11.5,
@@ -719,7 +719,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Insight: tu mejor franja de control hoy fue $bestRange. ${_getActionableTip()}',
+                    '${loc.dashboardInsightPrefix} $bestRange. ${_getActionableTip(loc)}',
                     style: const TextStyle(
                       color: AppColors.textLight,
                       fontSize: 12.5,
@@ -736,17 +736,17 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
             runSpacing: 8,
             children: [
               _buildQuickActionButton(
-                label: 'Ir a Semana',
+                label: loc.week,
                 icon: Icons.calendar_view_week,
                 onTap: () => _tabController.animateTo(1),
               ),
               _buildQuickActionButton(
-                label: 'Ver Mes',
+                label: loc.month,
                 icon: Icons.calendar_month,
                 onTap: () => _tabController.animateTo(2),
               ),
               _buildQuickActionButton(
-                label: 'Plan inteligente',
+                label: loc.smartPlan,
                 icon: Icons.auto_awesome,
                 onTap: () => _showActionPlanSheet(loc),
               ),
@@ -776,11 +776,11 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
   }
 
   (String, Color) _computeRiskLevel() {
-    if (!_loggedIn || _todayLimit <= 0) return ('Sin datos', Colors.blueGrey);
+    if (!_loggedIn || _todayLimit <= 0) return (AppLocalizations.of(context)!.noDataShort, Colors.blueGrey);
     final ratio = _todayUsed / _todayLimit;
-    if (ratio < 0.6) return ('Bajo', Colors.green);
-    if (ratio < 0.9) return ('Medio', Colors.orange);
-    return ('Alto', Colors.redAccent);
+    if (ratio < 0.6) return (AppLocalizations.of(context)!.riskLow, Colors.green);
+    if (ratio < 0.9) return (AppLocalizations.of(context)!.riskMedium, Colors.orange);
+    return (AppLocalizations.of(context)!.riskHigh, Colors.redAccent);
   }
 
   int _projectedWeekFreeMinutes() {
@@ -798,15 +798,15 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
     return remainingAllowed.toInt();
   }
 
-  String _getActionableTip() {
+  String _getActionableTip(AppLocalizations loc) {
     final risk = _computeRiskLevel().$1;
-    if (risk == 'Alto') {
-      return 'Activa modo estricto y reduce 10-15 min tu límite mañana.';
+    if (risk == loc.riskHigh) {
+      return loc.tipHighRisk;
     }
-    if (risk == 'Medio') {
-      return 'Vas bien, evita picos en la tarde para cerrar el día en verde.';
+    if (risk == loc.riskMedium) {
+      return loc.tipMediumRisk;
     }
-    return 'Gran control hoy, mantén la misma rutina en tu franja fuerte.';
+    return loc.tipLowRisk;
   }
 
   Widget _buildRiskAndForecastRow({
@@ -830,7 +830,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Riesgo hoy',
+                  loc.riskToday,
                   style: TextStyle(
                     color: AppColors.textLight.withValues(alpha: 0.82),
                     fontSize: 11.5,
@@ -868,7 +868,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Proyección semanal',
+                  loc.weeklyProjection,
                   style: TextStyle(
                     color: AppColors.textLight.withValues(alpha: 0.82),
                     fontSize: 11.5,
@@ -884,7 +884,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
                   ),
                 ),
                 Text(
-                  'Meta restante: ${_formatMinutesAsHm(loc, neededForGoal)}',
+                  '${loc.remainingGoal}: ${_formatMinutesAsHm(loc, neededForGoal)}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -910,11 +910,11 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
       builder: (context) {
         final risk = _computeRiskLevel().$1;
         final tips = <String>[
-          if (risk == 'Alto') 'Reduce mañana tu límite diario en 15 minutos.',
-          if (risk != 'Alto') 'Mantén tu límite actual y repite rutina de enfoque.',
-          'Bloquea 2 franjas de distracción: 30 min mañana y 30 min tarde.',
-          'Haz check-in emocional antes de abrir Facebook.',
-          'Revisa tu panel de Semana al final del día.',
+          if (risk == loc.riskHigh) loc.planTipReduceLimit,
+          if (risk != loc.riskHigh) loc.planTipMaintainRoutine,
+          loc.planTipBlockDistractionSlots,
+          loc.planTipEmotionalCheckin,
+          loc.planTipReviewWeekPanel,
         ];
         return SafeArea(
           child: Padding(
@@ -924,7 +924,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Plan de acción inteligente',
+                  loc.smartActionPlanTitle,
                   style: const TextStyle(
                     color: AppColors.textLight,
                     fontSize: 18,
