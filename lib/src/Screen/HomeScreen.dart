@@ -73,6 +73,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
   void _hapticLight() => HapticFeedback.selectionClick();
   void _hapticMedium() => HapticFeedback.mediumImpact();
 
+  bool _useLiteEffects() {
+    final media = MediaQuery.maybeOf(context);
+    if (media == null) return false;
+    return media.disableAnimations || media.size.width < 390;
+  }
+
   String _todayDateKey() {
     final now = DateTime.now();
     final mm = now.month.toString().padLeft(2, '0');
@@ -558,13 +564,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
   void initState() {
     super.initState();
     _animationController = AnimationController(
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 420),
       vsync: this,
     );
     _ambientGlowController = AnimationController(
-      duration: const Duration(milliseconds: 2200),
+      duration: const Duration(milliseconds: 1800),
       vsync: this,
-    )..repeat(reverse: true);
+    );
     
     _fadeInAnimation = Tween<double>(
       begin: 0.0,
@@ -575,7 +581,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     ));
     
     _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.3),
+      begin: const Offset(0, 0.08),
       end: Offset.zero,
     ).animate(CurvedAnimation(
       parent: _animationController,
@@ -586,8 +592,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       if (!mounted) return;
       if (MediaQuery.disableAnimationsOf(context)) {
         _animationController.value = 1.0;
+        _ambientGlowController.value = 0.35;
       } else {
         _animationController.forward();
+        _ambientGlowController.forward();
       }
     });
     
@@ -1036,6 +1044,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         final appProvider = Provider.of<AppProvider>(context, listen: false);
         AppColors.setTheme(appProvider.colorTheme);
         
+        final liteEffects = _useLiteEffects();
         return Scaffold(
       body: Container(
         width: double.infinity,
@@ -1048,35 +1057,52 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
           ),
         ),
         child: SafeArea(
-          child: FadeTransition(
-            opacity: _fadeInAnimation,
-            child: SlideTransition(
-              position: _slideAnimation,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Header con saludo y perfil
-                    _buildStaggeredSection(index: 0, child: _buildHeader()),
-                    const SizedBox(height: 24),
-                    
-                    // Mensaje motivacional
-                    _buildStaggeredSection(index: 1, child: _buildMotivationalMessage()),
-                    const SizedBox(height: 24),
+          child: (liteEffects)
+              ? SingleChildScrollView(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildStaggeredSection(index: 0, child: _buildHeader()),
+                      const SizedBox(height: 24),
+                      _buildStaggeredSection(index: 1, child: _buildMotivationalMessage()),
+                      const SizedBox(height: 24),
+                      _buildStaggeredSection(index: 2, child: _buildDailyDashboard()),
+                      const SizedBox(height: 24),
+                      _buildStaggeredSection(index: 3, child: _buildActivityRecommendations()),
+                      const SizedBox(height: 24),
+                    ],
+                  ),
+                )
+              : FadeTransition(
+                  opacity: _fadeInAnimation,
+                  child: SlideTransition(
+                    position: _slideAnimation,
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Header con saludo y perfil
+                          _buildStaggeredSection(index: 0, child: _buildHeader()),
+                          const SizedBox(height: 24),
+                          
+                          // Mensaje motivacional
+                          _buildStaggeredSection(index: 1, child: _buildMotivationalMessage()),
+                          const SizedBox(height: 24),
 
-                    // Dashboard unificado (resumen + límites)
-                    _buildStaggeredSection(index: 2, child: _buildDailyDashboard()),
-                    const SizedBox(height: 24),
+                          // Dashboard unificado (resumen + límites)
+                          _buildStaggeredSection(index: 2, child: _buildDailyDashboard()),
+                          const SizedBox(height: 24),
 
-                    // Recomendaciones de actividad
-                    _buildStaggeredSection(index: 3, child: _buildActivityRecommendations()),
-                    const SizedBox(height: 24),
-                  ],
+                          // Recomendaciones de actividad
+                          _buildStaggeredSection(index: 3, child: _buildActivityRecommendations()),
+                          const SizedBox(height: 24),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-            ),
-          ),
         ),
       ),
     );
@@ -1088,28 +1114,25 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     required int index,
     required Widget child,
   }) {
-    if (MediaQuery.disableAnimationsOf(context)) {
+    if (MediaQuery.disableAnimationsOf(context) || _useLiteEffects()) {
       return child;
     }
 
-    return ProScrollReveal(
-      delayMs: 40 + (index * 55),
-      child: AnimatedBuilder(
-        animation: _animationController,
-        builder: (context, _) {
-          final start = (index * 0.1).clamp(0.0, 0.75);
-          final curve = Interval(start, 1.0, curve: Curves.easeOutCubic);
-          final t = curve.transform(_animationController.value.clamp(0.0, 1.0));
-          final dy = (1 - t) * 22;
-          return Opacity(
-            opacity: t.clamp(0.0, 1.0),
-            child: Transform.translate(
-              offset: Offset(0, dy),
-              child: child,
-            ),
-          );
-        },
-      ),
+    return AnimatedBuilder(
+      animation: _animationController,
+      builder: (context, _) {
+        final start = (index * 0.12).clamp(0.0, 0.7);
+        final curve = Interval(start, 1.0, curve: Curves.easeOutCubic);
+        final t = curve.transform(_animationController.value.clamp(0.0, 1.0));
+        final dy = (1 - t) * 10;
+        return Opacity(
+          opacity: t.clamp(0.0, 1.0),
+          child: Transform.translate(
+            offset: Offset(0, dy),
+            child: child,
+          ),
+        );
+      },
     );
   }
 
@@ -1301,6 +1324,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
   Widget _buildDailyDashboard() {
     final localizations = AppLocalizations.of(context)!;
     final appProvider = Provider.of<AppProvider>(context, listen: false);
+    final liteEffects = _useLiteEffects();
     final today = DateTime.now();
     final todayLabel =
         '${today.day.toString().padLeft(2, '0')}/${today.month.toString().padLeft(2, '0')}';
@@ -1334,13 +1358,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     return AnimatedBuilder(
       animation: _ambientGlowController,
       builder: (context, _) {
-        final glowT = Curves.easeInOut.transform(_ambientGlowController.value);
+        final glowT = liteEffects ? 0.2 : Curves.easeInOut.transform(_ambientGlowController.value);
         return ClipRRect(
           borderRadius: BorderRadius.circular(18),
           child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            filter: ImageFilter.blur(
+              sigmaX: liteEffects ? 0 : 7,
+              sigmaY: liteEffects ? 0 : 7,
+            ),
             child: AnimatedContainer(
-              duration: const Duration(milliseconds: 380),
+              duration: Duration(milliseconds: liteEffects ? 120 : 220),
               curve: Curves.easeOutCubic,
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -1414,7 +1441,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                   ],
                 ),
                 child: TweenAnimationBuilder<double>(
-                  duration: const Duration(milliseconds: 500),
+                  duration: Duration(milliseconds: liteEffects ? 260 : 500),
                   curve: Curves.easeOutCubic,
                   tween: Tween<double>(begin: 0, end: progress),
                   builder: (context, animatedProgress, _) => Stack(
@@ -1499,7 +1526,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
           GestureDetector(
             onTap: () => _showTimeRemainingDialog(localizations),
             child: TweenAnimationBuilder<double>(
-              duration: const Duration(milliseconds: 380),
+              duration: Duration(milliseconds: liteEffects ? 180 : 380),
               curve: Curves.easeOutCubic,
               tween: Tween<double>(begin: 0, end: progress),
               builder: (context, animatedProgress, _) => ClipRRect(
