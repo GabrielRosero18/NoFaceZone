@@ -54,6 +54,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
   int? _minutesToNextMandatoryPause;
   int _mandatoryPauseIntervalMinutes = 30;
   bool _isInNightBlockWindow = false;
+  String _dailyMotivationMessage = '';
+  String _dailyMotivationDateKey = '';
   List<_ActivityRecommendation> _activeActivityRecommendations = [];
   Set<String> _completedActivityIds = <String>{};
   int _activityShuffleSeed = 0;
@@ -64,6 +66,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
   static const String _activityCompletedPrefKey = 'activity_recommendations_completed_v1';
   static const String _activitySeedPrefKey = 'activity_recommendations_seed_v1';
   static const String _activityHistoryPrefKey = 'activity_recommendations_history_v1';
+
+  String _todayDateKey() {
+    final now = DateTime.now();
+    final mm = now.month.toString().padLeft(2, '0');
+    final dd = now.day.toString().padLeft(2, '0');
+    return '${now.year}-$mm-$dd';
+  }
+
+  String _resolveDailyMotivation(AppLocalizations localizations) {
+    final todayKey = _todayDateKey();
+    if (_dailyMotivationDateKey != todayKey || _dailyMotivationMessage.isEmpty) {
+      _dailyMotivationDateKey = todayKey;
+      _dailyMotivationMessage = AppMessages.getRandomMessage(localizations);
+    }
+    return _dailyMotivationMessage;
+  }
 
   List<_ActivityRecommendation> _getRecommendedActivities(
     AppLocalizations loc,
@@ -334,7 +352,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
             '🧩 ${loc.activityRecommendationsTitle}',
             style: const TextStyle(
               fontSize: 18,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w700,
               color: AppColors.textLight,
             ),
           ),
@@ -1035,25 +1053,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                     // Mensaje motivacional
                     _buildStaggeredSection(index: 1, child: _buildMotivationalMessage()),
                     const SizedBox(height: 24),
-                    
-                    // Resumen de uso
-                    _buildStaggeredSection(index: 2, child: _buildUsageSummary()),
-                    const SizedBox(height: 24),
-                    
-                    // Límites de uso
-                    _buildStaggeredSection(index: 3, child: _buildUsageLimits()),
+
+                    // Dashboard unificado (resumen + límites)
+                    _buildStaggeredSection(index: 2, child: _buildDailyDashboard()),
                     const SizedBox(height: 24),
 
                     // Recomendaciones de actividad
-                    _buildStaggeredSection(index: 4, child: _buildActivityRecommendations()),
+                    _buildStaggeredSection(index: 3, child: _buildActivityRecommendations()),
                     const SizedBox(height: 24),
-                    
-                    // Progreso semanal
-                    _buildStaggeredSection(index: 5, child: _buildWeeklyProgress()),
-                    const SizedBox(height: 24),
-                    
-                    // Navegación rápida
-                    _buildStaggeredSection(index: 6, child: _buildQuickNavigation()),
                   ],
                 ),
               ),
@@ -1201,69 +1208,73 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     return Consumer<AppProvider>(
       builder: (context, appProvider, child) {
         final localizations = AppLocalizations.of(context)!;
-        // Obtener un mensaje aleatorio de las colecciones activas traducido
-        final message = AppMessages.getRandomMessage(localizations);
+        // Mantener el mismo mensaje durante todo el día para evitar cambios bruscos.
+        final message = _resolveDailyMotivation(localizations);
         
         return Container(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                AppColors.accentPurple.withValues(alpha: 0.3),
-                AppColors.accentBlue.withValues(alpha: 0.2),
+                AppColors.accentPurple.withValues(alpha: 0.24),
+                AppColors.accentBlue.withValues(alpha: 0.18),
               ],
             ),
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: AppColors.textLight.withValues(alpha: 0.3),
-              width: 1.5,
+              color: AppColors.textLight.withValues(alpha: 0.22),
+              width: 1.2,
             ),
             boxShadow: [
               BoxShadow(
-                color: AppColors.accentPurple.withValues(alpha: 0.2),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
+                color: AppColors.accentPurple.withValues(alpha: 0.16),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
               ),
             ],
           ),
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(12),
+                width: 34,
+                height: 34,
                 decoration: BoxDecoration(
-                  color: AppColors.textLight.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(12),
+                  color: AppColors.textLight.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Icon(
                   Icons.auto_awesome,
                   color: AppColors.textLight,
-                  size: 28,
+                  size: 18,
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      '💬 ${localizations.messageOfDay}',
+                      localizations.messageOfDay,
                       style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textLight.withValues(alpha: 0.8),
-                        letterSpacing: 0.5,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textLight.withValues(alpha: 0.84),
+                        letterSpacing: 0.2,
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 3),
                     Text(
                       message,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontSize: 16,
+                        fontSize: 13.5,
                         fontWeight: FontWeight.w600,
                         color: AppColors.textLight,
-                        height: 1.4,
+                        height: 1.25,
                       ),
                     ),
                   ],
@@ -1273,6 +1284,529 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
           ),
         );
       },
+    );
+  }
+
+  Widget _buildDailyDashboard() {
+    final localizations = AppLocalizations.of(context)!;
+    final appProvider = Provider.of<AppProvider>(context, listen: false);
+    final today = DateTime.now();
+    final todayLabel =
+        '${today.day.toString().padLeft(2, '0')}/${today.month.toString().padLeft(2, '0')}';
+    final limitMinutes = appProvider.dailyUsageLimit.clamp(1, 24 * 60);
+    final usedMinutes = appProvider.todayUsageMinutes.clamp(0, limitMinutes);
+    final remainingMinutes = (limitMinutes - usedMinutes).clamp(0, limitMinutes);
+    final progress = (usedMinutes / limitMinutes).clamp(0.0, 1.0);
+    final recordHours = PreferencesService.getRecordTimeWithoutFacebook();
+    final blockedSessions = PreferencesService.getBlockedSessionsCount();
+
+    final bool isDailyBlocked = remainingMinutes <= 0;
+    final bool isNightBlocked = appProvider.nightBlockActive && _isInNightBlockWindow;
+    final bool isBreakBlocked =
+        appProvider.mandatoryBreaksActive &&
+        _minutesToNextMandatoryPause != null &&
+        _minutesToNextMandatoryPause! <= 0;
+
+    final bool isBlocked = isDailyBlocked || isNightBlocked || isBreakBlocked;
+    final bool isNearLimit = !isBlocked && progress >= 0.8;
+    final statusColor = isBlocked
+        ? Colors.redAccent
+        : (isNearLimit ? Colors.orange : Colors.green);
+    final statusText = isDailyBlocked
+        ? 'Bloqueado por límite diario'
+        : (isNightBlocked
+            ? 'Bloqueo nocturno activo'
+            : (isBreakBlocked
+                ? 'Pausa obligatoria activa'
+                : (isNearLimit ? 'Cerca del límite' : 'Dentro del límite')));
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.textLight.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: statusColor.withValues(alpha: 0.45), width: 1.4),
+        boxShadow: [
+          BoxShadow(
+            color: statusColor.withValues(alpha: 0.12),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  '📊 Tu autocontrol hoy',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textLight,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.textLight.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: AppColors.textLight.withValues(alpha: 0.22)),
+                ),
+                child: Text(
+                  todayLabel,
+                  style: TextStyle(
+                    color: AppColors.textLight.withValues(alpha: 0.85),
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Icon(
+                isBlocked ? Icons.block : Icons.verified_rounded,
+                size: 18,
+                color: statusColor,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  statusText,
+                  style: TextStyle(
+                    color: statusColor,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13.5,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: statusColor.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: statusColor.withValues(alpha: 0.35)),
+            ),
+            child: Text(
+              'Rendimiento ${(100 - (progress * 100)).round().clamp(0, 100)}%',
+              style: TextStyle(
+                color: statusColor,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Divider(
+            height: 1,
+            thickness: 1,
+            color: AppColors.textLight.withValues(alpha: 0.14),
+          ),
+          const SizedBox(height: 12),
+          GestureDetector(
+            onTap: () => _showTimeRemainingDialog(localizations),
+            child: TweenAnimationBuilder<double>(
+              duration: const Duration(milliseconds: 380),
+              curve: Curves.easeOutCubic,
+              tween: Tween<double>(begin: 0, end: progress),
+              builder: (context, animatedProgress, _) => ClipRRect(
+                borderRadius: BorderRadius.circular(7),
+                child: LinearProgressIndicator(
+                  minHeight: 10,
+                  value: animatedProgress,
+                  backgroundColor: AppColors.textLight.withValues(alpha: 0.2),
+                  color: statusColor,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildUsageStatMini(
+                  'Usado',
+                  _formatMinutesHm(usedMinutes),
+                  Icons.schedule,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildUsageStatMini(
+                  localizations.remaining,
+                  _formatMinutesHm(remainingMinutes),
+                  Icons.hourglass_bottom_rounded,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => _showTimeRemainingDialog(localizations),
+                  child: _buildUsageStatMini(
+                    localizations.dailyLimitHome,
+                    _formatMinutesHm(limitMinutes),
+                    Icons.timer_outlined,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildStatusIndicator(
+                  icon: Icons.bedtime,
+                  label: localizations.nightBlock,
+                  value: appProvider.nightBlockActive
+                      ? (_isInNightBlockWindow ? localizations.active : localizations.usageStatusStandby)
+                      : 'Off',
+                  color: _isInNightBlockWindow ? Colors.purpleAccent : AppColors.textLight,
+                  isOn: appProvider.nightBlockActive,
+                  onTap: _showNightBlockQuickConfig,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildStatusIndicator(
+                  icon: Icons.pause_circle_outline,
+                  label: localizations.mandatoryBreaks,
+                  value: appProvider.mandatoryBreaksActive
+                      ? (_minutesToNextMandatoryPause != null
+                          ? (_minutesToNextMandatoryPause! <= 0
+                              ? 'Ahora'
+                              : '${localizations.nextIn} ${_formatMinutesHm(_minutesToNextMandatoryPause!)}')
+                          : localizations.usageStatusStandby)
+                      : 'Off',
+                  color: isBreakBlocked ? Colors.orange : AppColors.textLight,
+                  isOn: appProvider.mandatoryBreaksActive,
+                  onTap: _showMandatoryBreakQuickConfig,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildStatusIndicator(
+                  icon: Icons.block,
+                  label: localizations.dailyLimitHome,
+                  value: isDailyBlocked ? localizations.active : 'Off',
+                  color: isDailyBlocked ? Colors.redAccent : AppColors.textLight,
+                  isOn: isDailyBlocked,
+                  onTap: _showDailyLimitQuickConfig,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'Impacto rápido',
+            style: TextStyle(
+              color: AppColors.textLight.withValues(alpha: 0.86),
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+              letterSpacing: 0.15,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: _buildImpactMiniCard(
+                  icon: Icons.military_tech_outlined,
+                  label: localizations.timeWithoutFacebook,
+                  value: _formatRecordHours(recordHours),
+                  color: Colors.green,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildImpactMiniCard(
+                  icon: Icons.block,
+                  label: localizations.blockedSessions,
+                  value: '$blockedSessions',
+                  color: Colors.redAccent,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildImpactMiniCard(
+                  icon: Icons.local_fire_department_outlined,
+                  label: localizations.consecutiveDays,
+                  value: '$_consecutiveDaysWithEmotions',
+                  color: Colors.orange,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildDashboardActionPill(
+                      icon: Icons.timer_outlined,
+                      label: 'Ver reloj',
+                      color: Colors.teal,
+                      fullWidth: true,
+                      onTap: () => _showTimeRemainingDialog(localizations),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _buildDashboardActionPill(
+                      icon: Icons.sentiment_satisfied_alt,
+                      label: 'Emociones',
+                      color: Colors.pinkAccent,
+                      fullWidth: true,
+                      onTap: () => navigate(context, CustomScreen.emotionTracking),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildDashboardActionPill(
+                      icon: Icons.analytics_outlined,
+                      label: localizations.statistics,
+                      color: AppColors.accentBlue,
+                      fullWidth: true,
+                      onTap: () => navigate(context, CustomScreen.statistics),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _buildDashboardActionPill(
+                      icon: Icons.card_giftcard,
+                      label: localizations.rewards,
+                      color: Colors.orange,
+                      fullWidth: true,
+                      onTap: () => navigate(context, CustomScreen.rewards),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUsageStatMini(String title, String value, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.textLight.withValues(alpha: 0.13),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.textLight.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Icon(icon, size: 14, color: AppColors.textLight.withValues(alpha: 0.82)),
+          const SizedBox(height: 4),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 220),
+            transitionBuilder: (child, animation) =>
+                FadeTransition(opacity: animation, child: child),
+            child: Text(
+              value,
+              key: ValueKey<String>(value),
+              style: const TextStyle(
+                color: AppColors.textLight,
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+              ),
+            ),
+          ),
+          Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: AppColors.textLight.withValues(alpha: 0.72),
+              fontSize: 11,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusIndicator({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+    required bool isOn,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: AppColors.textLight.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: (isOn ? color : AppColors.textLight).withValues(alpha: 0.28),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, size: 13, color: isOn ? color : AppColors.textLight),
+                const SizedBox(width: 5),
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: isOn ? color : Colors.grey,
+                    boxShadow: isOn
+                        ? [
+                            BoxShadow(
+                              color: color.withValues(alpha: 0.5),
+                              blurRadius: 6,
+                              spreadRadius: 1,
+                            ),
+                          ]
+                        : null,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.textLight.withValues(alpha: 0.7),
+                fontSize: 10.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: isOn ? color : AppColors.textLight,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImpactMiniCard({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.textLight.withValues(alpha: 0.13),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.28)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(height: 6),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 220),
+            transitionBuilder: (child, animation) =>
+                FadeTransition(opacity: animation, child: child),
+            child: Text(
+              value,
+              key: ValueKey<String>(value),
+              style: const TextStyle(
+                color: AppColors.textLight,
+                fontWeight: FontWeight.w700,
+                fontSize: 13.5,
+              ),
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: AppColors.textLight.withValues(alpha: 0.68),
+              fontSize: 10.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDashboardActionPill({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+    bool fullWidth = false,
+  }) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(999),
+      onTap: onTap,
+      child: Container(
+        width: fullWidth ? double.infinity : null,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.14),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: color.withValues(alpha: 0.34)),
+        ),
+        child: Row(
+          mainAxisSize: fullWidth ? MainAxisSize.max : MainAxisSize.min,
+          mainAxisAlignment:
+              fullWidth ? MainAxisAlignment.center : MainAxisAlignment.start,
+          children: [
+            Icon(icon, size: 15, color: color),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -1348,6 +1882,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     return (1.0 - (next / interval)).clamp(0.0, 1.0);
   }
 
+  // ignore: unused_element
   Widget _buildUsageSummary() {
     final localizations = AppLocalizations.of(context)!;
     if (_isLoadingUsageData && !_hasLoadedUsageData) {
@@ -1481,6 +2016,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     );
   }
 
+  // ignore: unused_element
   Widget _buildUsageLimits() {
     final localizations = AppLocalizations.of(context)!;
     if (_isLoadingUsageData && !_hasLoadedUsageData) {
@@ -1603,6 +2139,445 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
           },
         );
       },
+    );
+  }
+
+  Future<void> _showNightBlockQuickConfig() async {
+    final appProvider = Provider.of<AppProvider>(context, listen: false);
+    bool enabled = appProvider.nightBlockActive;
+    String start = _nightWindowLabel.contains('–')
+        ? _nightWindowLabel.split('–').first.trim()
+        : '22:00';
+    String end = _nightWindowLabel.contains('–')
+        ? _nightWindowLabel.split('–').last.trim()
+        : '07:00';
+
+    String normalize(String t) {
+      final parts = t.split(':');
+      if (parts.length < 2) return '22:00:00';
+      return '${parts[0].padLeft(2, '0')}:${parts[1].padLeft(2, '0')}:00';
+    }
+
+    final saved = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: AppColors.darkSurface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setModalState) => Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.textLight.withValues(alpha: 0.35),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Container(
+                      width: 34,
+                      height: 34,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(colors: AppColors.accentGradient),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.bedtime, color: AppColors.textLight, size: 18),
+                    ),
+                    const SizedBox(width: 10),
+                    const Expanded(
+                      child: Text(
+                        'Configurar bloqueo nocturno',
+                        style: TextStyle(
+                          color: AppColors.textLight,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.textLight.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.textLight.withValues(alpha: 0.2)),
+                  ),
+                  child: SwitchListTile(
+                    value: enabled,
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text(
+                      'Activar',
+                      style: TextStyle(color: AppColors.textLight, fontWeight: FontWeight.w600),
+                    ),
+                    onChanged: (v) => setModalState(() => enabled = v),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(color: AppColors.accentBlue.withValues(alpha: 0.45)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        onPressed: () async {
+                          final now = TimeOfDay.now();
+                          final picked = await showTimePicker(context: context, initialTime: now);
+                          if (picked != null) {
+                            setModalState(() {
+                              start =
+                                  '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
+                            });
+                          }
+                        },
+                        child: Text('Inicio  $start'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(color: AppColors.accentBlue.withValues(alpha: 0.45)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        onPressed: () async {
+                          final now = TimeOfDay.now();
+                          final picked = await showTimePicker(context: context, initialTime: now);
+                          if (picked != null) {
+                            setModalState(() {
+                              end =
+                                  '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
+                            });
+                          }
+                        },
+                        child: Text('Fin  $end'),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(ctx).pop(false),
+                        child: const Text('Cancelar'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: () => Navigator.of(ctx).pop(true),
+                        child: const Text('Guardar'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (saved != true || !mounted) return;
+
+    if (enabled && start == end) {
+      CustomSnackBar.showWarning(
+        context,
+        'La hora de inicio y fin no pueden ser iguales.',
+      );
+      return;
+    }
+
+    final success = await UsageLimitsService.updateNightBlock(
+      active: enabled,
+      startTime: normalize(start),
+      endTime: normalize(end),
+    );
+    if (!success || !mounted) return;
+    await appProvider.refreshUsageLimits();
+    await _loadUsageData();
+    if (!mounted) return;
+    CustomSnackBar.showSuccess(context, 'Bloqueo nocturno guardado');
+  }
+
+  Future<void> _showMandatoryBreakQuickConfig() async {
+    final appProvider = Provider.of<AppProvider>(context, listen: false);
+    bool enabled = appProvider.mandatoryBreaksActive;
+    int interval = _mandatoryPauseIntervalMinutes;
+    int duration = 5;
+
+    final saved = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: AppColors.darkSurface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setModalState) => Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.textLight.withValues(alpha: 0.35),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Container(
+                      width: 34,
+                      height: 34,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(colors: AppColors.accentGradient),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.pause_circle, color: AppColors.textLight, size: 18),
+                    ),
+                    const SizedBox(width: 10),
+                    const Expanded(
+                      child: Text(
+                        'Configurar pausas obligatorias',
+                        style: TextStyle(
+                          color: AppColors.textLight,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.textLight.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.textLight.withValues(alpha: 0.2)),
+                  ),
+                  child: SwitchListTile(
+                    value: enabled,
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text(
+                      'Activar',
+                      style: TextStyle(color: AppColors.textLight, fontWeight: FontWeight.w600),
+                    ),
+                    onChanged: (v) => setModalState(() => enabled = v),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<int>(
+                        initialValue: interval,
+                        dropdownColor: AppColors.darkSurface,
+                        style: const TextStyle(color: AppColors.textLight),
+                        items: const [15, 20, 30, 45, 60]
+                            .map((e) => DropdownMenuItem(value: e, child: Text('$e min')))
+                            .toList(),
+                        onChanged: (v) {
+                          if (v != null) setModalState(() => interval = v);
+                        },
+                        decoration: const InputDecoration(labelText: 'Intervalo'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: DropdownButtonFormField<int>(
+                        initialValue: duration,
+                        dropdownColor: AppColors.darkSurface,
+                        style: const TextStyle(color: AppColors.textLight),
+                        items: const [3, 5, 10, 15]
+                            .map((e) => DropdownMenuItem(value: e, child: Text('$e min')))
+                            .toList(),
+                        onChanged: (v) {
+                          if (v != null) setModalState(() => duration = v);
+                        },
+                        decoration: const InputDecoration(labelText: 'Duración'),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(ctx).pop(false),
+                        child: const Text('Cancelar'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: () => Navigator.of(ctx).pop(true),
+                        child: const Text('Guardar'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (saved != true || !mounted) return;
+    if (enabled && duration >= interval) {
+      CustomSnackBar.showWarning(
+        context,
+        'La duración debe ser menor al intervalo.',
+      );
+      return;
+    }
+    final success = await UsageLimitsService.updateMandatoryBreaks(
+      active: enabled,
+      intervalMinutes: interval,
+      durationMinutes: duration,
+    );
+    if (!success || !mounted) return;
+    await appProvider.refreshUsageLimits();
+    await _loadUsageData();
+    if (!mounted) return;
+    CustomSnackBar.showSuccess(context, 'Pausas obligatorias guardadas');
+  }
+
+  Future<void> _showDailyLimitQuickConfig() async {
+    final appProvider = Provider.of<AppProvider>(context, listen: false);
+    final localizations = AppLocalizations.of(context)!;
+    int selectedMinutes = appProvider.dailyUsageLimit.clamp(10, 24 * 60);
+
+    String formatMinutes(int minutes) {
+      final h = minutes ~/ 60;
+      final m = minutes % 60;
+      if (h == 0) return '$m ${localizations.minutesShort}';
+      if (m == 0) return '$h ${localizations.hoursShort}';
+      return '${h}h ${m}m';
+    }
+
+    final saved = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: AppColors.darkSurface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setModalState) => Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.textLight.withValues(alpha: 0.35),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Container(
+                      width: 34,
+                      height: 34,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(colors: AppColors.accentGradient),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.timer_outlined, color: AppColors.textLight, size: 18),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        localizations.dailyLimitHome,
+                        style: const TextStyle(
+                          color: AppColors.textLight,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  '${localizations.dailyLimitTitle}: ${formatMinutes(selectedMinutes)}',
+                  style: TextStyle(
+                    color: AppColors.textLight.withValues(alpha: 0.9),
+                    fontSize: 13,
+                  ),
+                ),
+                Slider(
+                  value: selectedMinutes.toDouble(),
+                  min: 10,
+                  max: 24 * 60,
+                  divisions: ((24 * 60) - 10) ~/ 10,
+                  onChanged: (v) {
+                    setModalState(() => selectedMinutes = (v ~/ 10) * 10);
+                  },
+                ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(ctx).pop(false),
+                        child: const Text('Cancelar'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: () => Navigator.of(ctx).pop(true),
+                        child: const Text('Guardar'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (saved != true || !mounted) return;
+    await appProvider.setDailyUsageLimit(selectedMinutes);
+    await _loadUsageData();
+    if (!mounted) return;
+    CustomSnackBar.showSuccess(
+      context,
+      'Límite diario actualizado a ${formatMinutes(selectedMinutes)}',
     );
   }
 
@@ -1760,6 +2735,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     );
   }
 
+  // ignore: unused_element
   Widget _buildWeeklyProgress() {
     final localizations = AppLocalizations.of(context)!;
     return Container(
@@ -1800,6 +2776,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
                   color: AppColors.textLight,
+                  letterSpacing: 0.2,
                 ),
               ),
             ],
@@ -1857,6 +2834,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     );
   }
 
+  // ignore: unused_element
   Widget _buildQuickNavigation() {
     final localizations = AppLocalizations.of(context)!;
     return Column(
@@ -1866,8 +2844,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
           '🚀 ${localizations.quickNavigation}',
           style: TextStyle(
             fontSize: 18,
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w700,
             color: AppColors.textLight,
+            letterSpacing: 0.2,
           ),
         ),
         const SizedBox(height: 16),
@@ -1875,41 +2854,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
           children: [
             Expanded(
               child: _buildNavigationCard(
-                localizations.statistics,
-                Icons.analytics,
-                AppColors.accentBlue,
-                () => navigate(context, CustomScreen.statistics),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildNavigationCard(
-                localizations.rewards,
-                Icons.card_giftcard,
-                Colors.orange,
-                () => navigate(context, CustomScreen.rewards),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _buildNavigationCard(
                 localizations.settings,
                 Icons.settings,
-                AppColors.accentPurple,
+                AppColors.accentBlue,
                 () => navigate(context, CustomScreen.settings),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildNavigationCard(
-                localizations.emotionTracking,
-                Icons.sentiment_satisfied_alt,
-                Colors.pink,
-                () => navigate(context, CustomScreen.emotionTracking),
               ),
             ),
           ],
