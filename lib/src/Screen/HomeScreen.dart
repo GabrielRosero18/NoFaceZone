@@ -38,6 +38,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
   DateTime? _localSessionStartAt;
   bool _isBlockedScreenShown = false;
   bool _isLoadingUsageData = false;
+  bool _hasLoadedUsageData = false;
   DateTime? _blockDismissedTime; // Ventana de gracia temporal para bloqueo diario
   DateTime? _dailyBlockDismissedUntil; // "Quitar bloqueo por hoy" (hasta fin del día)
   DateTime? _nightBlockDismissedTime;
@@ -685,7 +686,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       return;
     }
 
-    _isLoadingUsageData = true;
+    if (mounted) {
+      setState(() {
+        _isLoadingUsageData = true;
+      });
+    } else {
+      _isLoadingUsageData = true;
+    }
     
     try {
       // Obtener datos de uso de manera más eficiente
@@ -695,8 +702,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       if (todayUsage == null) {
         if (mounted) {
           await _refreshHomeSummaryMetrics();
+          setState(() {
+            _hasLoadedUsageData = true;
+          });
+        } else {
+          _hasLoadedUsageData = true;
         }
-        _isLoadingUsageData = false;
         return;
       }
       
@@ -818,7 +829,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     } catch (e) {
       debugPrint('Error loading usage data: $e');
     } finally {
-      _isLoadingUsageData = false;
+      if (mounted) {
+        setState(() {
+          _isLoadingUsageData = false;
+          _hasLoadedUsageData = true;
+        });
+      } else {
+        _isLoadingUsageData = false;
+        _hasLoadedUsageData = true;
+      }
     }
   }
 
@@ -1330,7 +1349,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
 
   Widget _buildUsageSummary() {
     final localizations = AppLocalizations.of(context)!;
-    if (_isLoadingUsageData) {
+    if (_isLoadingUsageData && !_hasLoadedUsageData) {
       return _buildUsageSectionSkeleton(titleEmoji: '📱');
     }
     final recordHours = PreferencesService.getRecordTimeWithoutFacebook();
@@ -1463,7 +1482,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
 
   Widget _buildUsageLimits() {
     final localizations = AppLocalizations.of(context)!;
-    if (_isLoadingUsageData) {
+    if (_isLoadingUsageData && !_hasLoadedUsageData) {
       return _buildUsageSectionSkeleton(titleEmoji: '⏰');
     }
     final appProvider = Provider.of<AppProvider>(context, listen: false);

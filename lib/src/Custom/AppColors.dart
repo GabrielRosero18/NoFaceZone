@@ -24,21 +24,21 @@ class AppColors {
   // Tema actual (se actualiza dinámicamente)
   static ColorTheme _currentTheme = _defaultTheme;
   
-  // Tema predeterminado (Océano Azul - el tema actual de la app)
+  // Tema predeterminado (Neon Soft)
   static const ColorTheme _defaultTheme = ColorTheme(
     id: 'ocean',
-    name: 'Océano Azul',
+    name: 'Neon Soft',
     backgroundGradient: [
-      Color(0xFF7F53AC), // primaryPurple
-      Color(0xFF647DEE), // primaryBlue
-      Color(0xFFB8C1FF), // lightLavender
+      Color(0xFF111731),
+      Color(0xFF182247),
+      Color(0xFF223063),
     ],
     accentGradient: [
-      Color(0xFF6A85FF),
-      Color(0xFFB8C1FF),
+      Color(0xFF6F8DFF),
+      Color(0xFF9AB0FF),
     ],
-    primaryColor: Color(0xFF7F53AC),
-    accentColor: Color(0xFF6A85FF),
+    primaryColor: Color(0xFF4E70DA),
+    accentColor: Color(0xFF6F8DFF),
   );
 
   // Todos los temas disponibles
@@ -48,76 +48,76 @@ class AppColors {
       id: 'sunset',
       name: 'Atardecer',
       backgroundGradient: [
-        Color(0xFFE65100), // Colors.orange[800]!
-        Color(0xFFEC407A), // Colors.pink[400]!
-        Color(0xFFBA68C8), // Colors.purple[300]!
+        Color(0xFF271821),
+        Color(0xFF332032),
+        Color(0xFF40293F),
       ],
       accentGradient: [
-        Color(0xFFEC407A),
-        Color(0xFFBA68C8),
+        Color(0xFFFF8A78),
+        Color(0xFFD47EA6),
       ],
-      primaryColor: Color(0xFFE65100),
-      accentColor: Color(0xFFEC407A),
+      primaryColor: Color(0xFFD26C5D),
+      accentColor: Color(0xFFD47EA6),
     ),
     'forest': const ColorTheme(
       id: 'forest',
       name: 'Bosque Verde',
       backgroundGradient: [
-        Color(0xFF2E7D32), // Colors.green[800]!
-        Color(0xFF66BB6A), // Colors.lightGreen[400]!
-        Color(0xFFDCE775), // Colors.lime[300]!
+        Color(0xFF13221D),
+        Color(0xFF1B2E27),
+        Color(0xFF253C32),
       ],
       accentGradient: [
-        Color(0xFF66BB6A),
-        Color(0xFFDCE775),
+        Color(0xFF6EC4A1),
+        Color(0xFF8BD3B1),
       ],
-      primaryColor: Color(0xFF2E7D32),
-      accentColor: Color(0xFF66BB6A),
+      primaryColor: Color(0xFF4B9A7D),
+      accentColor: Color(0xFF6EC4A1),
     ),
     'lavender': const ColorTheme(
       id: 'lavender',
       name: 'Lavanda',
       backgroundGradient: [
-        Color(0xFF6A1B9A), // Colors.purple[800]!
-        Color(0xFF7B1FA2), // Colors.deepPurple[400]!
-        Color(0xFF7986CB), // Colors.indigo[300]!
+        Color(0xFF201A32),
+        Color(0xFF2A2141),
+        Color(0xFF362B54),
       ],
       accentGradient: [
-        Color(0xFF7B1FA2),
-        Color(0xFF7986CB),
+        Color(0xFFA285FF),
+        Color(0xFFBC9BFF),
       ],
-      primaryColor: Color(0xFF6A1B9A),
-      accentColor: Color(0xFF7B1FA2),
+      primaryColor: Color(0xFF8169CC),
+      accentColor: Color(0xFFA285FF),
     ),
     'coral': const ColorTheme(
       id: 'coral',
       name: 'Coral',
       backgroundGradient: [
-        Color(0xFFC62828), // Colors.red[700]!
-        Color(0xFFFF6F00), // Colors.orange[400]!
-        Color(0xFFFFD54F), // Colors.yellow[300]!
+        Color(0xFF28171A),
+        Color(0xFF342025),
+        Color(0xFF412930),
       ],
       accentGradient: [
-        Color(0xFFFF6F00),
-        Color(0xFFFFD54F),
+        Color(0xFFF08B69),
+        Color(0xFFFFAF85),
       ],
-      primaryColor: Color(0xFFC62828),
-      accentColor: Color(0xFFFF6F00),
+      primaryColor: Color(0xFFCB6E57),
+      accentColor: Color(0xFFF08B69),
     ),
     'midnight': const ColorTheme(
       id: 'midnight',
       name: 'Medianoche',
       backgroundGradient: [
-        Color(0xFF212121), // Colors.grey[900]!
-        Color(0xFF546E7A), // Colors.blueGrey[800]!
-        Color(0xFF616161), // Colors.grey[700]!
+        Color(0xFF0F1320),
+        Color(0xFF161E31),
+        Color(0xFF212B43),
       ],
       accentGradient: [
-        Color(0xFF546E7A),
-        Color(0xFF616161),
+        Color(0xFF6E82B0),
+        Color(0xFF8EA3D1),
       ],
-      primaryColor: Color(0xFF212121),
-      accentColor: Color(0xFF546E7A),
+      primaryColor: Color(0xFF5A6F99),
+      accentColor: Color(0xFF6E82B0),
     ),
   };
 
@@ -149,7 +149,7 @@ class AppColors {
   // Colores de superficie (estáticos)
   static const Color surfaceColor = Color(0xFFF8F9FF);
   static const Color cardColor = Color(0xFFFFFFFF);
-  static const Color darkSurface = Color(0x66121A3B);
+  static const Color darkSurface = Color(0xCC101827);
   
   // Colores de texto (estáticos)
   static const Color textPrimary = Color(0xFF2D3748);
@@ -169,17 +169,17 @@ class AppColors {
   // Sombras (estáticas)
   static const List<BoxShadow> cardShadow = [
     BoxShadow(
-      color: Color(0x1A000000),
-      blurRadius: 8,
+      color: Color(0x14000000),
+      blurRadius: 6,
       offset: Offset(0, 2),
     ),
   ];
   
   static const List<BoxShadow> elevatedShadow = [
     BoxShadow(
-      color: Color(0x33000000),
-      blurRadius: 16,
-      offset: Offset(0, 8),
+      color: Color(0x26000000),
+      blurRadius: 12,
+      offset: Offset(0, 6),
     ),
   ];
 }
