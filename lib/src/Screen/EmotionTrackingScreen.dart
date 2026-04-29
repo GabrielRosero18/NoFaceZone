@@ -19,6 +19,7 @@ class _EmotionTrackingScreenState extends State<EmotionTrackingScreen> {
   String? _selectedEmotion;
   final TextEditingController _commentController = TextEditingController();
   List<EmotionModel> _recentEmotions = [];
+  double _intensity = 3;
   bool _isLoading = false;
   bool _isSaving = false;
 
@@ -124,11 +125,10 @@ class _EmotionTrackingScreenState extends State<EmotionTrackingScreen> {
     });
 
     try {
+      final encodedComment = _buildEncodedComment();
       final result = await EmotionService.registerEmotion(
         emotion: _selectedEmotion!,
-        comment: _commentController.text.trim().isEmpty
-            ? null
-            : _commentController.text.trim(),
+        comment: encodedComment,
       );
 
       if (result['success'] == true) {
@@ -143,6 +143,7 @@ class _EmotionTrackingScreenState extends State<EmotionTrackingScreen> {
         // Limpiar formulario
         setState(() {
           _selectedEmotion = null;
+          _intensity = 3;
           _commentController.clear();
         });
 
@@ -184,6 +185,46 @@ class _EmotionTrackingScreenState extends State<EmotionTrackingScreen> {
     }
   }
 
+  String? _buildEncodedComment() {
+    final cleanComment = _commentController.text.trim();
+    final metadata = 'Intensidad: ${_intensity.round()}/5';
+    if (cleanComment.isEmpty) {
+      return metadata;
+    }
+    return '$metadata\n$cleanComment';
+  }
+
+  String _extractVisibleComment(String? rawComment) {
+    if (rawComment == null || rawComment.isEmpty) {
+      return '';
+    }
+
+    final lines = rawComment.split('\n');
+    if (lines.isNotEmpty && lines.first.startsWith('Intensidad: ')) {
+      return lines.skip(1).join('\n').trim();
+    }
+    return rawComment;
+  }
+
+  String _extractMetadataLine(String? rawComment) {
+    if (rawComment == null || rawComment.isEmpty) {
+      return 'Intensidad no registrada';
+    }
+    final firstLine = rawComment.split('\n').first;
+    if (firstLine.startsWith('Intensidad: ')) {
+      return firstLine;
+    }
+    return 'Intensidad no registrada';
+  }
+
+  String _getEmotionNameById(String emotionId, AppLocalizations? localizations) {
+    final emotionData = _getEmotions(localizations).firstWhere(
+      (e) => e['id'] == emotionId,
+      orElse: () => _getEmotions(localizations)[2],
+    );
+    return emotionData['name'] as String;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<AppProvider>(
@@ -221,6 +262,8 @@ class _EmotionTrackingScreenState extends State<EmotionTrackingScreen> {
                             children: [
                               _buildEmotionForm(localizations),
                               const SizedBox(height: 24),
+                              _buildInsightsCard(localizations),
+                              const SizedBox(height: 24),
                               _buildRecentLog(localizations),
                             ],
                           );
@@ -236,7 +279,13 @@ class _EmotionTrackingScreenState extends State<EmotionTrackingScreen> {
                             const SizedBox(width: 24),
                             Expanded(
                               flex: 1,
-                              child: _buildRecentLog(localizations),
+                              child: Column(
+                                children: [
+                                  _buildInsightsCard(localizations),
+                                  const SizedBox(height: 24),
+                                  _buildRecentLog(localizations),
+                                ],
+                              ),
                             ),
                           ],
                         );
@@ -296,7 +345,7 @@ class _EmotionTrackingScreenState extends State<EmotionTrackingScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            localizations?.howDoYouFeelToday ?? '¿Cómo te sientes hoy?',
+            localizations?.howDoYouFeelToday ?? '¿Cómo te sientes respecto al uso de Facebook?',
             style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.bold,
@@ -305,7 +354,7 @@ class _EmotionTrackingScreenState extends State<EmotionTrackingScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            localizations?.selectEmotionDescription ?? 'Selecciona la emoción que mejor describe tu estado actual',
+            localizations?.selectEmotionDescription ?? 'Selecciona la emoción que mejor describe cómo te impactó Facebook ahora',
             style: TextStyle(
               fontSize: 14,
               color: AppColors.textLight.withValues(alpha: 0.9),
@@ -426,7 +475,54 @@ class _EmotionTrackingScreenState extends State<EmotionTrackingScreen> {
             },
           ),
           const SizedBox(height: 24),
-          
+
+          Text(
+            'Intensidad emocional',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textLight,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '¿Qué tan fuerte sientes esta emoción?',
+            style: TextStyle(
+              fontSize: 13,
+              color: AppColors.textLight.withValues(alpha: 0.8),
+            ),
+          ),
+          const SizedBox(height: 8),
+          SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              activeTrackColor: AppColors.primaryPurple,
+              inactiveTrackColor: AppColors.textLight.withValues(alpha: 0.2),
+              thumbColor: AppColors.primaryPurple,
+              overlayColor: AppColors.primaryPurple.withValues(alpha: 0.15),
+            ),
+            child: Slider(
+              value: _intensity,
+              min: 1,
+              max: 5,
+              divisions: 4,
+              label: _intensity.round().toString(),
+              onChanged: (value) {
+                setState(() {
+                  _intensity = value;
+                });
+              },
+            ),
+          ),
+          Text(
+            '${_intensity.round()}/5',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textLight.withValues(alpha: 0.9),
+            ),
+          ),
+          const SizedBox(height: 20),
+
           // Campo de comentario
           Text(
             localizations?.commentOptional ?? 'Comentario (Opcional)',
@@ -441,7 +537,7 @@ class _EmotionTrackingScreenState extends State<EmotionTrackingScreen> {
             controller: _commentController,
             maxLines: 3,
             decoration: InputDecoration(
-              hintText: localizations?.commentPlaceholder ?? 'Describe brevemente lo que sientes o el contexto...',
+              hintText: localizations?.commentPlaceholder ?? 'Describe qué pasó en Facebook y cómo te afectó...',
               hintStyle: TextStyle(color: AppColors.textLight.withValues(alpha: 0.6)),
               filled: true,
               fillColor: AppColors.textLight.withValues(alpha: 0.1),
@@ -512,6 +608,115 @@ class _EmotionTrackingScreenState extends State<EmotionTrackingScreen> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInsightsCard(AppLocalizations? localizations) {
+    final total = _recentEmotions.length;
+    String dominantEmotion = 'Sin datos';
+
+    if (_recentEmotions.isNotEmpty) {
+      final frequency = <String, int>{};
+      for (final emotion in _recentEmotions) {
+        frequency[emotion.emotion] = (frequency[emotion.emotion] ?? 0) + 1;
+      }
+      final dominantEntry = frequency.entries.reduce((a, b) => a.value >= b.value ? a : b);
+      dominantEmotion = _getEmotionNameById(dominantEntry.key, localizations);
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.textLight.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppColors.textLight.withValues(alpha: 0.2),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Resumen rápido',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textLight,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Analiza tu patrón emocional asociado al uso de Facebook.',
+            style: TextStyle(
+              fontSize: 13,
+              color: AppColors.textLight.withValues(alpha: 0.85),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _buildInsightMetric(
+                  title: 'Registros recientes',
+                  value: '$total',
+                  icon: Icons.timeline_rounded,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildInsightMetric(
+                  title: 'Emoción dominante',
+                  value: dominantEmotion,
+                  icon: Icons.psychology_rounded,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInsightMetric({
+    required String title,
+    required String value,
+    required IconData icon,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.textLight.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppColors.textLight.withValues(alpha: 0.18),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: AppColors.textLight, size: 18),
+          const SizedBox(height: 8),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 11,
+              color: AppColors.textLight.withValues(alpha: 0.78),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textLight,
             ),
           ),
         ],
@@ -643,10 +848,18 @@ class _EmotionTrackingScreenState extends State<EmotionTrackingScreen> {
                     color: AppColors.textLight,
                   ),
                 ),
-                if (emotion.comment != null && emotion.comment!.isNotEmpty) ...[
+                Text(
+                  _extractMetadataLine(emotion.comment),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textLight.withValues(alpha: 0.75),
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+                if (_extractVisibleComment(emotion.comment).isNotEmpty) ...[
                   const SizedBox(height: 4),
                   Text(
-                    emotion.comment!,
+                    _extractVisibleComment(emotion.comment),
                     style: TextStyle(
                       fontSize: 14,
                       color: AppColors.textLight.withValues(alpha: 0.9),
