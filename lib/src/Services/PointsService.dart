@@ -19,6 +19,8 @@ class PointsService {
   static const int pointsFirstEmotion = 15; // Puntos bonus por primera emoción
   static const int pointsCompleteProfile = 25; // Puntos por completar perfil
   static const int pointsUpdateProfile = 5; // Puntos por actualizar perfil
+  static const int pointsActivityCompletion = 3; // Puntos por completar actividad sugerida
+  static const int maxActivityCompletionsPerDay = 3; // Límite de actividades con puntos por día
 
   // ============================================
   // MÉTODOS PARA OTORGAR PUNTOS
@@ -200,6 +202,42 @@ class PointsService {
       debugPrint('✅ Puntos otorgados por actualizar perfil: $pointsUpdateProfile');
     } catch (e) {
       debugPrint('Error al otorgar puntos por actualizar perfil: $e');
+    }
+  }
+
+  /// Otorgar puntos por completar actividad recomendada (con límite diario).
+  static Future<void> awardActivityCompletionPoints() async {
+    try {
+      final authUser = _supabase.auth.currentUser;
+      if (authUser == null) return;
+
+      final today = DateTime.now();
+      final todayKey = '${today.year}-${today.month}-${today.day}';
+      final dayKey = 'activity_points_day_${authUser.id}';
+      final countKey = 'activity_points_count_${authUser.id}';
+
+      final savedDay = PreferencesService.getString(dayKey);
+      var count = int.tryParse(PreferencesService.getString(countKey) ?? '0') ?? 0;
+
+      if (savedDay != todayKey) {
+        await PreferencesService.setString(dayKey, todayKey);
+        count = 0;
+      }
+
+      if (count >= maxActivityCompletionsPerDay) {
+        return;
+      }
+
+      await RewardService.addPoints(
+        pointsActivityCompletion,
+        description: 'Actividad recomendada completada',
+      );
+
+      count += 1;
+      await PreferencesService.setString(countKey, count.toString());
+      debugPrint('✅ Puntos por actividad completada: $pointsActivityCompletion ($count/$maxActivityCompletionsPerDay)');
+    } catch (e) {
+      debugPrint('Error al otorgar puntos por actividad completada: $e');
     }
   }
 

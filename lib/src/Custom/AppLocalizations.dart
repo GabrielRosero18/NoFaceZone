@@ -396,6 +396,12 @@ class AppLocalizations {
       'activity_reason_low_risk': 'Buen ritmo: aprovecha este momento para reforzar hábitos positivos.',
       'activity_start_now': 'Empieza ahora',
       'activity_do_it': 'Hacer',
+      'activity_refresh': 'Cambiar sugerencias',
+      'activity_undo': 'Deshacer',
+      'activity_completed_message': 'Actividad marcada como completada',
+      'activity_marked_pending': 'Actividad marcada como pendiente',
+      'activity_now_suggestion': 'Sugerencia ahora',
+      'activity_weekly_done': 'Actividades completadas esta semana',
       'activity_breathing_title': 'Respiración guiada',
       'activity_breathing_subtitle': 'Inhala y exhala en ciclos',
       'activity_walk_title': 'Caminata breve',
@@ -929,6 +935,12 @@ class AppLocalizations {
       'activity_reason_low_risk': 'Great pace: use this moment to reinforce positive habits.',
       'activity_start_now': 'Start now',
       'activity_do_it': 'Do it',
+      'activity_refresh': 'Change suggestions',
+      'activity_undo': 'Undo',
+      'activity_completed_message': 'Activity marked as completed',
+      'activity_marked_pending': 'Activity marked as pending',
+      'activity_now_suggestion': 'Suggestion now',
+      'activity_weekly_done': 'Activities completed this week',
       'activity_breathing_title': 'Guided breathing',
       'activity_breathing_subtitle': 'Inhale and exhale in cycles',
       'activity_walk_title': 'Short walk',
@@ -1390,6 +1402,12 @@ class AppLocalizations {
   String get activityReasonLowRisk => translate('activity_reason_low_risk');
   String get activityStartNow => translate('activity_start_now');
   String get activityDoIt => translate('activity_do_it');
+  String get activityRefresh => translate('activity_refresh');
+  String get activityUndo => translate('activity_undo');
+  String get activityCompletedMessage => translate('activity_completed_message');
+  String get activityMarkedPending => translate('activity_marked_pending');
+  String get activityNowSuggestion => translate('activity_now_suggestion');
+  String get activityWeeklyDone => translate('activity_weekly_done');
   String get activityBreathingTitle => translate('activity_breathing_title');
   String get activityBreathingSubtitle => translate('activity_breathing_subtitle');
   String get activityWalkTitle => translate('activity_walk_title');

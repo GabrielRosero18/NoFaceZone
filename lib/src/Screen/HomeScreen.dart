@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:nofacezone/src/Custom/AppColors.dart';
@@ -51,6 +52,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
   int? _minutesToNextMandatoryPause;
   int _mandatoryPauseIntervalMinutes = 30;
   bool _isInNightBlockWindow = false;
+  List<_ActivityRecommendation> _activeActivityRecommendations = [];
+  Set<String> _completedActivityIds = <String>{};
+  int _activityShuffleSeed = 0;
+  String _activityStateDateKey = '';
+  Map<String, int> _activityCompletionByDay = <String, int>{};
+
+  static const String _activityDatePrefKey = 'activity_recommendations_date_v1';
+  static const String _activityCompletedPrefKey = 'activity_recommendations_completed_v1';
+  static const String _activitySeedPrefKey = 'activity_recommendations_seed_v1';
+  static const String _activityHistoryPrefKey = 'activity_recommendations_history_v1';
 
   List<_ActivityRecommendation> _getRecommendedActivities(
     AppLocalizations loc,
@@ -62,6 +73,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
 
     final highRisk = <_ActivityRecommendation>[
       _ActivityRecommendation(
+        id: 'breathing',
         title: loc.activityBreathingTitle,
         subtitle: loc.activityBreathingSubtitle,
         minutes: 3,
@@ -69,6 +81,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         color: Colors.purpleAccent,
       ),
       _ActivityRecommendation(
+        id: 'walk',
         title: loc.activityWalkTitle,
         subtitle: loc.activityWalkSubtitle,
         minutes: 10,
@@ -76,6 +89,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         color: Colors.green,
       ),
       _ActivityRecommendation(
+        id: 'hydrate',
         title: loc.activityHydrateTitle,
         subtitle: loc.activityHydrateSubtitle,
         minutes: 2,
@@ -86,6 +100,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
 
     final mediumRisk = <_ActivityRecommendation>[
       _ActivityRecommendation(
+        id: 'stretch',
         title: loc.activityStretchTitle,
         subtitle: loc.activityStretchSubtitle,
         minutes: 7,
@@ -93,6 +108,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         color: Colors.orange,
       ),
       _ActivityRecommendation(
+        id: 'read',
         title: loc.activityReadTitle,
         subtitle: loc.activityReadSubtitle,
         minutes: 12,
@@ -100,6 +116,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         color: Colors.teal,
       ),
       _ActivityRecommendation(
+        id: 'journal',
         title: loc.activityJournalTitle,
         subtitle: loc.activityJournalSubtitle,
         minutes: 8,
@@ -110,6 +127,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
 
     final lowRisk = <_ActivityRecommendation>[
       _ActivityRecommendation(
+        id: 'plan_day',
         title: loc.activityPlanDayTitle,
         subtitle: loc.activityPlanDaySubtitle,
         minutes: 10,
@@ -117,6 +135,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         color: Colors.indigo,
       ),
       _ActivityRecommendation(
+        id: 'tidy',
         title: loc.activityTidyTitle,
         subtitle: loc.activityTidySubtitle,
         minutes: 15,
@@ -124,6 +143,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         color: Colors.cyan,
       ),
       _ActivityRecommendation(
+        id: 'learn',
         title: loc.activityLearnTitle,
         subtitle: loc.activityLearnSubtitle,
         minutes: 20,
@@ -142,10 +162,149 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     );
   }
 
+  String _todayActivityKey() {
+    final now = DateTime.now();
+    final mm = now.month.toString().padLeft(2, '0');
+    final dd = now.day.toString().padLeft(2, '0');
+    return '${now.year}-$mm-$dd';
+  }
+
+  Future<void> _loadActivityState(AppLocalizations loc, AppProvider app) async {
+    await PreferencesService.init();
+    final todayKey = _todayActivityKey();
+    final savedDate = PreferencesService.getString(_activityDatePrefKey) ?? '';
+    final savedSeed = int.tryParse(PreferencesService.getString(_activitySeedPrefKey) ?? '0') ?? 0;
+    final completedJson = PreferencesService.getString(_activityCompletedPrefKey);
+    final historyJson = PreferencesService.getString(_activityHistoryPrefKey);
+    final completed = <String>{};
+    final history = <String, int>{};
+    if (completedJson != null && completedJson.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(completedJson);
+        if (decoded is List) {
+          completed.addAll(decoded.map((e) => e.toString()));
+        }
+      } catch (_) {}
+    }
+    if (historyJson != null && historyJson.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(historyJson);
+        if (decoded is Map) {
+          decoded.forEach((k, v) {
+            history[k.toString()] = (v as num).toInt();
+          });
+        }
+      } catch (_) {}
+    }
+
+    if (savedDate != todayKey) {
+      _activityShuffleSeed = DateTime.now().hour;
+      _completedActivityIds = <String>{};
+      _activityCompletionByDay = history;
+      _activityStateDateKey = todayKey;
+      _activeActivityRecommendations = _rotateRecommendations(
+        _getRecommendedActivities(loc, app),
+        _activityShuffleSeed,
+      );
+      await _saveActivityState();
+      return;
+    }
+
+    _activityShuffleSeed = savedSeed;
+    _completedActivityIds = completed;
+    _activityCompletionByDay = history;
+    _activityStateDateKey = todayKey;
+    _activeActivityRecommendations = _rotateRecommendations(
+      _getRecommendedActivities(loc, app),
+      _activityShuffleSeed,
+    );
+  }
+
+  Future<void> _saveActivityState() async {
+    await PreferencesService.setString(_activityDatePrefKey, _activityStateDateKey);
+    await PreferencesService.setString(_activitySeedPrefKey, _activityShuffleSeed.toString());
+    await PreferencesService.setString(
+      _activityCompletedPrefKey,
+      jsonEncode(_completedActivityIds.toList()),
+    );
+    await PreferencesService.setString(
+      _activityHistoryPrefKey,
+      jsonEncode(_activityCompletionByDay),
+    );
+  }
+
+  List<_ActivityRecommendation> _rotateRecommendations(
+    List<_ActivityRecommendation> source,
+    int seed,
+  ) {
+    if (source.isEmpty) return source;
+    final offset = seed % source.length;
+    return List<_ActivityRecommendation>.generate(
+      source.length,
+      (i) => source[(i + offset) % source.length],
+    );
+  }
+
+  Future<void> _refreshActivities(AppLocalizations loc, AppProvider app) async {
+    setState(() {
+      _activityShuffleSeed += 1;
+      _activeActivityRecommendations = _rotateRecommendations(
+        _getRecommendedActivities(loc, app),
+        _activityShuffleSeed,
+      );
+    });
+    await _saveActivityState();
+  }
+
+  Future<void> _toggleActivityCompleted(_ActivityRecommendation rec, AppLocalizations loc) async {
+    final isDone = _completedActivityIds.contains(rec.id);
+    final dayKey = _todayActivityKey();
+    setState(() {
+      if (isDone) {
+        _completedActivityIds.remove(rec.id);
+        final current = _activityCompletionByDay[dayKey] ?? 0;
+        _activityCompletionByDay[dayKey] = (current - 1).clamp(0, 99);
+      } else {
+        _completedActivityIds.add(rec.id);
+        final current = _activityCompletionByDay[dayKey] ?? 0;
+        _activityCompletionByDay[dayKey] = current + 1;
+      }
+    });
+    await _saveActivityState();
+    if (!isDone) {
+      await PointsService.awardActivityCompletionPoints();
+    }
+    if (!mounted) return;
+    CustomSnackBar.showTheme(
+      context,
+      isDone ? loc.activityMarkedPending : loc.activityCompletedMessage,
+      icon: isDone ? Icons.undo : Icons.task_alt,
+    );
+  }
+
+  Future<void> _syncActivityRecommendations(AppLocalizations loc, AppProvider app) async {
+    final next = _rotateRecommendations(
+      _getRecommendedActivities(loc, app),
+      _activityShuffleSeed,
+    );
+    final validIds = next.map((e) => e.id).toSet();
+    _completedActivityIds = _completedActivityIds.where(validIds.contains).toSet();
+    if (mounted) {
+      setState(() {
+        _activeActivityRecommendations = next;
+      });
+    } else {
+      _activeActivityRecommendations = next;
+    }
+    await _saveActivityState();
+  }
+
   Widget _buildActivityRecommendations() {
     final loc = AppLocalizations.of(context)!;
     final app = Provider.of<AppProvider>(context, listen: false);
-    final recs = _getRecommendedActivities(loc, app);
+    final recs = _activeActivityRecommendations.isEmpty
+        ? _getRecommendedActivities(loc, app)
+        : _activeActivityRecommendations;
     final riskRatio = app.dailyUsageLimit > 0
         ? (app.todayUsageMinutes / app.dailyUsageLimit)
         : 0.0;
@@ -153,6 +312,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     final reason = riskRatio >= 0.9
         ? loc.activityReasonHighRisk
         : (riskRatio >= 0.6 ? loc.activityReasonMediumRisk : loc.activityReasonLowRisk);
+    final doneCount = recs.where((r) => _completedActivityIds.contains(r.id)).length;
+    final progress = recs.isEmpty ? 0.0 : (doneCount / recs.length).clamp(0.0, 1.0);
+    final nowRec = recs.isEmpty ? null : recs[DateTime.now().hour % recs.length];
+    final weekStats = _last7DaysActivityStats();
+    final weekTotal = weekStats.fold<int>(0, (a, b) => a + b);
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -180,6 +344,57 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
               color: AppColors.textLight.withValues(alpha: 0.85),
             ),
           ),
+          if (nowRec != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.textLight.withValues(alpha: 0.09),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: nowRec.color.withValues(alpha: 0.4)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.flash_on, color: nowRec.color, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '${loc.activityNowSuggestion}: ${nowRec.title} (${nowRec.minutes}${loc.minutesShort})',
+                      style: const TextStyle(
+                        color: AppColors.textLight,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: LinearProgressIndicator(
+                    minHeight: 8,
+                    value: progress,
+                    backgroundColor: AppColors.textLight.withValues(alpha: 0.2),
+                    color: Colors.green,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                '$doneCount/${recs.length}',
+                style: const TextStyle(
+                  color: AppColors.textLight,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 14),
           Column(
             children: recs.take(3).map((rec) {
@@ -189,18 +404,85 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
               );
             }).toList(),
           ),
+          const SizedBox(height: 4),
+          Text(
+            '${loc.activityWeeklyDone}: $weekTotal',
+            style: TextStyle(
+              color: AppColors.textLight.withValues(alpha: 0.82),
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(height: 8),
+          _buildActivityHistoryBars(weekStats),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: () => _refreshActivities(loc, app),
+              icon: const Icon(Icons.shuffle),
+              label: Text(loc.activityRefresh),
+            ),
+          ),
         ],
       ),
     );
   }
 
+  List<int> _last7DaysActivityStats() {
+    final now = DateTime.now();
+    final result = <int>[];
+    for (var i = 6; i >= 0; i--) {
+      final day = now.subtract(Duration(days: i));
+      final key =
+          '${day.year}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
+      result.add(_activityCompletionByDay[key] ?? 0);
+    }
+    return result;
+  }
+
+  Widget _buildActivityHistoryBars(List<int> values) {
+    final maxV = values.fold<int>(1, (m, v) => v > m ? v : m);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: List.generate(values.length, (i) {
+        final v = values[i];
+        final h = ((v / maxV).clamp(0.08, 1.0)) * 26;
+        return Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 2),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '$v',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: AppColors.textLight.withValues(alpha: 0.72),
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Container(
+                  height: h,
+                  decoration: BoxDecoration(
+                    color: AppColors.accentBlue.withValues(alpha: 0.85),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }),
+    );
+  }
+
   Widget _buildActivityTile(_ActivityRecommendation rec, AppLocalizations loc) {
+    final done = _completedActivityIds.contains(rec.id);
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.textLight.withValues(alpha: 0.1),
+        color: AppColors.textLight.withValues(alpha: done ? 0.18 : 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: rec.color.withValues(alpha: 0.35)),
+        border: Border.all(color: (done ? Colors.green : rec.color).withValues(alpha: 0.45)),
       ),
       child: Row(
         children: [
@@ -236,15 +518,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
               ],
             ),
           ),
-          TextButton(
-            onPressed: () {
-              CustomSnackBar.showTheme(
-                context,
-                '${loc.activityStartNow}: ${rec.title}',
-                icon: Icons.check_circle_outline,
-              );
-            },
-            child: Text(loc.activityDoIt),
+          TextButton.icon(
+            onPressed: () => _toggleActivityCompleted(rec, loc),
+            icon: Icon(done ? Icons.undo : Icons.task_alt, size: 18),
+            label: Text(done ? loc.activityUndo : loc.activityDoIt),
           ),
         ],
       ),
@@ -310,6 +587,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       _showWelcomeMessage();
       // Otorgar puntos por inicio de sesión diario
       PointsService.awardDailyLoginPoints();
+      final loc = AppLocalizations.of(context);
+      final app = Provider.of<AppProvider>(context, listen: false);
+      if (loc != null) {
+        _loadActivityState(loc, app).then((_) {
+          if (mounted) setState(() {});
+        });
+      }
     });
   }
 
@@ -523,6 +807,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         }
 
         await _refreshHomeSummaryMetrics();
+        final loc = AppLocalizations.of(context);
+        if (loc != null) {
+          await _syncActivityRecommendations(loc, appProvider);
+        }
 
         _lastUsageDataFetchAt = DateTime.now();
       }
@@ -1558,6 +1846,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
 }
 
 class _ActivityRecommendation {
+  final String id;
   final String title;
   final String subtitle;
   final int minutes;
@@ -1565,6 +1854,7 @@ class _ActivityRecommendation {
   final Color color;
 
   const _ActivityRecommendation({
+    required this.id,
     required this.title,
     required this.subtitle,
     required this.minutes,
