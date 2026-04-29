@@ -581,6 +581,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
         ],
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
@@ -624,7 +625,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '🚀 Dashboard de Progreso',
+                      'Dashboard de Progreso',
                       style: const TextStyle(
                         color: AppColors.textLight,
                         fontSize: 18,
@@ -637,6 +638,14 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
                       style: TextStyle(
                         color: AppColors.textLight.withValues(alpha: 0.88),
                         fontSize: 12.5,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Vista rápida de riesgo, avance y plan de acción',
+                      style: TextStyle(
+                        color: AppColors.textLight.withValues(alpha: 0.72),
+                        fontSize: 11.5,
                       ),
                     ),
                   ],
@@ -653,35 +662,43 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
             neededForGoal: neededForGoal,
           ),
           const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: _buildMiniKpi(
-                  title: loc.consecutiveDays,
-                  value: '$_consecutiveSuccessDays',
-                  icon: Icons.local_fire_department,
-                  color: Colors.orange,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildMiniKpi(
-                  title: loc.totalFreeTime,
-                  value: _formatMinutesAsHm(loc, _thisWeekFreeTotal),
-                  icon: Icons.savings,
-                  color: Colors.green,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildMiniKpi(
-                  title: loc.blockedSessions,
-                  value: '$_blockedSessions',
-                  icon: Icons.block,
-                  color: Colors.redAccent,
-                ),
-              ),
-            ],
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final cardWidth = (constraints.maxWidth - 16) / 3;
+              return Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  SizedBox(
+                    width: cardWidth,
+                    child: _buildMiniKpi(
+                      title: loc.consecutiveDays,
+                      value: '$_consecutiveSuccessDays',
+                      icon: Icons.local_fire_department,
+                      color: Colors.orange,
+                    ),
+                  ),
+                  SizedBox(
+                    width: cardWidth,
+                    child: _buildMiniKpi(
+                      title: loc.totalFreeTime,
+                      value: _formatMinutesAsHm(loc, _thisWeekFreeTotal),
+                      icon: Icons.savings,
+                      color: Colors.green,
+                    ),
+                  ),
+                  SizedBox(
+                    width: cardWidth,
+                    child: _buildMiniKpi(
+                      title: loc.blockedSessions,
+                      value: '$_blockedSessions',
+                      icon: Icons.block,
+                      color: Colors.redAccent,
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
           const SizedBox(height: 12),
           Container(
@@ -714,38 +731,29 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
             ),
           ),
           const SizedBox(height: 12),
-          Row(
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
             children: [
-              Expanded(
-                child: _buildQuickActionButton(
-                  label: loc.today,
-                  icon: Icons.today,
-                  onTap: () => _tabController.animateTo(0),
-                ),
+              _buildQuickActionButton(
+                label: 'Ir a Semana',
+                icon: Icons.calendar_view_week,
+                onTap: () => _tabController.animateTo(1),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildQuickActionButton(
-                  label: loc.week,
-                  icon: Icons.calendar_view_week,
-                  onTap: () => _tabController.animateTo(1),
-                ),
+              _buildQuickActionButton(
+                label: 'Ver Mes',
+                icon: Icons.calendar_month,
+                onTap: () => _tabController.animateTo(2),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildQuickActionButton(
-                  label: loc.month,
-                  icon: Icons.calendar_month,
-                  onTap: () => _tabController.animateTo(2),
-                ),
+              _buildQuickActionButton(
+                label: 'Plan inteligente',
+                icon: Icons.auto_awesome,
+                onTap: () => _showActionPlanSheet(loc),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildQuickActionButton(
-                  label: 'Plan',
-                  icon: Icons.auto_awesome,
-                  onTap: () => _showActionPlanSheet(loc),
-                ),
+              _buildQuickActionButton(
+                label: loc.refresh,
+                icon: Icons.refresh,
+                onTap: _loading ? null : _loadStatistics,
               ),
             ],
           ),
@@ -989,17 +997,17 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
             style: const TextStyle(
               color: AppColors.textLight,
               fontWeight: FontWeight.bold,
-              fontSize: 13.5,
+              fontSize: 14.5,
             ),
           ),
           const SizedBox(height: 2),
           Text(
             title,
-            maxLines: 1,
+            maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: AppColors.textLight.withValues(alpha: 0.85),
-              fontSize: 11.5,
+              fontSize: 11.3,
             ),
           ),
         ],
@@ -1016,25 +1024,24 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
       onTap: onTap,
       borderRadius: BorderRadius.circular(10),
       child: Ink(
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+        padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 12),
         decoration: BoxDecoration(
           color: AppColors.textLight.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: AppColors.textLight.withValues(alpha: 0.2)),
         ),
-        child: Column(
+        child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(icon, size: 17, color: AppColors.textLight),
-            const SizedBox(height: 4),
+            const SizedBox(width: 6),
             Text(
               label,
-              style: const TextStyle(
-                color: AppColors.textLight,
-                fontSize: 10.5,
+              style: TextStyle(
+                fontSize: 11.5,
                 fontWeight: FontWeight.w600,
+                color: onTap == null ? AppColors.textLight.withValues(alpha: 0.5) : AppColors.textLight,
               ),
-              textAlign: TextAlign.center,
             ),
           ],
         ),
