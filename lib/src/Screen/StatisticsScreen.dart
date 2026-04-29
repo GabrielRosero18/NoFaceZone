@@ -535,6 +535,10 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
                                   ),
                                 ),
                               ),
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                              child: _buildDashboardHero(loc),
+                            ),
                             Expanded(
                               child: TabBarView(
                                 controller: _tabController,
@@ -554,6 +558,490 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
     );
   }
 
+  Widget _buildDashboardHero(AppLocalizations loc) {
+    final score = _loggedIn ? _effectivenessPct.clamp(0, 100) : 0;
+    final bestRange = _inferBestHourRange();
+    final trendUp = _improvementPct >= 0;
+    final risk = _computeRiskLevel();
+    final projectedWeekFree = _projectedWeekFreeMinutes();
+    final neededForGoal = _minutesNeededForWeeklyGoal();
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.textLight.withValues(alpha: 0.16),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.textLight.withValues(alpha: 0.3), width: 1.4),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.textLight.withValues(alpha: 0.08),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              SizedBox(
+                width: 72,
+                height: 72,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0, end: score / 100),
+                      duration: const Duration(milliseconds: 900),
+                      curve: Curves.easeOutCubic,
+                      builder: (context, value, _) {
+                        return CircularProgressIndicator(
+                          value: value,
+                          strokeWidth: 8,
+                          backgroundColor: AppColors.textLight.withValues(alpha: 0.18),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            score >= 75 ? Colors.green : (score >= 45 ? Colors.orange : Colors.redAccent),
+                          ),
+                        );
+                      },
+                    ),
+                    Center(
+                      child: Text(
+                        '$score',
+                        style: const TextStyle(
+                          color: AppColors.textLight,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '🚀 Dashboard de Progreso',
+                      style: const TextStyle(
+                        color: AppColors.textLight,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _loggedIn ? '${loc.effectiveness}: $score%' : loc.statisticsSignInHint,
+                      style: TextStyle(
+                        color: AppColors.textLight.withValues(alpha: 0.88),
+                        fontSize: 12.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          _buildRiskAndForecastRow(
+            loc: loc,
+            riskLabel: risk.$1,
+            riskColor: risk.$2,
+            projectedWeekFree: projectedWeekFree,
+            neededForGoal: neededForGoal,
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _buildMiniKpi(
+                  title: loc.consecutiveDays,
+                  value: '$_consecutiveSuccessDays',
+                  icon: Icons.local_fire_department,
+                  color: Colors.orange,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildMiniKpi(
+                  title: loc.totalFreeTime,
+                  value: _formatMinutesAsHm(loc, _thisWeekFreeTotal),
+                  icon: Icons.savings,
+                  color: Colors.green,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildMiniKpi(
+                  title: loc.blockedSessions,
+                  value: '$_blockedSessions',
+                  icon: Icons.block,
+                  color: Colors.redAccent,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppColors.textLight.withValues(alpha: 0.11),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.textLight.withValues(alpha: 0.22)),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  trendUp ? Icons.trending_up : Icons.trending_down,
+                  size: 18,
+                  color: trendUp ? Colors.green : Colors.orange,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Insight: tu mejor franja de control hoy fue $bestRange. ${_getActionableTip()}',
+                    style: const TextStyle(
+                      color: AppColors.textLight,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildQuickActionButton(
+                  label: loc.today,
+                  icon: Icons.today,
+                  onTap: () => _tabController.animateTo(0),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildQuickActionButton(
+                  label: loc.week,
+                  icon: Icons.calendar_view_week,
+                  onTap: () => _tabController.animateTo(1),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildQuickActionButton(
+                  label: loc.month,
+                  icon: Icons.calendar_month,
+                  onTap: () => _tabController.animateTo(2),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildQuickActionButton(
+                  label: 'Plan',
+                  icon: Icons.auto_awesome,
+                  onTap: () => _showActionPlanSheet(loc),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _inferBestHourRange() {
+    var maxIndex = 0;
+    var maxVal = -1.0;
+    for (var i = 0; i < _hourlyBarFractions.length; i++) {
+      if (_hourlyBarFractions[i] > maxVal) {
+        maxVal = _hourlyBarFractions[i];
+        maxIndex = i;
+      }
+    }
+    const ranges = ['08:00-09:59', '10:00-11:59', '12:00-13:59', '14:00-15:59', '16:00-17:59', '18:00-19:59', '20:00-21:59'];
+    return ranges[maxIndex.clamp(0, ranges.length - 1)];
+  }
+
+  (String, Color) _computeRiskLevel() {
+    if (!_loggedIn || _todayLimit <= 0) return ('Sin datos', Colors.blueGrey);
+    final ratio = _todayUsed / _todayLimit;
+    if (ratio < 0.6) return ('Bajo', Colors.green);
+    if (ratio < 0.9) return ('Medio', Colors.orange);
+    return ('Alto', Colors.redAccent);
+  }
+
+  int _projectedWeekFreeMinutes() {
+    final now = DateTime.now();
+    final dayIndex = (now.weekday - DateTime.monday).clamp(0, 6);
+    final daysElapsed = dayIndex + 1;
+    if (daysElapsed <= 0) return _thisWeekFreeTotal;
+    final avgFree = _thisWeekFreeTotal / daysElapsed;
+    return (avgFree * 7).round().clamp(0, 7 * 24 * 60);
+  }
+
+  int _minutesNeededForWeeklyGoal() {
+    final weeklyCapByCurrentLimit = (_todayLimit.clamp(1, 1440)) * 7;
+    final remainingAllowed = (weeklyCapByCurrentLimit - _weekDayUsedMinutes.fold(0, (a, b) => a + b)).clamp(0, weeklyCapByCurrentLimit);
+    return remainingAllowed.toInt();
+  }
+
+  String _getActionableTip() {
+    final risk = _computeRiskLevel().$1;
+    if (risk == 'Alto') {
+      return 'Activa modo estricto y reduce 10-15 min tu límite mañana.';
+    }
+    if (risk == 'Medio') {
+      return 'Vas bien, evita picos en la tarde para cerrar el día en verde.';
+    }
+    return 'Gran control hoy, mantén la misma rutina en tu franja fuerte.';
+  }
+
+  Widget _buildRiskAndForecastRow({
+    required AppLocalizations loc,
+    required String riskLabel,
+    required Color riskColor,
+    required int projectedWeekFree,
+    required int neededForGoal,
+  }) {
+    return Row(
+      children: [
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: AppColors.textLight.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: riskColor.withValues(alpha: 0.55)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Riesgo hoy',
+                  style: TextStyle(
+                    color: AppColors.textLight.withValues(alpha: 0.82),
+                    fontSize: 11.5,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Icon(Icons.shield, size: 16, color: riskColor),
+                    const SizedBox(width: 6),
+                    Text(
+                      riskLabel,
+                      style: TextStyle(
+                        color: riskColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: AppColors.textLight.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.accentBlue.withValues(alpha: 0.5)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Proyección semanal',
+                  style: TextStyle(
+                    color: AppColors.textLight.withValues(alpha: 0.82),
+                    fontSize: 11.5,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _formatMinutesAsHm(loc, projectedWeekFree),
+                  style: const TextStyle(
+                    color: AppColors.textLight,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+                Text(
+                  'Meta restante: ${_formatMinutesAsHm(loc, neededForGoal)}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: AppColors.textLight.withValues(alpha: 0.78),
+                    fontSize: 10.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showActionPlanSheet(AppLocalizations loc) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF1A1F3A),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        final risk = _computeRiskLevel().$1;
+        final tips = <String>[
+          if (risk == 'Alto') 'Reduce mañana tu límite diario en 15 minutos.',
+          if (risk != 'Alto') 'Mantén tu límite actual y repite rutina de enfoque.',
+          'Bloquea 2 franjas de distracción: 30 min mañana y 30 min tarde.',
+          'Haz check-in emocional antes de abrir Facebook.',
+          'Revisa tu panel de Semana al final del día.',
+        ];
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Plan de acción inteligente',
+                  style: const TextStyle(
+                    color: AppColors.textLight,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                ...tips.map(
+                  (tip) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('• ', style: TextStyle(color: AppColors.textLight)),
+                        Expanded(
+                          child: Text(
+                            tip,
+                            style: TextStyle(
+                              color: AppColors.textLight.withValues(alpha: 0.92),
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      _tabController.animateTo(1);
+                    },
+                    icon: const Icon(Icons.analytics),
+                    label: Text(loc.weeklyComparison),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildMiniKpi({
+    required String title,
+    required String value,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppColors.textLight.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.45)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 17, color: color),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: AppColors.textLight,
+              fontWeight: FontWeight.bold,
+              fontSize: 13.5,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: AppColors.textLight.withValues(alpha: 0.85),
+              fontSize: 11.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickActionButton({
+    required String label,
+    required IconData icon,
+    required VoidCallback? onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Ink(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+        decoration: BoxDecoration(
+          color: AppColors.textLight.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AppColors.textLight.withValues(alpha: 0.2)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 17, color: AppColors.textLight),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: const TextStyle(
+                color: AppColors.textLight,
+                fontSize: 10.5,
+                fontWeight: FontWeight.w600,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _wrapRefresh(Widget child) {
     return RefreshIndicator(
       color: AppColors.accentBlue,
@@ -568,11 +1056,19 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
     final effLabel = !_loggedIn
         ? loc.effectivenessNoData
         : '${_effectivenessPct.clamp(0, 100)}%';
+    final usedProgress = _todayLimit > 0 ? (_todayUsed / _todayLimit).clamp(0.0, 1.0) : 0.0;
+    final remaining = _todayLimit > 0 ? (_todayLimit - _todayUsed).clamp(0, _todayLimit) : 0;
 
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(24),
       children: [
+        _buildDailyProgressHero(
+          loc: loc,
+          usedProgress: usedProgress,
+          remainingMinutes: remaining,
+        ),
+        const SizedBox(height: 24),
         _buildSummaryCard(
           '📊 ${loc.daySummary}',
           [
@@ -637,6 +1133,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
         const SizedBox(height: 24),
         _buildWeeklyBarChart(loc, labels),
         const SizedBox(height: 24),
+        _buildWeekInsightCard(loc),
+        const SizedBox(height: 24),
         _buildWeeklyComparison(loc),
       ],
     );
@@ -673,8 +1171,65 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
         const SizedBox(height: 24),
         _buildMonthlyChart(loc),
         const SizedBox(height: 24),
+        _buildMonthPerformanceCard(loc),
+        const SizedBox(height: 24),
         _buildAchievementsSection(loc),
       ],
+    );
+  }
+
+  Widget _buildDailyProgressHero({
+    required AppLocalizations loc,
+    required double usedProgress,
+    required int remainingMinutes,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.textLight.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.textLight.withValues(alpha: 0.3), width: 1.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '🎯 ${loc.effectivenessUnderLimit}',
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textLight,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            '${_formatMinutesAsHm(loc, _todayUsed)} / ${_formatMinutesAsHm(loc, _todayLimit)}',
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textLight,
+            ),
+          ),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: LinearProgressIndicator(
+              minHeight: 10,
+              value: usedProgress,
+              color: usedProgress < 0.8 ? Colors.green : Colors.orange,
+              backgroundColor: AppColors.textLight.withValues(alpha: 0.2),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            '${loc.remaining}: ${_formatMinutesAsHm(loc, remainingMinutes)}',
+            style: TextStyle(
+              fontSize: 14,
+              color: AppColors.textLight.withValues(alpha: 0.9),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -907,7 +1462,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
             children: List.generate(7, (i) {
               final used = _weekDayUsedMinutes[i];
               final frac = _weekMaxUsed > 0 ? (used / _weekMaxUsed).clamp(0.12, 1.0) : 0.12;
-              return _buildDayBar(dayLabels[i], frac);
+              return _buildDayBar(dayLabels[i], frac, _formatMinutesAsHm(loc, used));
             }),
           ),
         ],
@@ -915,9 +1470,18 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
     );
   }
 
-  Widget _buildDayBar(String label, double height) {
+  Widget _buildDayBar(String label, double height, String value) {
     return Column(
       children: [
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 10,
+            color: AppColors.textLight.withValues(alpha: 0.85),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 6),
         Container(
           width: 35,
           height: 140 * height,
@@ -939,6 +1503,40 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildWeekInsightCard(AppLocalizations loc) {
+    final meetsGoal = _improvementPct >= 0;
+    final icon = meetsGoal ? Icons.trending_up : Icons.trending_down;
+    final color = meetsGoal ? Colors.green : Colors.orange;
+    final text = meetsGoal
+        ? '${loc.improvement} ${_improvementPct.abs()}%'
+        : '${loc.improvement} ${_improvementPct.abs()}%';
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.textLight.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.textLight.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 24),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                color: AppColors.textLight,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1151,6 +1749,70 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
           _buildAchievementBadge('🎯 ${loc.weeklyGoalAchieved}', Icons.flag, Colors.blue, _achWeeklyGoal),
           const SizedBox(height: 12),
           _buildAchievementBadge('⚡ ${loc.hours100Free}', Icons.bolt, Colors.yellow, _ach100hFree),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMonthPerformanceCard(AppLocalizations loc) {
+    final pct = _monthSuccessPct.clamp(0, 100);
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.textLight.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.textLight.withValues(alpha: 0.3), width: 1.5),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 74,
+            height: 74,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                CircularProgressIndicator(
+                  value: pct / 100,
+                  strokeWidth: 8,
+                  backgroundColor: AppColors.textLight.withValues(alpha: 0.2),
+                  valueColor: const AlwaysStoppedAnimation<Color>(Colors.green),
+                ),
+                Center(
+                  child: Text(
+                    '$pct%',
+                    style: const TextStyle(
+                      color: AppColors.textLight,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  loc.successRate,
+                  style: const TextStyle(
+                    color: AppColors.textLight,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '${loc.bestStreak}: $_monthBestStreak ${loc.days}',
+                  style: TextStyle(
+                    color: AppColors.textLight.withValues(alpha: 0.9),
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );

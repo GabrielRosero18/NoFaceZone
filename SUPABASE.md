@@ -833,6 +833,92 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 ---
 
+## 🚑 Guía de Migración y Troubleshooting (Auth + Bloqueos)
+
+Esta sección resume los ajustes necesarios para que registro/login y límites de uso funcionen correctamente al migrar la base de datos.
+
+### 1) Configuración Auth recomendada para este proyecto
+
+- Ir a `Authentication -> Providers -> Email`.
+- Mantener `Allow new users to sign up` en `ON`.
+- Poner `Confirm email` en `OFF` (la app actual espera registro/autenticación inmediata).
+
+Si `Confirm email` está en `ON`, el usuario puede crearse pero quedar sin sesión activa y aparecer errores de "no autenticado".
+
+---
+
+### 2) Error común al recrear funciones RPC
+
+Si aparece:
+
+`cannot change return type of existing function`
+
+primero eliminar funciones viejas:
+
+```sql
+drop function if exists public.obtener_o_crear_limites_uso(uuid);
+drop function if exists public.obtener_registro_dia_actual(uuid);
+drop function if exists public.iniciar_sesion_uso(uuid);
+drop function if exists public.finalizar_sesion_uso(integer);
+```
+
+Luego volver a crear las funciones.
+
+---
+
+### 3) Error común en SQL Editor: `p_usuario_id no puede ser null`
+
+En SQL Editor, `auth.uid()` puede venir `null` si no se ejecuta en contexto autenticado de app.
+
+Para pruebas manuales usar UUID explícito:
+
+```sql
+select public.obtener_o_crear_limites_uso('TU_UUID'::uuid);
+select public.obtener_registro_dia_actual('TU_UUID'::uuid);
+select public.iniciar_sesion_uso('TU_UUID'::uuid);
+```
+
+---
+
+### 4) Checklist técnico de límites de uso
+
+- Tabla `registros_uso_diario` con índice único `(usuario_id, fecha)`.
+- Tabla `sesiones_uso` con `estado` (`activa`, `finalizada`, `interrumpida`).
+- Función `finalizar_sesion_uso` debe actualizar `tiempo_usado_minutos` en `registros_uso_diario`.
+- RLS habilitado y políticas de `SELECT/INSERT/UPDATE` por `usuario_id = auth.uid()`.
+
+---
+
+### 5) Comportamiento esperado de bloqueo
+
+- Al llegar al límite diario debe mostrarse bloqueo.
+- Al cambiar límites/bloqueos desde configuración, se reinicia el contador del día.
+- Si se usa `+10 min`, debe actualizar límite del día y permitir continuar.
+
+---
+
+### 6) Validación rápida post-migración
+
+1. Crear usuario nuevo desde app.
+2. Iniciar sesión con ese usuario.
+3. Configurar límite diario bajo (ej. 10 min).
+4. Verificar en Supabase:
+   - Se crea sesión en `sesiones_uso`.
+   - Al finalizar, `duracion_minutos > 0`.
+   - `registros_uso_diario.tiempo_usado_minutos` incrementa.
+5. Confirmar que el bloqueo aparece al superar límite.
+
+---
+
+### 7) Nota de precisión temporal
+
+Para mayor robustez ante cambios de hora del dispositivo:
+
+- Preferir referencia temporal de servidor/UTC en lógica diaria.
+- Opcional avanzado: integrar hora confiable (NTP/server time) para anti-trampas.
+
+---
+
 ## 🔗 Enlaces Útiles
 
 - **Dashboard**: https://app.supabase.com
