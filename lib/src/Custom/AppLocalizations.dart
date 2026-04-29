@@ -550,6 +550,17 @@ class AppLocalizations {
       'registration_error': 'Error en el registro',
       'unknown_error': 'Error desconocido',
       'minimum_6_characters': 'Mínimo 6 caracteres',
+      'splash_tagline': 'Menos ruido digital, más vida real',
+      'splash_loading': 'Preparando tu experiencia...',
+      'onboarding_welcome_title': '¡Bienvenido a NoFaceZone!',
+      'onboarding_welcome_desc': 'Toma el control de tu tiempo en redes sociales y mejora tu bienestar digital.',
+      'onboarding_control_title': 'Controla tu hábito',
+      'onboarding_control_desc': 'Monitorea tu uso, define límites y mantén tu enfoque diario.',
+      'onboarding_privacy_title': 'Privacidad y bienestar',
+      'onboarding_privacy_desc': 'Tus datos están protegidos mientras construyes hábitos más saludables.',
+      'onboarding_skip': 'Saltar',
+      'onboarding_next': 'Siguiente',
+      'onboarding_start': 'Empezar',
     },
     'en': {
       // General
@@ -1089,6 +1100,17 @@ class AppLocalizations {
       'registration_error': 'Registration error',
       'unknown_error': 'Unknown error',
       'minimum_6_characters': 'Minimum 6 characters',
+      'splash_tagline': 'Less digital noise, more real life',
+      'splash_loading': 'Preparing your experience...',
+      'onboarding_welcome_title': 'Welcome to NoFaceZone!',
+      'onboarding_welcome_desc': 'Take control of your social media time and improve your digital wellbeing.',
+      'onboarding_control_title': 'Control your habit',
+      'onboarding_control_desc': 'Track usage, set limits, and protect your daily focus.',
+      'onboarding_privacy_title': 'Privacy and wellbeing',
+      'onboarding_privacy_desc': 'Your data stays protected while you build healthier habits.',
+      'onboarding_skip': 'Skip',
+      'onboarding_next': 'Next',
+      'onboarding_start': 'Start',
     },
   };
 
@@ -1464,6 +1486,17 @@ class AppLocalizations {
   String get registrationError => translate('registration_error');
   String get unknownError => translate('unknown_error');
   String get minimum6Characters => translate('minimum_6_characters');
+  String get splashTagline => translate('splash_tagline');
+  String get splashLoading => translate('splash_loading');
+  String get onboardingWelcomeTitle => translate('onboarding_welcome_title');
+  String get onboardingWelcomeDesc => translate('onboarding_welcome_desc');
+  String get onboardingControlTitle => translate('onboarding_control_title');
+  String get onboardingControlDesc => translate('onboarding_control_desc');
+  String get onboardingPrivacyTitle => translate('onboarding_privacy_title');
+  String get onboardingPrivacyDesc => translate('onboarding_privacy_desc');
+  String get onboardingSkip => translate('onboarding_skip');
+  String get onboardingNext => translate('onboarding_next');
+  String get onboardingStart => translate('onboarding_start');
   String get colorThemes => translate('color_themes');
   String get unlockThemesDescription => translate('unlock_themes_description');
   String get themeOceanBlue => translate('theme_ocean_blue');
