@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'RegisterScreen.dart';
 import 'package:nofacezone/src/Custom/AppColors.dart';
+import 'package:nofacezone/src/Custom/AuthWidgets.dart';
 import 'package:nofacezone/src/Custom/AppLocalizations.dart';
 import 'package:nofacezone/src/Custom/CustomSnackBar.dart';
 import 'package:nofacezone/src/Custom/ProAnimations.dart';
@@ -155,188 +156,115 @@ class _LoginScreenState extends State<LoginScreen> {
         final appProvider = Provider.of<AppProvider>(context, listen: false);
         AppColors.setTheme(appProvider.colorTheme);
 
-        return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          tooltip: backLabel,
-          icon: const Icon(Icons.arrow_back, color: AppColors.textLight),
-          onPressed: () {
-            _hapticTap();
-            Navigator.of(context).pop();
-          },
-        ),
-        title: const Text(
-          'Iniciar Sesión',
-          style: TextStyle(color: AppColors.textLight, fontWeight: FontWeight.w600),
-        ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
-      extendBodyBehindAppBar: true,
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: AppColors.backgroundGradient,
-          ),
-        ),
-        child: SafeArea(
-          child: ProEntrance(
-            delayMs: 80,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Form(
-              key: _formKey,
-              child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                const SizedBox(height: 32),
-                // Título de bienvenida
-                Text(
-                  '¡Bienvenido de vuelta!',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textLight,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Inicia sesión para continuar con tu control de adicción',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: AppColors.textLight.withValues(alpha: 0.8),
-                  ),
-                ),
-                const SizedBox(height: 32),
-                // Campo de email
-                TextFormField(
-                  controller: _emailController,
-                  style: const TextStyle(color: AppColors.textLight),
-                  decoration: InputDecoration(
-                    labelText: 'Email',
-                    labelStyle: TextStyle(color: AppColors.textLight.withValues(alpha: 0.7)),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: AppColors.textLight.withValues(alpha: 0.3)),
+        return AuthScaffold(
+      title: 'Iniciar Sesión',
+      backTooltip: backLabel,
+      onBackPressed: () {
+        _hapticTap();
+        Navigator.of(context).pop();
+      },
+      child: ProEntrance(
+                delayMs: 80,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(24, 18, 24, 24),
+                  child: Form(
+                  key: _formKey,
+                  child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    const AuthHeaderChip(
+                      icon: Icons.shield_moon_rounded,
+                      text: 'Modo enfoque activado',
                     ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: AppColors.textLight.withValues(alpha: 0.3)),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: AppColors.accentBlue, width: 2),
-                    ),
-                    filled: true,
-                    fillColor: AppColors.textLight.withValues(alpha: 0.1),
-                  ),
-                  keyboardType: TextInputType.emailAddress,
-                  textInputAction: TextInputAction.next,
-                  validator: _validateEmail,
-                ),
-                const SizedBox(height: 16),
-                // Campo de contraseña
-                TextFormField(
-                  controller: _passwordController,
-                  style: const TextStyle(color: AppColors.textLight),
-                  decoration: InputDecoration(
-                    labelText: 'Contraseña',
-                    labelStyle: TextStyle(color: AppColors.textLight.withValues(alpha: 0.7)),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: AppColors.textLight.withValues(alpha: 0.3)),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: AppColors.textLight.withValues(alpha: 0.3)),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: AppColors.accentBlue, width: 2),
-                    ),
-                    filled: true,
-                    fillColor: AppColors.textLight.withValues(alpha: 0.1),
-                    suffixIcon: IconButton(
-                      tooltip: _passwordVisible ? loc.hidePasswordA11y : loc.showPasswordA11y,
-                      icon: Icon(
-                        _passwordVisible ? Icons.lock_open : Icons.lock,
-                        color: AppColors.textLight.withValues(alpha: 0.7),
-                      ),
-                      onPressed: () {
-                        _hapticTap();
-                        setState(() => _passwordVisible = !_passwordVisible);
-                      },
-                    ),
-                  ),
-                  obscureText: !_passwordVisible,
-                  textInputAction: TextInputAction.done,
-                  validator: _validatePassword,
-                ),
-                const SizedBox(height: 8),
-                // Enlace de "¿Olvidaste tu contraseña?"
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () {
-                      _hapticTap();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(AppLocalizations.of(context)!.passwordRecoveryNotImplemented)),
-                      );
-                    },
-                    child: Text(
-                      AppLocalizations.of(context)!.forgotPasswordText,
-                      style: TextStyle(color: AppColors.textLight.withValues(alpha: 0.8)),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                // Botón de iniciar sesión
-                Container(
-                  height: 56,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: AppColors.accentGradient),
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: AppColors.cardShadow,
-                  ),
-                  child: FilledButton(
-                    onPressed: _isLoading
-                        ? null
-                        : () {
-                            _hapticTap();
-                            _loginUser();
-                          },
-                    style: FilledButton.styleFrom(
-                      backgroundColor: Colors.transparent,
-                      shadowColor: Colors.transparent,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                    const SizedBox(height: 20),
+                    Text(
+                      '¡Bienvenido de vuelta!',
+                      style: TextStyle(
+                        fontSize: 31,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textLight,
                       ),
                     ),
-                    child: _isLoading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(AppColors.textLight),
-                            ),
-                          )
-                        : const Text(
-                            'Iniciar Sesión',
+                    const SizedBox(height: 8),
+                    Text(
+                      'Inicia sesión para continuar con tu progreso diario.',
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: AppColors.textLight.withValues(alpha: 0.82),
+                        height: 1.35,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    AuthGlassCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            'Accede a tu cuenta',
                             style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textLight,
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textLight.withValues(alpha: 0.95),
                             ),
                           ),
-                  ),
-                ),
+                          const SizedBox(height: 18),
+                          AuthInputField(
+                            controller: _emailController,
+                            label: 'Email',
+                            icon: Icons.alternate_email_rounded,
+                            keyboardType: TextInputType.emailAddress,
+                            textInputAction: TextInputAction.next,
+                            validator: _validateEmail,
+                          ),
+                const SizedBox(height: 16),
+                          AuthInputField(
+                            controller: _passwordController,
+                            label: 'Contraseña',
+                            icon: Icons.lock_outline_rounded,
+                            suffixIcon: IconButton(
+                              tooltip: _passwordVisible ? loc.hidePasswordA11y : loc.showPasswordA11y,
+                              icon: Icon(
+                                _passwordVisible ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                                color: AppColors.textLight.withValues(alpha: 0.72),
+                              ),
+                              onPressed: () {
+                                _hapticTap();
+                                setState(() => _passwordVisible = !_passwordVisible);
+                              },
+                            ),
+                            obscureText: !_passwordVisible,
+                            textInputAction: TextInputAction.done,
+                            validator: _validatePassword,
+                          ),
+                const SizedBox(height: 8),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton(
+                              onPressed: () {
+                                _hapticTap();
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text(AppLocalizations.of(context)!.passwordRecoveryNotImplemented)),
+                                );
+                              },
+                              child: Text(
+                                AppLocalizations.of(context)!.forgotPasswordText,
+                                style: TextStyle(color: AppColors.textLight.withValues(alpha: 0.82)),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          AuthPrimaryButton(
+                            text: 'Iniciar Sesión',
+                            isLoading: _isLoading,
+                            onPressed: () {
+                              _hapticTap();
+                              _loginUser();
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
                 const SizedBox(height: 24),
-                // Divider
                 Row(
                   children: [
                     Expanded(
@@ -355,7 +283,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ],
                 ),
                 const SizedBox(height: 24),
-                // Enlace a registro
                 SizedBox(
                   height: 56,
                   child: OutlinedButton(
@@ -368,25 +295,24 @@ class _LoginScreenState extends State<LoginScreen> {
                     style: OutlinedButton.styleFrom(
                       side: BorderSide(color: AppColors.textLight.withValues(alpha: 0.8)),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(16),
                       ),
                     ),
                     child: Text(
                       'Crear cuenta nueva',
                       style: TextStyle(
                         fontSize: 18,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w700,
                         color: AppColors.textLight,
                       ),
                     ),
                   ),
                 ),
                 const SizedBox(height: 32),
-                // Información adicional
                 Container(
                   decoration: BoxDecoration(
                     color: AppColors.textLight.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(16),
                     border: Border.all(color: AppColors.textLight.withValues(alpha: 0.2)),
                   ),
                   child: Padding(
@@ -419,8 +345,6 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
           ),
-        ),
-      ),
     );
       },
     );

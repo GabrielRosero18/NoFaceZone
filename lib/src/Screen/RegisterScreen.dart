@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:nofacezone/src/Custom/AppColors.dart';
 import 'package:nofacezone/src/Custom/AppLocalizations.dart';
+import 'package:nofacezone/src/Custom/AuthWidgets.dart';
 import 'package:nofacezone/src/Custom/ProAnimations.dart';
 import 'package:nofacezone/src/Services/UserService.dart';
 import 'package:nofacezone/src/Providers/AppProvider.dart';
@@ -43,29 +44,6 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-
-  // Helper para crear el estilo de los campos de formulario
-  InputDecoration _getInputDecoration(String labelText, {Widget? suffixIcon}) {
-    return InputDecoration(
-      labelText: labelText,
-      labelStyle: TextStyle(color: AppColors.textLight.withValues(alpha: 0.7)),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: AppColors.textLight.withValues(alpha: 0.3)),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: AppColors.textLight.withValues(alpha: 0.3)),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: AppColors.accentBlue, width: 2),
-      ),
-      filled: true,
-      fillColor: AppColors.textLight.withValues(alpha: 0.1),
-      suffixIcon: suffixIcon,
-    );
-  }
 
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _ageController = TextEditingController();
@@ -563,58 +541,63 @@ class _RegisterScreenState extends State<RegisterScreen> {
       '86+'
     ];
 
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-          icon: const Icon(Icons.arrow_back, color: AppColors.textLight),
-          onPressed: () {
-            _hapticTap();
-            Navigator.of(context).pop();
-          },
-        ),
-        title: Text(
-          localizations.register,
-          style: const TextStyle(color: AppColors.textLight, fontWeight: FontWeight.w600),
-        ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
-      extendBodyBehindAppBar: true,
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: AppColors.backgroundGradient,
-          ),
-        ),
-        child: SafeArea(
-          child: ProEntrance(
-            delayMs: 80,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Form(
-              key: _formKey,
-              autovalidateMode: _autoValidate ? AutovalidateMode.always : AutovalidateMode.disabled,
-              child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                TextFormField(
-                  controller: _nameController,
-                  style: const TextStyle(color: AppColors.textLight),
-                  decoration: _getInputDecoration(localizations.fullName),
-                  textInputAction: TextInputAction.next,
-                  validator: (value) => _validateName(value, localizations),
-                  inputFormatters: [NameCapitalizationFormatter()],
-                ),
+    return AuthScaffold(
+      title: localizations.register,
+      backTooltip: MaterialLocalizations.of(context).backButtonTooltip,
+      onBackPressed: () {
+        _hapticTap();
+        Navigator.of(context).pop();
+      },
+      child: ProEntrance(
+                delayMs: 80,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(24, 18, 24, 24),
+                  child: Form(
+                  key: _formKey,
+                  autovalidateMode: _autoValidate ? AutovalidateMode.always : AutovalidateMode.disabled,
+                  child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    const AuthHeaderChip(
+                      icon: Icons.auto_awesome_rounded,
+                      text: 'Cuenta segura en 1 minuto',
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      localizations.register,
+                      style: const TextStyle(
+                        fontSize: 31,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textLight,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      localizations.accountCreatedMessage,
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: AppColors.textLight.withValues(alpha: 0.82),
+                        height: 1.35,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    AuthGlassCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          AuthInputField(
+                            controller: _nameController,
+                            label: localizations.fullName,
+                            icon: Icons.person_outline_rounded,
+                            textInputAction: TextInputAction.next,
+                            validator: (value) => _validateName(value, localizations),
+                            inputFormatters: [NameCapitalizationFormatter()],
+                          ),
                 const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  initialValue: _selectedAge,
-                  dropdownColor: AppColors.darkSurface,
-                  style: const TextStyle(color: AppColors.textLight),
+                AuthSelectField<String>(
+                  value: _selectedAge,
+                  label: localizations.ageOver18,
+                  icon: Icons.cake_outlined,
                   items: ageRanges
                       .map((String e) => DropdownMenuItem<String>(
                             value: e,
@@ -631,23 +614,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       _ageController.text = v ?? '';
                     });
                   },
-                  decoration: _getInputDecoration(localizations.ageOver18),
                   validator: (String? v) => _validateAge(v ?? '', localizations),
                 ),
                 const SizedBox(height: 16),
-                TextFormField(
+                AuthInputField(
                   controller: _emailController,
-                  style: const TextStyle(color: AppColors.textLight),
-                  decoration: _getInputDecoration(localizations.email),
+                  label: localizations.email,
+                  icon: Icons.alternate_email_rounded,
                   keyboardType: TextInputType.emailAddress,
                   textInputAction: TextInputAction.next,
                   validator: (value) => _validateEmail(value, localizations),
                 ),
                 const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  initialValue: _selectedLanguage ?? appProvider.language,
-                  dropdownColor: AppColors.darkSurface,
-                  style: const TextStyle(color: AppColors.textLight),
+                AuthSelectField<String>(
+                  value: _selectedLanguage ?? appProvider.language,
+                  label: localizations.language,
+                  icon: Icons.language_rounded,
                   items: languageCodes
                       .map((String code) => DropdownMenuItem<String>(
                             value: code,
@@ -666,27 +648,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       }
                     }
                   },
-                  decoration: _getInputDecoration(localizations.language),
                   validator: (value) => _validateLanguage(value, localizations),
                 ),
                 const SizedBox(height: 16),
-                TextFormField(
+                AuthInputField(
                   controller: _passwordController,
-                  style: const TextStyle(color: AppColors.textLight),
+                  label: localizations.password,
+                  icon: Icons.lock_outline_rounded,
                   onChanged: (value) => setState(() {}), // Para actualizar la barra de fortaleza
-                  decoration: _getInputDecoration(
-                    localizations.password,
-                    suffixIcon: IconButton(
-                      tooltip: _passwordVisible ? localizations.hidePasswordA11y : localizations.showPasswordA11y,
-                      icon: Icon(
-                        _passwordVisible ? Icons.lock_open : Icons.lock,
-                        color: AppColors.textLight.withValues(alpha: 0.7),
-                      ),
-                      onPressed: () {
-                        _hapticTap();
-                        setState(() => _passwordVisible = !_passwordVisible);
-                      },
+                  suffixIcon: IconButton(
+                    tooltip: _passwordVisible ? localizations.hidePasswordA11y : localizations.showPasswordA11y,
+                    icon: Icon(
+                      _passwordVisible ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                      color: AppColors.textLight.withValues(alpha: 0.72),
                     ),
+                    onPressed: () {
+                      _hapticTap();
+                      setState(() => _passwordVisible = !_passwordVisible);
+                    },
                   ),
                   obscureText: !_passwordVisible,
                   validator: (value) => _validatePassword(value, localizations),
@@ -741,67 +720,36 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                 ],
                 const SizedBox(height: 16),
-                TextFormField(
+                AuthInputField(
                   controller: _confirmPasswordController,
-                  style: const TextStyle(color: AppColors.textLight),
-                  decoration: _getInputDecoration(
-                    localizations.confirmPassword,
-                    suffixIcon: IconButton(
-                      tooltip: _confirmPasswordVisible ? localizations.hidePasswordA11y : localizations.showPasswordA11y,
-                      icon: Icon(
-                        _confirmPasswordVisible ? Icons.lock_open : Icons.lock,
-                        color: AppColors.textLight.withValues(alpha: 0.7),
-                      ),
-                      onPressed: () {
-                        _hapticTap();
-                        setState(() => _confirmPasswordVisible = !_confirmPasswordVisible);
-                      },
+                  label: localizations.confirmPassword,
+                  icon: Icons.verified_user_outlined,
+                  suffixIcon: IconButton(
+                    tooltip: _confirmPasswordVisible ? localizations.hidePasswordA11y : localizations.showPasswordA11y,
+                    icon: Icon(
+                      _confirmPasswordVisible ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                      color: AppColors.textLight.withValues(alpha: 0.72),
                     ),
+                    onPressed: () {
+                      _hapticTap();
+                      setState(() => _confirmPasswordVisible = !_confirmPasswordVisible);
+                    },
                   ),
                   obscureText: !_confirmPasswordVisible,
                   validator: (value) => _validateConfirmPassword(value, localizations),
                 ),
                 const SizedBox(height: 24),
-                Container(
-                  height: 56,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: AppColors.accentGradient),
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: AppColors.cardShadow,
-                  ),
-                  child: FilledButton(
-                    onPressed: _isLoading
-                        ? null
-                        : () {
-                            _hapticTap();
-                            _registerUser();
-                          },
-                    style: FilledButton.styleFrom(
-                      backgroundColor: Colors.transparent,
-                      shadowColor: Colors.transparent,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                AuthPrimaryButton(
+                  text: localizations.register,
+                  isLoading: _isLoading,
+                  onPressed: () {
+                    _hapticTap();
+                    _registerUser();
+                  },
+                ),
+                ],
                       ),
                     ),
-                    child: _isLoading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(AppColors.textLight),
-                            ),
-                          )
-                        : Text(
-                            localizations.register,
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textLight,
-                            ),
-                          ),
-                  ),
-                ),
                 const SizedBox(height: 12),
                 TextButton(
                   onPressed: () {
@@ -818,8 +766,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
           ),
           ),
-        ),
-      ),
     );
   }
 }
