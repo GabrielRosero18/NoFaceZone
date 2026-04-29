@@ -1,7 +1,9 @@
 import 'dart:math';
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:nofacezone/src/Custom/AppColors.dart';
 import 'package:nofacezone/src/Custom/AppLocalizations.dart';
@@ -29,6 +31,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, WidgetsBindingObserver {
   late AnimationController _animationController;
+  late AnimationController _ambientGlowController;
   late Animation<double> _fadeInAnimation;
   late Animation<Offset> _slideAnimation;
   Timer? _usageTimer;
@@ -66,6 +69,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
   static const String _activityCompletedPrefKey = 'activity_recommendations_completed_v1';
   static const String _activitySeedPrefKey = 'activity_recommendations_seed_v1';
   static const String _activityHistoryPrefKey = 'activity_recommendations_history_v1';
+
+  void _hapticLight() => HapticFeedback.selectionClick();
+  void _hapticMedium() => HapticFeedback.mediumImpact();
 
   String _todayDateKey() {
     final now = DateTime.now();
@@ -555,6 +561,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       duration: const Duration(milliseconds: 800),
       vsync: this,
     );
+    _ambientGlowController = AnimationController(
+      duration: const Duration(milliseconds: 2200),
+      vsync: this,
+    )..repeat(reverse: true);
     
     _fadeInAnimation = Tween<double>(
       begin: 0.0,
@@ -1011,6 +1021,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     WidgetsBinding.instance.removeObserver(this);
     
     _animationController.dispose();
+    _ambientGlowController.dispose();
     _usageTimer?.cancel();
     super.dispose();
   }
@@ -1110,7 +1121,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         final userName = user?.name ?? localizations.user;
         final currentHour = DateTime.now().hour;
         String greeting = localizations.goodMorning;
-        
+
         if (currentHour >= 12 && currentHour < 18) {
           greeting = localizations.goodAfternoon;
         } else if (currentHour >= 18) {
@@ -1320,23 +1331,41 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                 ? 'Pausa obligatoria activa'
                 : (isNearLimit ? 'Cerca del límite' : 'Dentro del límite')));
 
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.textLight.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: statusColor.withValues(alpha: 0.45), width: 1.4),
-        boxShadow: [
-          BoxShadow(
-            color: statusColor.withValues(alpha: 0.12),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+    return AnimatedBuilder(
+      animation: _ambientGlowController,
+      builder: (context, _) {
+        final glowT = Curves.easeInOut.transform(_ambientGlowController.value);
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(18),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 380),
+              curve: Curves.easeOutCubic,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    AppColors.darkSurface.withValues(alpha: 0.92),
+                    AppColors.primaryBlue.withValues(alpha: 0.38),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: AppColors.textLight.withValues(alpha: 0.22), width: 1.2),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.24 + (0.08 * glowT)),
+                    blurRadius: 14 + (8 * glowT),
+                    spreadRadius: 0.2 + (0.8 * glowT),
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
           Row(
             children: [
               const Expanded(
@@ -1371,40 +1400,94 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
           const SizedBox(height: 8),
           Row(
             children: [
-              Icon(
-                isBlocked ? Icons.block : Icons.verified_rounded,
-                size: 18,
-                color: statusColor,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  statusText,
-                  style: TextStyle(
-                    color: statusColor,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13.5,
+              Container(
+                width: 92,
+                height: 92,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: statusColor.withValues(alpha: 0.28),
+                      blurRadius: 14,
+                      spreadRadius: 1,
+                    ),
+                  ],
+                ),
+                child: TweenAnimationBuilder<double>(
+                  duration: const Duration(milliseconds: 500),
+                  curve: Curves.easeOutCubic,
+                  tween: Tween<double>(begin: 0, end: progress),
+                  builder: (context, animatedProgress, _) => Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      SizedBox(
+                        width: 92,
+                        height: 92,
+                        child: CircularProgressIndicator(
+                          value: animatedProgress,
+                          strokeWidth: 8,
+                          backgroundColor: AppColors.textLight.withValues(alpha: 0.16),
+                          valueColor: AlwaysStoppedAnimation<Color>(statusColor),
+                        ),
+                      ),
+                      Text(
+                        '${(animatedProgress * 100).round()}%',
+                        style: const TextStyle(
+                          color: AppColors.textLight,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: statusColor.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: statusColor.withValues(alpha: 0.35)),
-            ),
-            child: Text(
-              'Rendimiento ${(100 - (progress * 100)).round().clamp(0, 100)}%',
-              style: TextStyle(
-                color: statusColor,
-                fontSize: 11.5,
-                fontWeight: FontWeight.w700,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          isBlocked ? Icons.block : Icons.verified_rounded,
+                          size: 18,
+                          color: statusColor,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            statusText,
+                            style: TextStyle(
+                              color: statusColor,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13.5,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: statusColor.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: statusColor.withValues(alpha: 0.35)),
+                      ),
+                      child: Text(
+                        'Rendimiento ${(100 - (progress * 100)).round().clamp(0, 100)}%',
+                        style: TextStyle(
+                          color: statusColor,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
+            ],
           ),
           const SizedBox(height: 14),
           Divider(
@@ -1599,8 +1682,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
               ),
             ],
           ),
-        ],
-      ),
+              ],
+            ),
+          ),
+        ),
+      );
+      },
     );
   }
 
@@ -1672,23 +1759,33 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(icon, size: 13, color: isOn ? color : AppColors.textLight),
+                AnimatedRotation(
+                  turns: isOn ? 0.04 : 0.0,
+                  duration: const Duration(milliseconds: 260),
+                  child: Icon(icon, size: 13, color: isOn ? color : AppColors.textLight),
+                ),
                 const SizedBox(width: 5),
-                Container(
+                SizedBox(
                   width: 8,
                   height: 8,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: isOn ? color : Colors.grey,
-                    boxShadow: isOn
-                        ? [
-                            BoxShadow(
-                              color: color.withValues(alpha: 0.5),
-                              blurRadius: 6,
-                              spreadRadius: 1,
-                            ),
-                          ]
-                        : null,
+                  child: AnimatedScale(
+                    duration: const Duration(milliseconds: 220),
+                    scale: isOn ? 1.15 : 1.0,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: isOn ? color : Colors.grey,
+                        boxShadow: isOn
+                            ? [
+                                BoxShadow(
+                                  color: color.withValues(alpha: 0.5),
+                                  blurRadius: 6,
+                                  spreadRadius: 1,
+                                ),
+                              ]
+                            : null,
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -1780,14 +1877,24 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
   }) {
     return InkWell(
       borderRadius: BorderRadius.circular(999),
-      onTap: onTap,
+      onTap: () {
+        _hapticLight();
+        onTap();
+      },
       child: Container(
         width: fullWidth ? double.infinity : null,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.14),
+          color: AppColors.textLight.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: color.withValues(alpha: 0.34)),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.15),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Row(
           mainAxisSize: fullWidth ? MainAxisSize.max : MainAxisSize.min,
@@ -1799,7 +1906,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
             Text(
               label,
               style: TextStyle(
-                color: color,
+                color: AppColors.textLight.withValues(alpha: 0.95),
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
               ),
@@ -2165,8 +2272,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (ctx) {
-        return StatefulBuilder(
-          builder: (ctx, setModalState) => Padding(
+        return TweenAnimationBuilder<double>(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          tween: Tween<double>(begin: 0.96, end: 1.0),
+          builder: (context, v, child) => Opacity(
+            opacity: ((v - 0.96) / 0.04).clamp(0.0, 1.0),
+            child: Transform.scale(scale: v, child: child),
+          ),
+          child: StatefulBuilder(
+            builder: (ctx, setModalState) => Padding(
             padding: const EdgeInsets.fromLTRB(16, 10, 16, 20),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -2290,6 +2405,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
               ],
             ),
           ),
+          ),
         );
       },
     );
@@ -2297,6 +2413,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     if (saved != true || !mounted) return;
 
     if (enabled && start == end) {
+      _hapticLight();
       CustomSnackBar.showWarning(
         context,
         'La hora de inicio y fin no pueden ser iguales.',
@@ -2310,6 +2427,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       endTime: normalize(end),
     );
     if (!success || !mounted) return;
+    _hapticMedium();
     await appProvider.refreshUsageLimits();
     await _loadUsageData();
     if (!mounted) return;
@@ -2329,8 +2447,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (ctx) {
-        return StatefulBuilder(
-          builder: (ctx, setModalState) => Padding(
+        return TweenAnimationBuilder<double>(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          tween: Tween<double>(begin: 0.96, end: 1.0),
+          builder: (context, v, child) => Opacity(
+            opacity: ((v - 0.96) / 0.04).clamp(0.0, 1.0),
+            child: Transform.scale(scale: v, child: child),
+          ),
+          child: StatefulBuilder(
+            builder: (ctx, setModalState) => Padding(
             padding: const EdgeInsets.fromLTRB(16, 10, 16, 20),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -2444,12 +2570,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
               ],
             ),
           ),
+          ),
         );
       },
     );
 
     if (saved != true || !mounted) return;
     if (enabled && duration >= interval) {
+      _hapticLight();
       CustomSnackBar.showWarning(
         context,
         'La duración debe ser menor al intervalo.',
@@ -2462,6 +2590,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       durationMinutes: duration,
     );
     if (!success || !mounted) return;
+    _hapticMedium();
     await appProvider.refreshUsageLimits();
     await _loadUsageData();
     if (!mounted) return;
@@ -2488,8 +2617,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (ctx) {
-        return StatefulBuilder(
-          builder: (ctx, setModalState) => Padding(
+        return TweenAnimationBuilder<double>(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          tween: Tween<double>(begin: 0.96, end: 1.0),
+          builder: (context, v, child) => Opacity(
+            opacity: ((v - 0.96) / 0.04).clamp(0.0, 1.0),
+            child: Transform.scale(scale: v, child: child),
+          ),
+          child: StatefulBuilder(
+            builder: (ctx, setModalState) => Padding(
             padding: const EdgeInsets.fromLTRB(16, 10, 16, 20),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -2567,11 +2704,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
               ],
             ),
           ),
+          ),
         );
       },
     );
 
     if (saved != true || !mounted) return;
+    _hapticMedium();
     await appProvider.setDailyUsageLimit(selectedMinutes);
     await _loadUsageData();
     if (!mounted) return;
@@ -2723,15 +2862,29 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
   }
 
   Widget _buildHomeSkeletonLine({required double widthFactor, required double height}) {
-    return FractionallySizedBox(
-      widthFactor: widthFactor,
-      child: Container(
-        height: height,
-        decoration: BoxDecoration(
-          color: AppColors.textLight.withValues(alpha: 0.16),
-          borderRadius: BorderRadius.circular(10),
-        ),
-      ),
+    return AnimatedBuilder(
+      animation: _ambientGlowController,
+      builder: (context, _) {
+        final t = _ambientGlowController.value;
+        return FractionallySizedBox(
+          widthFactor: widthFactor,
+          child: Container(
+            height: height,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment(-1.0 + (2.0 * t), 0),
+                end: Alignment(1.0 + (2.0 * t), 0),
+                colors: [
+                  AppColors.textLight.withValues(alpha: 0.12),
+                  AppColors.textLight.withValues(alpha: 0.24),
+                  AppColors.textLight.withValues(alpha: 0.12),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+      },
     );
   }
 
