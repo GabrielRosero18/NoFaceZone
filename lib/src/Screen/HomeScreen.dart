@@ -819,6 +819,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         }
 
         await _refreshHomeSummaryMetrics();
+        if (!mounted) return;
         final loc = AppLocalizations.of(context);
         if (loc != null) {
           await _syncActivityRecommendations(loc, appProvider);
@@ -1718,7 +1719,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
           _buildHomeSkeletonLine(widthFactor: 0.45, height: 20),
           const SizedBox(height: 14),
           Text(
-            '$titleEmoji',
+            titleEmoji,
             style: TextStyle(
               color: AppColors.textLight.withValues(alpha: 0.6),
               fontWeight: FontWeight.bold,

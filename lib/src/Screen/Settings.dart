@@ -334,6 +334,7 @@ class _SettingsState extends State<Settings> {
   }
 
   Future<void> _toggleNightBlock(bool active) async {
+    final appProvider = Provider.of<AppProvider>(context, listen: false);
     final success = await UsageLimitsService.updateNightBlock(
       active: active,
       startTime: _nightBlockStart,
@@ -343,11 +344,12 @@ class _SettingsState extends State<Settings> {
     if (success) {
       await UsageLimitsService.resetTodayUsageCounter();
       setState(() => _nightBlockActive = active);
-      await Provider.of<AppProvider>(context, listen: false).refreshUsageLimits();
+      await appProvider.refreshUsageLimits();
     }
   }
 
   Future<void> _toggleMandatoryBreaks(bool active) async {
+    final appProvider = Provider.of<AppProvider>(context, listen: false);
     final success = await UsageLimitsService.updateMandatoryBreaks(
       active: active,
       intervalMinutes: _breakIntervalMinutes,
@@ -357,11 +359,12 @@ class _SettingsState extends State<Settings> {
     if (success) {
       await UsageLimitsService.resetTodayUsageCounter();
       setState(() => _mandatoryBreaksActive = active);
-      await Provider.of<AppProvider>(context, listen: false).refreshUsageLimits();
+      await appProvider.refreshUsageLimits();
     }
   }
 
   Future<void> _showNightBlockTimeDialog() async {
+    final appProvider = Provider.of<AppProvider>(context, listen: false);
     final startParts = _nightBlockStart.split(':');
     final endParts = _nightBlockEnd.split(':');
     final currentStart = TimeOfDay(
@@ -398,14 +401,16 @@ class _SettingsState extends State<Settings> {
     if (!mounted || !success) return;
 
     await UsageLimitsService.resetTodayUsageCounter();
+    if (!mounted) return;
     setState(() {
       _nightBlockStart = newStart;
       _nightBlockEnd = newEnd;
     });
-    await Provider.of<AppProvider>(context, listen: false).refreshUsageLimits();
+    await appProvider.refreshUsageLimits();
   }
 
   Future<void> _showMandatoryBreaksDialog() async {
+    final appProvider = Provider.of<AppProvider>(context, listen: false);
     int selectedInterval = _breakIntervalMinutes;
     int selectedDuration = _breakDurationMinutes;
 
@@ -467,11 +472,12 @@ class _SettingsState extends State<Settings> {
     if (!mounted || !success) return;
 
     await UsageLimitsService.resetTodayUsageCounter();
+    if (!mounted) return;
     setState(() {
       _breakIntervalMinutes = selectedInterval;
       _breakDurationMinutes = selectedDuration;
     });
-    await Provider.of<AppProvider>(context, listen: false).refreshUsageLimits();
+    await appProvider.refreshUsageLimits();
   }
 
   InputDecoration _getInputDecorationLite(String label) {

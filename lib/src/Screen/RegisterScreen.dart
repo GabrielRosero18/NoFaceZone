@@ -73,9 +73,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
 
-  String? _selectedGender;
   String? _selectedLanguage;
-  String? _selectedFrequency;
   String? _selectedAge; // Rango de edad (18+ para autocontrol)
 
   bool _passwordVisible = false;
@@ -160,21 +158,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
         : int.parse(match.group(3)!);
   }
 
-  String? _validateGender(String? value, AppLocalizations localizations) {
-    if (value == null || value.trim().isEmpty) return localizations.selectGender;
-    return null;
-  }
-
   String? _validateLanguage(String? value, AppLocalizations localizations) {
     if (value == null || value.trim().isEmpty || (value != 'es' && value != 'en')) {
       return localizations.selectLanguageField;
-    }
-    return null;
-  }
-
-  String? _validateFrequency(String? value, AppLocalizations localizations) {
-    if (value == null || value.trim().isEmpty) {
-      return localizations.selectFrequency;
     }
     return null;
   }
@@ -312,11 +298,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final result = await UserService.registerUser(
         name: _nameController.text.trim(),
         age: _extractMinAgeFromRange(_selectedAge),
-        gender: _selectedGender ?? '',
+        gender: localizations.preferNotSay,
         email: _emailController.text.trim(),
         password: _passwordController.text,
         language: _selectedLanguage ?? '',
-        frequency: _selectedFrequency ?? '',
+        frequency: localizations.moderate,
       );
 
       if (result['success'] == true) {
@@ -559,24 +545,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
     AppColors.setTheme(appProvider.colorTheme);
     
     // Obtener traducciones dinámicamente según el idioma actual
-    final List<String> genders = <String>[
-      localizations.male,
-      localizations.female,
-      localizations.nonBinary,
-      localizations.preferNotSay
-    ];
     // Usar códigos de idioma para el valor del dropdown, pero mostrar las traducciones
     final Map<String, String> languageMap = {
       'es': localizations.spanish,
       'en': localizations.english,
     };
     final List<String> languageCodes = ['es', 'en'];
-    final List<String> frequencies = <String>[
-      localizations.veryFrequent,
-      localizations.frequent,
-      localizations.moderate,
-      localizations.lowFrequency
-    ];
     // Rangos de edad para mayores de 18 años (autocontrol)
     final List<String> ageRanges = <String>[
       '18-25',
@@ -661,24 +635,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   validator: (String? v) => _validateAge(v ?? '', localizations),
                 ),
                 const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  initialValue: _selectedGender,
-                  dropdownColor: AppColors.darkSurface,
-                  style: const TextStyle(color: AppColors.textLight),
-                  items: genders
-                      .map((String e) => DropdownMenuItem<String>(
-                            value: e,
-                            child: Text(e, style: const TextStyle(color: AppColors.textLight)),
-                          ))
-                      .toList(),
-                  onChanged: (String? v) {
-                    _hapticTap();
-                    setState(() => _selectedGender = v);
-                  },
-                  decoration: _getInputDecoration(localizations.gender),
-                  validator: (value) => _validateGender(value, localizations),
-                ),
-                const SizedBox(height: 16),
                 TextFormField(
                   controller: _emailController,
                   style: const TextStyle(color: AppColors.textLight),
@@ -712,24 +668,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   },
                   decoration: _getInputDecoration(localizations.language),
                   validator: (value) => _validateLanguage(value, localizations),
-                ),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  initialValue: _selectedFrequency,
-                  dropdownColor: AppColors.darkSurface,
-                  style: const TextStyle(color: AppColors.textLight),
-                  items: frequencies
-                      .map((String e) => DropdownMenuItem<String>(
-                            value: e,
-                            child: Text(e, style: const TextStyle(color: AppColors.textLight)),
-                          ))
-                      .toList(),
-                  onChanged: (String? v) {
-                    _hapticTap();
-                    setState(() => _selectedFrequency = v);
-                  },
-                  decoration: _getInputDecoration(localizations.facebookUsageFrequency),
-                  validator: (value) => _validateFrequency(value, localizations),
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
