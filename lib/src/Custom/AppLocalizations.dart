@@ -36,6 +36,9 @@ class AppLocalizations {
       'select_language': 'Seleccionar idioma',
       'spanish': 'Español',
       'english': 'English',
+      'language_device': 'Idioma del dispositivo',
+      'notifications_permission_denied':
+          'No hay permiso para notificaciones. Actívalas en los ajustes del sistema.',
       'language_updated': 'Idioma actualizado',
       'system': 'Sistema',
       'light': 'Claro',
@@ -585,6 +588,9 @@ class AppLocalizations {
       'select_language': 'Select language',
       'spanish': 'Español',
       'english': 'English',
+      'language_device': 'Device language',
+      'notifications_permission_denied':
+          'Notifications are disabled. Enable them in your system settings.',
       'language_updated': 'Language updated',
       'system': 'System',
       'light': 'Light',
@@ -1138,6 +1144,8 @@ class AppLocalizations {
   String get selectLanguage => translate('select_language');
   String get spanish => translate('spanish');
   String get english => translate('english');
+  String get languageDevice => translate('language_device');
+  String get notificationsPermissionDenied => translate('notifications_permission_denied');
   String get languageUpdated => translate('language_updated');
   String get system => translate('system');
   String get light => translate('light');
@@ -1607,7 +1615,7 @@ class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> 
 
   @override
   bool isSupported(Locale locale) {
-    return ['es', 'en'].contains(locale.languageCode);
+    return locale.languageCode == 'es' || locale.languageCode == 'en';
   }
 
   @override

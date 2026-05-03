@@ -647,6 +647,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         Future.delayed(const Duration(milliseconds: 500), () {
           if (mounted) {
             _loadUsageData();
+            unawaited(
+              Provider.of<AppProvider>(context, listen: false).syncLocalNotificationSchedule(),
+            );
           }
         });
         break;

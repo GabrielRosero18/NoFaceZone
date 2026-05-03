@@ -19,6 +19,7 @@ import 'package:nofacezone/src/Screen/EditProfileScreen.dart';
 import 'package:nofacezone/src/Screen/ReportsScreen.dart';
 import 'package:nofacezone/src/Services/PreferencesService.dart';
 import 'package:nofacezone/src/Services/UsageLimitsService.dart';
+import 'package:nofacezone/src/Services/LocalNotificationService.dart';
 import 'package:nofacezone/src/Custom/AppImageProviders.dart';
 
 class Settings extends StatefulWidget {
@@ -248,7 +249,7 @@ class _SettingsState extends State<Settings> {
               localizations.receiveAlerts,
               Icons.notifications,
               appProvider.notificationsEnabled,
-              (value) => appProvider.setNotificationsEnabled(value),
+              (value) => _onNotificationsEnabledChanged(context, appProvider, value),
             ),
             const SizedBox(height: 12),
             _buildSettingItemWithValue(
@@ -819,6 +820,28 @@ class _SettingsState extends State<Settings> {
     );
   }
 
+  Future<void> _onNotificationsEnabledChanged(
+    BuildContext context,
+    AppProvider appProvider,
+    bool enabled,
+  ) async {
+    if (enabled) {
+      final granted = await LocalNotificationService.requestPermissions();
+      if (!granted) {
+        if (context.mounted) {
+          final loc = AppLocalizations.of(context)!;
+          CustomSnackBar.showWarning(
+            context,
+            loc.notificationsPermissionDenied,
+            icon: Icons.notifications_off_rounded,
+          );
+        }
+        return;
+      }
+    }
+    await appProvider.setNotificationsEnabled(enabled);
+  }
+
   Future<void> _showNotificationIntervalDialog(AppProvider appProvider) async {
     final localizations = AppLocalizations.of(context)!;
     final intervals = [5, 10, 15, 30, 60];
@@ -1196,6 +1219,11 @@ class _SettingsState extends State<Settings> {
             mainAxisSize: MainAxisSize.min,
             children: [
               RadioListTile<String>(
+                title: Text(localizations.languageDevice, style: const TextStyle(color: AppColors.textLight)),
+                value: 'system',
+                activeColor: AppColors.accentBlue,
+              ),
+              RadioListTile<String>(
                 title: Text(localizations.spanish, style: const TextStyle(color: AppColors.textLight)),
                 value: 'es',
                 activeColor: AppColors.accentBlue,
@@ -1311,6 +1339,8 @@ class _SettingsState extends State<Settings> {
 
   String _getLanguageName(String language, AppLocalizations localizations) {
     switch (language) {
+      case 'system':
+        return localizations.languageDevice;
       case 'es':
         return localizations.spanish;
       case 'en':

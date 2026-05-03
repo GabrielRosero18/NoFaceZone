@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:nofacezone/src/Services/PreferencesService.dart';
 import 'package:nofacezone/src/Services/RewardService.dart';
 import 'package:nofacezone/src/Services/UsageLimitsService.dart';
+import 'package:nofacezone/src/Services/LocalNotificationService.dart';
 import 'package:nofacezone/src/Custom/AppColors.dart';
 import 'package:nofacezone/src/Custom/AppFonts.dart';
 import 'package:nofacezone/src/Custom/AppMessages.dart';
@@ -34,9 +35,18 @@ class AppProvider extends ChangeNotifier {
   List<String> _activeMessageCollections = ['daily'];
   List<String> get activeMessageCollections => List.from(_activeMessageCollections);
 
-  // Idioma de la aplicación
+  // Idioma de la aplicación ('es' | 'en' | 'system' = según idioma del dispositivo)
   String _language = 'es';
   String get language => _language;
+
+  /// Código efectivo para textos que no pasan por MaterialApp (p. ej. notificaciones).
+  String get resolvedUiLanguageCode {
+    if (_language == 'system') {
+      final deviceLanguage = ui.PlatformDispatcher.instance.locale.languageCode;
+      return deviceLanguage == 'en' ? 'en' : 'es';
+    }
+    return _language;
+  }
 
   // Estado de conexión
   bool _isOnline = true;
@@ -91,22 +101,15 @@ class AppProvider extends ChangeNotifier {
       // Cargar idioma (detectar automáticamente si no hay uno guardado)
       final hasLanguageSaved = PreferencesService.prefs.containsKey(Constants.languageKey);
       if (!hasLanguageSaved) {
-        // Si no hay idioma guardado, detectar el idioma del dispositivo
-        final deviceLocale = ui.PlatformDispatcher.instance.locale;
-        final deviceLanguage = deviceLocale.languageCode;
-        // Solo usar el idioma del dispositivo si es español o inglés
-        if (deviceLanguage == 'es' || deviceLanguage == 'en') {
-          _language = deviceLanguage;
-          // Guardar el idioma detectado para futuras sesiones
-          await PreferencesService.setLanguage(deviceLanguage);
-        } else {
-          // Si el idioma del dispositivo no es español ni inglés, usar español por defecto
-          _language = 'es';
-          await PreferencesService.setLanguage('es');
-        }
+        _language = 'system';
+        await PreferencesService.setLanguage('system');
       } else {
         final savedLanguage = PreferencesService.getLanguage();
-        _language = (savedLanguage == 'es' || savedLanguage == 'en') ? savedLanguage : 'es';
+        if (savedLanguage == 'es' || savedLanguage == 'en' || savedLanguage == 'system') {
+          _language = savedLanguage;
+        } else {
+          _language = 'es';
+        }
       }
       
       // Cargar tema de colores
@@ -141,6 +144,7 @@ class AppProvider extends ChangeNotifier {
       debugPrint('Error loading app state: $e');
     } finally {
       _setLoading(false);
+      await _syncLocalReminderNotifications();
     }
   }
 
@@ -186,6 +190,7 @@ class AppProvider extends ChangeNotifier {
     try {
       await _loadUsageLimitsFromSupabase();
       notifyListeners();
+      await _syncLocalReminderNotifications();
       debugPrint('✅ Límites de uso recargados desde Supabase');
     } catch (e, stackTrace) {
       debugPrint('❌ Error al recargar límites de uso: $e');
@@ -218,10 +223,13 @@ class AppProvider extends ChangeNotifier {
   /// Cambiar idioma de la aplicación
   Future<void> setLanguage(String languageCode) async {
     try {
-      final normalized = (languageCode == 'es' || languageCode == 'en') ? languageCode : 'es';
+      final normalized = (languageCode == 'es' || languageCode == 'en' || languageCode == 'system')
+          ? languageCode
+          : 'es';
       await PreferencesService.setLanguage(normalized);
       _language = normalized;
       notifyListeners();
+      await _syncLocalReminderNotifications();
     } catch (e) {
       debugPrint('Error setting language: $e');
     }
@@ -314,7 +322,9 @@ class AppProvider extends ChangeNotifier {
     try {
       await PreferencesService.setNotificationsEnabled(enabled);
       _notificationsEnabled = enabled;
+      await UsageLimitsService.updateNotificationSettings(active: enabled);
       notifyListeners();
+      await _syncLocalReminderNotifications();
     } catch (e) {
       debugPrint('Error setting notifications: $e');
     }
@@ -325,11 +335,31 @@ class AppProvider extends ChangeNotifier {
     try {
       await PreferencesService.setNotificationInterval(minutes);
       _notificationInterval = minutes;
+      await UsageLimitsService.updateNotificationSettings(
+        active: _notificationsEnabled,
+        intervalMinutes: minutes,
+      );
       notifyListeners();
+      await _syncLocalReminderNotifications();
     } catch (e) {
       debugPrint('Error setting notification interval: $e');
     }
   }
+
+  Future<void> _syncLocalReminderNotifications() async {
+    try {
+      await LocalNotificationService.syncReminderSchedule(
+        enabled: _notificationsEnabled,
+        intervalMinutes: _notificationInterval,
+        resolvedLanguageCode: resolvedUiLanguageCode,
+      );
+    } catch (e) {
+      debugPrint('Error syncing local reminder notifications: $e');
+    }
+  }
+
+  /// Renueva la cola de recordatorios (p. ej. al volver a primer plano tras horas en segundo plano).
+  Future<void> syncLocalNotificationSchedule() => _syncLocalReminderNotifications();
 
   /// Cambiar límite de uso diario
   Future<void> setDailyUsageLimit(int minutes) async {

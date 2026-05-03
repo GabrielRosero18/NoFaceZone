@@ -614,7 +614,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 const SizedBox(height: 16),
                 AuthSelectField<String>(
-                  value: _selectedLanguage ?? appProvider.language,
+                  value: _selectedLanguage ??
+                      (appProvider.language == 'system'
+                          ? appProvider.resolvedUiLanguageCode
+                          : appProvider.language),
                   label: localizations.language,
                   icon: Icons.language_rounded,
                   items: languageCodes

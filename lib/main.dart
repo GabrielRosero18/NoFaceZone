@@ -10,12 +10,16 @@ import 'src/Custom/AppColors.dart';
 import 'src/Custom/AppFonts.dart';
 import 'src/Custom/AppLocalizations.dart';
 import 'src/Custom/Config.dart' as app_config;
+import 'src/Services/LocalNotificationService.dart';
 
 Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await LocalNotificationService.configureTimeZone();
   await Supabase.initialize(
     url: app_config.Config.mSupabaseUrl,
     anonKey: app_config.Config.mSupabaseKey,
   );
+  await LocalNotificationService.initialize();
   runApp(const MyApp());
 }
 
@@ -111,8 +115,9 @@ class MyApp extends StatelessWidget {
             }
           }
           
-          // Obtener el locale del idioma seleccionado
-          final locale = Locale(appProvider.language);
+          // null = seguir lista de locales del sistema (ver localeListResolutionCallback)
+          final locale =
+              appProvider.language == 'system' ? null : Locale(appProvider.language);
           
           return MaterialApp(
             // El MaterialApp se reconstruirá automáticamente cuando cambie el AppProvider
@@ -124,6 +129,13 @@ class MyApp extends StatelessWidget {
               Locale('es', ''),
               Locale('en', ''),
             ],
+            localeListResolutionCallback: (locales, supported) {
+              for (final l in locales ?? const <Locale>[]) {
+                if (l.languageCode == 'en') return const Locale('en');
+                if (l.languageCode == 'es') return const Locale('es');
+              }
+              return const Locale('es');
+            },
             localizationsDelegates: const [
               AppLocalizations.delegate,
               GlobalMaterialLocalizations.delegate,

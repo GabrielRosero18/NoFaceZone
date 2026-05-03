@@ -80,4 +80,8 @@ class Constants {
   static const String notificationChannelId = 'nofacezone_notifications';
   static const String notificationChannelName = 'NoFaceZone Notifications';
   static const String notificationChannelDescription = 'Notificaciones de NoFaceZone';
+
+  /// IDs reservados para recordatorios periódicos (zonedSchedule). iOS admite ~64 pendientes.
+  static const int localNotificationIdBase = 910000;
+  static const int localNotificationScheduleCount = 64;
 }

@@ -123,11 +123,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           // Mapear idioma - si viene como código, usarlo directamente
           final languageFromDb = userData['idioma_preferido'] as String?;
           if (languageFromDb != null) {
-            // Si es un código de idioma (es/en), usarlo directamente
             if (languageFromDb == 'es' || languageFromDb == 'en') {
               _selectedLanguage = languageFromDb;
+            } else if (languageFromDb == 'system') {
+              _selectedLanguage = null;
             } else {
-              // Si viene como texto, mapearlo
               _selectedLanguage = languageFromDb.toLowerCase().contains('español') || languageFromDb.toLowerCase().contains('spanish') ? 'es' : 'en';
             }
           }
@@ -418,6 +418,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     try {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final appProvider = Provider.of<AppProvider>(context, listen: false);
       final user = userProvider.user;
       
       if (user == null) {
@@ -464,7 +465,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         name: _nameController.text.trim(),
         age: _extractMinAgeFromRange(_selectedAge),
         gender: _selectedGender, // Ya está mapeado a la traducción actual
-        language: _selectedLanguage, // Ya está como código (es/en)
+        language: _selectedLanguage ?? appProvider.resolvedUiLanguageCode,
         frequency: _selectedFrequency, // Ya está mapeado a la traducción actual
         fotoPerfil: imageUrl, // Actualizar la foto de perfil en la base de datos
       );
@@ -789,7 +790,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   
                   // Idioma
                   AuthSelectField<String>(
-                    value: _selectedLanguage ?? (appProvider.language == 'es' ? 'es' : 'en'),
+                    value: _selectedLanguage ??
+                        (appProvider.language == 'system'
+                            ? appProvider.resolvedUiLanguageCode
+                            : appProvider.language),
                     label: localizations.language,
                     icon: Icons.language_rounded,
                     items: languageCodes

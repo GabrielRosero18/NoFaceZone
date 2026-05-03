@@ -45,5 +45,7 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSUserNotificationsUsageDescription</key>
+	<string>NoFaceZone envía recordatorios para ayudarte a mantener tus límites de uso.</string>
 </dict>
 </plist>
