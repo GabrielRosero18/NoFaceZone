@@ -64,6 +64,7 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
   flutter_launcher_icons: ^0.13.1
+  image: ^4.5.4
 
 
 # For information on the generic Dart part of this file, see the
@@ -115,8 +116,8 @@ flutter_launcher_icons:
   web:
     generate: true
     image_path: "assets/icons/app_icon.png"
-    background_color: "#4A90E2"
-    theme_color: "#4A90E2"
+    background_color: "#182247"
+    theme_color: "#4E70DA"
   windows:
     generate: true
     image_path: "assets/icons/app_icon.png"
@@ -125,6 +126,9 @@ flutter_launcher_icons:
     generate: true
     image_path: "assets/icons/app_icon.png"
   image_path: "assets/icons/app_icon.png"
+  image_path_android: "assets/icons/app_icon.png"
   min_sdk_android: 21
-  adaptive_icon_background: "#4A90E2"
-  adaptive_icon_foreground: "assets/icons/app_icon.png"
+  # Mismo tono en capa adaptive: el foreground lleva marco sólido #182247 (no
+  # transparente) para que los launchers no muestren blanco alrededor de NFZ.
+  adaptive_icon_background: "#182247"
+  adaptive_icon_foreground: "assets/icons/app_icon_adaptive_fg.png"
