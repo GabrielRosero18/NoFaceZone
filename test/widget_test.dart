@@ -1,30 +1,66 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
 
-import 'package:nofacezone/main.dart';
+import 'package:nofacezone/src/Custom/AppLocalizations.dart';
+import 'package:nofacezone/src/Providers/ProviderConfig.dart';
 
+/// Smoke test sin timers de animación (evita ProEntrance / Future.delayed).
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('MaterialApp + Provider + i18n EN', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: ProviderConfig.providers,
+        child: MaterialApp(
+          locale: const Locale('en'),
+          supportedLocales: const [Locale('es'), Locale('en')],
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          home: Builder(
+            builder: (context) {
+              final loc = AppLocalizations.of(context)!;
+              return Scaffold(
+                body: Text('${loc.signIn}|${loc.welcomeChip}', textDirection: TextDirection.ltr),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Sign in|Less scrolling, more control'), findsOneWidget);
+  });
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
-
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+  testWidgets('MaterialApp + Provider + i18n ES', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: ProviderConfig.providers,
+        child: MaterialApp(
+          locale: const Locale('es'),
+          supportedLocales: const [Locale('es'), Locale('en')],
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          home: Builder(
+            builder: (context) {
+              final loc = AppLocalizations.of(context)!;
+              return Scaffold(
+                body: Text('${loc.signIn}|${loc.welcomeChip}', textDirection: TextDirection.ltr),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Iniciar sesión|Menos scroll, más control'), findsOneWidget);
   });
 }

@@ -118,6 +118,11 @@ class AppLocalizations {
       'reset_warning': 'Esta acción cerrará tu sesión y eliminará todas tus preferencias.',
       
       // Register/Login
+      'register_header_chip': 'Cuenta segura en 1 minuto',
+      'register_name_single_space': 'Usa un solo espacio entre nombres',
+      'register_name_repeat_chars': 'El nombre no puede tener el mismo carácter más de 2 veces seguidas',
+      'register_name_single_char_repeat': 'El nombre no puede ser un solo carácter repetido',
+      'register_name_more_meaningful': 'El nombre debe ser más significativo',
       'full_name': 'Nombre completo',
       'age': 'Edad',
       'age_over_18': 'Edad (mayor de 18 años)',
@@ -716,6 +721,11 @@ class AppLocalizations {
       'reset_warning': 'This action will log you out and delete all your preferences.',
       
       // Register/Login
+      'register_header_chip': 'Secure account in about a minute',
+      'register_name_single_space': 'Use a single space between name parts',
+      'register_name_repeat_chars': 'The name cannot have the same character more than twice in a row',
+      'register_name_single_char_repeat': 'The name cannot be a single repeated character',
+      'register_name_more_meaningful': 'The name should be more meaningful',
       'full_name': 'Full name',
       'age': 'Age',
       'age_over_18': 'Age (over 18 years)',
@@ -1296,6 +1306,11 @@ class AppLocalizations {
   String get dataExported => translate('data_exported');
   String get resetConfirmation => translate('reset_confirmation');
   String get resetWarning => translate('reset_warning');
+  String get registerHeaderChip => translate('register_header_chip');
+  String get registerNameSingleSpace => translate('register_name_single_space');
+  String get registerNameRepeatChars => translate('register_name_repeat_chars');
+  String get registerNameSingleCharRepeat => translate('register_name_single_char_repeat');
+  String get registerNameMoreMeaningful => translate('register_name_more_meaningful');
   String get fullName => translate('full_name');
   String get age => translate('age');
   String get ageOver18 => translate('age_over_18');

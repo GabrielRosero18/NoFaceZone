@@ -12,6 +12,7 @@ import 'package:nofacezone/src/Custom/Library.dart';
 import 'package:nofacezone/src/Providers/UserProvider.dart';
 import 'package:nofacezone/src/Providers/AppProvider.dart';
 import 'package:nofacezone/src/Services/PreferencesService.dart';
+import 'package:nofacezone/src/auth/auth_form_validators.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -32,21 +33,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _hapticTap() => HapticFeedback.selectionClick();
   void _hapticSuccess() => HapticFeedback.mediumImpact();
-
-  String? _validateEmail(String? value, AppLocalizations loc) {
-    final String v = (value ?? '').trim();
-    if (v.isEmpty) return loc.emailRequired;
-    if (!v.contains('@')) return loc.emailInvalid;
-    final RegExp emailRegex = RegExp(r'^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$');
-    if (!emailRegex.hasMatch(v)) return loc.emailInvalid;
-    return null;
-  }
-
-  String? _validatePassword(String? value, AppLocalizations loc) {
-    final String v = (value ?? '').trim();
-    if (v.isEmpty) return loc.passwordRequired;
-    return null;
-  }
 
   /// Función para iniciar sesión con Supabase
   Future<void> _loginUser() async {
@@ -223,7 +209,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             enableSuggestions: false,
                             onFieldSubmitted: (_) =>
                                 FocusScope.of(context).requestFocus(_passwordFocus),
-                            validator: (v) => _validateEmail(v, loc),
+                            validator: (v) => AuthFormValidators.loginEmail(v, loc),
                           ),
                 const SizedBox(height: 16),
                           AuthInputField(
@@ -248,7 +234,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               FocusManager.instance.primaryFocus?.unfocus();
                               _loginUser();
                             },
-                            validator: (v) => _validatePassword(v, loc),
+                            validator: (v) => AuthFormValidators.loginPassword(v, loc),
                           ),
                 const SizedBox(height: 8),
                           Align(

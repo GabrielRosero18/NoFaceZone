@@ -1,5 +1,5 @@
 name: nofacezone
-description: "A new Flutter project."
+description: "NoFaceZone — app Flutter para autocontrol de tiempo en Facebook: límites, hábitos y bienestar digital (Supabase, Provider)."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev

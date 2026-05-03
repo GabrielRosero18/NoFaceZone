@@ -79,21 +79,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return localizations.nameInvalid;
     }
     // Evitar espacios múltiples
-    if (v.contains('  ')) return 'Usa un solo espacio entre nombres';
-    // Evitar nombres que sean solo espacios
-    if (v.trim().isEmpty) return 'El nombre no puede ser solo espacios';
-    // Evitar caracteres repetidos excesivos (más de 2 seguidos)
+    if (v.contains('  ')) return localizations.registerNameSingleSpace;
+    if (v.trim().isEmpty) return localizations.nameRequired;
     if (RegExp(r'(.)\1{2,}').hasMatch(v)) {
-      return 'El nombre no puede tener caracteres repetidos más de 2 veces';
+      return localizations.registerNameRepeatChars;
     }
-    // Evitar nombres que sean solo un carácter repetido
     if (RegExp(r'^(.)\1+$').hasMatch(v)) {
-      return 'El nombre no puede ser solo un carácter repetido';
+      return localizations.registerNameSingleCharRepeat;
     }
-    // Evitar nombres que sean solo vocales o consonantes repetidas
     if (RegExp(r'^[aeiouAEIOU]+$').hasMatch(v) || RegExp(r'^[bcdfghjklmnpqrstvwxyzBCDFGHJKLMNPQRSTVWXYZ]+$').hasMatch(v)) {
       if (v.length <= 4) {
-        return 'El nombre debe ser más significativo';
+        return localizations.registerNameMoreMeaningful;
       }
     }
     return null;
@@ -585,9 +581,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
-                    const AuthHeaderChip(
+                    AuthHeaderChip(
                       icon: Icons.auto_awesome_rounded,
-                      text: 'Cuenta segura en 1 minuto',
+                      text: localizations.registerHeaderChip,
                     ),
                     const SizedBox(height: 20),
                     AuthSectionTitle(
