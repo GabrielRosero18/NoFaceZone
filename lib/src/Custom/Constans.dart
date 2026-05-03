@@ -25,6 +25,8 @@ class Constants {
   static const String notificationsEnabledKey = 'notifications_enabled';
   static const String notificationIntervalKey = 'notification_interval';
   static const String notificationAutoPromptDoneKey = 'notification_auto_prompt_done_v1';
+  /// UUID de Supabase Auth: si coincide con el usuario actual, ya pasó el setup inicial.
+  static const String initialSetupCompletedAuthUserIdKey = 'initial_setup_completed_auth_user_id';
   static const String dailyUsageLimitKey = 'daily_usage_limit';
   static const String todayUsageTimeKey = 'today_usage_time';
   static const String lastUsageDateKey = 'last_usage_date';

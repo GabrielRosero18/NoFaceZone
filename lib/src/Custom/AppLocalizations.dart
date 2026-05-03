@@ -31,6 +31,12 @@ class AppLocalizations {
       // Settings
       'settings': 'Configuración',
       'settings_screen_subtitle': 'Recordatorios y preferencias de la app.',
+      'first_setup_title': 'Configura tu rutina',
+      'first_setup_subtitle': 'Ajusta tus límites ahora; podrás cambiarlos cuando quieras en la app.',
+      'first_setup_daily_heading': 'Límite diario de uso',
+      'first_setup_weekly_heading': 'Meta semanal (horas por semana)',
+      'first_setup_continue': 'Continuar a la app',
+      'first_setup_saving': 'Guardando…',
       'notification_test_button': 'Probar notificación (temporal)',
       'notification_test_sent': 'Notificación de prueba enviada.',
       'notification_test_web_unavailable':
@@ -590,6 +596,12 @@ class AppLocalizations {
       // Settings
       'settings': 'Settings',
       'settings_screen_subtitle': 'Reminders and app preferences.',
+      'first_setup_title': 'Set up your routine',
+      'first_setup_subtitle': 'Adjust your limits now; you can change them anytime in the app.',
+      'first_setup_daily_heading': 'Daily usage limit',
+      'first_setup_weekly_heading': 'Weekly goal (hours per week)',
+      'first_setup_continue': 'Continue to the app',
+      'first_setup_saving': 'Saving…',
       'notification_test_button': 'Send test notification (temporary)',
       'notification_test_sent': 'Test notification sent.',
       'notification_test_web_unavailable':
@@ -1153,6 +1165,12 @@ class AppLocalizations {
   String get ok => translate('ok');
   String get settings => translate('settings');
   String get settingsScreenSubtitle => translate('settings_screen_subtitle');
+  String get firstSetupTitle => translate('first_setup_title');
+  String get firstSetupSubtitle => translate('first_setup_subtitle');
+  String get firstSetupDailyHeading => translate('first_setup_daily_heading');
+  String get firstSetupWeeklyHeading => translate('first_setup_weekly_heading');
+  String get firstSetupContinue => translate('first_setup_continue');
+  String get firstSetupSaving => translate('first_setup_saving');
   String get notificationTestButton => translate('notification_test_button');
   String get notificationTestSent => translate('notification_test_sent');
   String get notificationTestWebUnavailable => translate('notification_test_web_unavailable');

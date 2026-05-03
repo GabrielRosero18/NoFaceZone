@@ -144,6 +144,17 @@ class PreferencesService {
   static Future<bool> setNotificationAutoPromptDone(bool done) async {
     return await prefs.setBool(Constants.notificationAutoPromptDoneKey, done);
   }
+
+  /// `true` si este usuario (auth UUID) aún no completó la pantalla de configuración inicial.
+  static bool needsInitialAppSetup(String? authUserId) {
+    if (authUserId == null || authUserId.isEmpty) return false;
+    final doneFor = prefs.getString(Constants.initialSetupCompletedAuthUserIdKey);
+    return doneFor != authUserId;
+  }
+
+  static Future<bool> setInitialSetupCompletedForAuthUser(String authUserId) async {
+    return await prefs.setString(Constants.initialSetupCompletedAuthUserIdKey, authUserId);
+  }
   
   /// Guardar si es la primera vez que se abre la app
   static Future<bool> setFirstTimeOpen(bool isFirstTime) async {

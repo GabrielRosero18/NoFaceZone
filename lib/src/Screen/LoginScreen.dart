@@ -11,6 +11,7 @@ import 'package:nofacezone/src/Services/UserService.dart';
 import 'package:nofacezone/src/Custom/Library.dart';
 import 'package:nofacezone/src/Providers/UserProvider.dart';
 import 'package:nofacezone/src/Providers/AppProvider.dart';
+import 'package:nofacezone/src/Services/PreferencesService.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -96,8 +97,16 @@ class _LoginScreenState extends State<LoginScreen> {
           duration: const Duration(milliseconds: 2000),
         );
         
-        // Navegar a la pantalla principal (Home)
-        if (mounted) {
+        // Primera vez con esta cuenta en el dispositivo → configuración inicial; si no, inicio.
+        if (!mounted) return;
+        await PreferencesService.init();
+        if (!mounted) return;
+        await Provider.of<AppProvider>(context, listen: false).refreshUsageLimits();
+        if (!mounted) return;
+        final authId = userProvider.token;
+        if (PreferencesService.needsInitialAppSetup(authId)) {
+          navigate(context, CustomScreen.firstTimeSetup, finishCurrent: true);
+        } else {
           navigate(context, CustomScreen.home, finishCurrent: true);
         }
       } else {

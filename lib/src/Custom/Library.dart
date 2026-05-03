@@ -9,6 +9,7 @@ import 'package:nofacezone/src/Screen/RewardsScreen.dart';
 import 'package:nofacezone/src/Screen/LoginScreen.dart';
 import 'package:nofacezone/src/Screen/RegisterScreen.dart';
 import 'package:nofacezone/src/Screen/EmotionTrackingScreen.dart';
+import 'package:nofacezone/src/Screen/FirstTimeSetupScreen.dart';
 import 'package:nofacezone/src/Custom/Constans.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -22,7 +23,8 @@ enum CustomScreen { //enumerancion para las pantallas
   rewards,
   login,
   register,
-  emotionTracking
+  emotionTracking,
+  firstTimeSetup,
 }
 
 enum TypeAnimation { //enumeracion para los tipos de animacion
@@ -66,6 +68,9 @@ void navigate(BuildContext mContext, CustomScreen mScreen, {bool finishCurrent =
       break;
     case CustomScreen.emotionTracking:
       target = const EmotionTrackingScreen();
+      break;
+    case CustomScreen.firstTimeSetup:
+      target = const FirstTimeSetupScreen();
       break;
   }
 
