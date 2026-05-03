@@ -161,10 +161,28 @@ class AppLocalizations {
       'password_mismatch': 'Las contraseñas no coinciden',
       'show_password_a11y': 'Mostrar contraseña',
       'hide_password_a11y': 'Ocultar contraseña',
+      'login_focus_chip': 'Modo enfoque activado',
+      'login_welcome_back_title': '¡Bienvenido de vuelta!',
+      'login_welcome_back_subtitle': 'Inicia sesión para continuar con tu progreso diario.',
+      'login_access_account': 'Accede a tu cuenta',
+      'login_separator_or': 'o',
+      'login_create_new_account': 'Crear cuenta nueva',
+      'login_tip_title': '💡 Consejo',
+      'login_tip_body':
+          'Una vez que inicies sesión, podrás configurar límites de tiempo y recibir recordatorios para un uso más saludable de Facebook.',
+      'login_error_title': 'Error en el login',
+      'login_error_load_user': 'Error al cargar los datos del usuario',
+      'login_welcome_with_name': '¡Bienvenido {name}!',
+      'login_unexpected_error': 'Error inesperado: {details}',
       
       // Welcome
       'app_subtitle': 'Control de Adicción a Facebook',
       'app_description_text': 'Toma el control de tu tiempo en redes sociales y mejora tu bienestar digital',
+      'welcome_chip': 'Menos scroll, más control',
+      'welcome_feature_daily_limits': 'Límites diarios',
+      'welcome_feature_rewards': 'Recompensas',
+      'welcome_feature_tracking': 'Seguimiento',
+      'welcome_feature_reminders': 'Recordatorios',
       'get_started': 'Comenzar',
       
       // Common
@@ -741,10 +759,28 @@ class AppLocalizations {
       'password_mismatch': 'Passwords do not match',
       'show_password_a11y': 'Show password',
       'hide_password_a11y': 'Hide password',
+      'login_focus_chip': 'Focus mode on',
+      'login_welcome_back_title': 'Welcome back!',
+      'login_welcome_back_subtitle': 'Sign in to keep up with your daily progress.',
+      'login_access_account': 'Access your account',
+      'login_separator_or': 'or',
+      'login_create_new_account': 'Create new account',
+      'login_tip_title': '💡 Tip',
+      'login_tip_body':
+          'After you sign in, you can set time limits and get reminders for healthier Facebook use.',
+      'login_error_title': 'Sign-in error',
+      'login_error_load_user': 'Could not load your account data',
+      'login_welcome_with_name': 'Welcome, {name}!',
+      'login_unexpected_error': 'Unexpected error: {details}',
       
       // Welcome
       'app_subtitle': 'Facebook Addiction Control',
       'app_description_text': 'Take control of your time on social media and improve your digital well-being',
+      'welcome_chip': 'Less scrolling, more control',
+      'welcome_feature_daily_limits': 'Daily limits',
+      'welcome_feature_rewards': 'Rewards',
+      'welcome_feature_tracking': 'Tracking',
+      'welcome_feature_reminders': 'Reminders',
       'get_started': 'Get Started',
       
       // Common
@@ -1301,8 +1337,27 @@ class AppLocalizations {
   String get passwordMismatch => translate('password_mismatch');
   String get showPasswordA11y => translate('show_password_a11y');
   String get hidePasswordA11y => translate('hide_password_a11y');
+  String get loginFocusChip => translate('login_focus_chip');
+  String get loginWelcomeBackTitle => translate('login_welcome_back_title');
+  String get loginWelcomeBackSubtitle => translate('login_welcome_back_subtitle');
+  String get loginAccessAccount => translate('login_access_account');
+  String get loginSeparatorOr => translate('login_separator_or');
+  String get loginCreateNewAccount => translate('login_create_new_account');
+  String get loginTipTitle => translate('login_tip_title');
+  String get loginTipBody => translate('login_tip_body');
+  String get loginErrorTitle => translate('login_error_title');
+  String get loginErrorLoadUser => translate('login_error_load_user');
+  String loginWelcomeWithName(String name) =>
+      translate('login_welcome_with_name').replaceAll('{name}', name);
+  String loginUnexpectedError(String details) =>
+      translate('login_unexpected_error').replaceAll('{details}', details);
   String get appSubtitle => translate('app_subtitle');
   String get appDescriptionText => translate('app_description_text');
+  String get welcomeChip => translate('welcome_chip');
+  String get welcomeFeatureDailyLimits => translate('welcome_feature_daily_limits');
+  String get welcomeFeatureRewards => translate('welcome_feature_rewards');
+  String get welcomeFeatureTracking => translate('welcome_feature_tracking');
+  String get welcomeFeatureReminders => translate('welcome_feature_reminders');
   String get getStarted => translate('get_started');
   String get createAccount => translate('create_account');
   String get signUp => translate('sign_up');

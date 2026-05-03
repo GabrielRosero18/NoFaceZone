@@ -60,11 +60,11 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                   padding: const EdgeInsets.fromLTRB(24, 18, 24, 16),
                   child: Column(
                     children: [
-                      const ProEntrance(
+                      ProEntrance(
                         delayMs: 20,
                         child: AuthHeaderChip(
                           icon: Icons.auto_graph_rounded,
-                          text: 'Menos scroll, mas control',
+                          text: loc.welcomeChip,
                         ),
                       ),
                       const SizedBox(height: 18),
@@ -89,13 +89,18 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                                   color: AppColors.darkSurface,
                                   border: Border.all(color: AppColors.textLight.withValues(alpha: 0.45), width: 1),
                                 ),
-                                child: const Center(
-                                  child: Text(
-                                    'NF',
-                                    style: TextStyle(
-                                      fontSize: 46,
-                                      fontWeight: FontWeight.bold,
-                                      color: AppColors.textLight,
+                                child: Center(
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      'NFZ',
+                                      maxLines: 1,
+                                      style: const TextStyle(
+                                        fontSize: 46,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.textLight,
+                                        letterSpacing: -0.5,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -156,17 +161,37 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                                   const SizedBox(height: 22),
                                   Row(
                                     children: [
-                                      Expanded(child: _buildFeaturePill(icon: Icons.timer_outlined, label: 'Limites diarios')),
+                                      Expanded(
+                                        child: _buildFeaturePill(
+                                          icon: Icons.timer_outlined,
+                                          label: loc.welcomeFeatureDailyLimits,
+                                        ),
+                                      ),
                                       const SizedBox(width: 10),
-                                      Expanded(child: _buildFeaturePill(icon: Icons.emoji_events_outlined, label: 'Recompensas')),
+                                      Expanded(
+                                        child: _buildFeaturePill(
+                                          icon: Icons.emoji_events_outlined,
+                                          label: loc.welcomeFeatureRewards,
+                                        ),
+                                      ),
                                     ],
                                   ),
                                   const SizedBox(height: 10),
                                   Row(
                                     children: [
-                                      Expanded(child: _buildFeaturePill(icon: Icons.track_changes_rounded, label: 'Seguimiento')),
+                                      Expanded(
+                                        child: _buildFeaturePill(
+                                          icon: Icons.track_changes_rounded,
+                                          label: loc.welcomeFeatureTracking,
+                                        ),
+                                      ),
                                       const SizedBox(width: 10),
-                                      Expanded(child: _buildFeaturePill(icon: Icons.notifications_active_outlined, label: 'Recordatorios')),
+                                      Expanded(
+                                        child: _buildFeaturePill(
+                                          icon: Icons.notifications_active_outlined,
+                                          label: loc.welcomeFeatureReminders,
+                                        ),
+                                      ),
                                     ],
                                   ),
                                   const Spacer(),

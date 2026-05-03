@@ -33,24 +33,25 @@ class _LoginScreenState extends State<LoginScreen> {
   void _hapticTap() => HapticFeedback.selectionClick();
   void _hapticSuccess() => HapticFeedback.mediumImpact();
 
-  String? _validateEmail(String? value) {
+  String? _validateEmail(String? value, AppLocalizations loc) {
     final String v = (value ?? '').trim();
-    if (v.isEmpty) return 'El email es obligatorio';
-    if (!v.contains('@')) return 'Debe ingresar un email válido';
+    if (v.isEmpty) return loc.emailRequired;
+    if (!v.contains('@')) return loc.emailInvalid;
     final RegExp emailRegex = RegExp(r'^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$');
-    if (!emailRegex.hasMatch(v)) return 'Formato de email no válido';
+    if (!emailRegex.hasMatch(v)) return loc.emailInvalid;
     return null;
   }
 
-  String? _validatePassword(String? value) {
+  String? _validatePassword(String? value, AppLocalizations loc) {
     final String v = (value ?? '').trim();
-    if (v.isEmpty) return 'La contraseña es requerida';
+    if (v.isEmpty) return loc.passwordRequired;
     return null;
   }
 
   /// Función para iniciar sesión con Supabase
   Future<void> _loginUser() async {
     if (!_formKey.currentState!.validate()) return;
+    final loc = AppLocalizations.of(context)!;
 
     setState(() {
       _isLoading = true;
@@ -83,7 +84,7 @@ class _LoginScreenState extends State<LoginScreen> {
         
         if (!loginSuccess) {
           if (!mounted) return;
-          _showErrorDialog('Error al cargar los datos del usuario');
+          _showErrorDialog(loc.loginErrorLoadUser);
           return;
         }
         
@@ -91,10 +92,10 @@ class _LoginScreenState extends State<LoginScreen> {
         if (!mounted) return;
         
         // Mostrar mensaje de éxito con el nombre real del usuario
-        final userName = result['user']['nombre'] ?? 'Usuario';
+        final userName = result['user']['nombre'] ?? loc.user;
         CustomSnackBar.showSuccess(
           context,
-          '¡Bienvenido $userName!',
+          loc.loginWelcomeWithName(userName),
           icon: Icons.celebration_rounded,
           duration: const Duration(milliseconds: 2000),
         );
@@ -115,11 +116,11 @@ class _LoginScreenState extends State<LoginScreen> {
         if (!mounted) return;
         
         // Mostrar error
-        _showErrorDialog(result['error'] ?? 'Error desconocido');
+        _showErrorDialog(result['error'] ?? loc.unknownError);
       }
     } catch (e) {
       if (!mounted) return;
-      _showErrorDialog('Error inesperado: $e');
+      _showErrorDialog(loc.loginUnexpectedError(e.toString()));
     } finally {
       if (mounted) {
         setState(() {
@@ -131,10 +132,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
   /// Mostrar diálogo de error
   void _showErrorDialog(String message) {
+    final loc = AppLocalizations.of(context)!;
     showDialog<void>(
       context: context,
       builder: (BuildContext ctx) => AlertDialog(
-        title: const Text('Error en el login'),
+        title: Text(loc.loginErrorTitle),
         content: Text(message),
         actions: <Widget>[
           TextButton(
@@ -142,7 +144,7 @@ class _LoginScreenState extends State<LoginScreen> {
               _hapticTap();
               Navigator.of(ctx).pop();
             },
-            child: const Text('Aceptar'),
+            child: Text(loc.ok),
           ),
         ],
       ),
@@ -170,7 +172,7 @@ class _LoginScreenState extends State<LoginScreen> {
         AppColors.setTheme(appProvider.colorTheme);
 
         return AuthScaffold(
-      title: 'Iniciar Sesión',
+      title: loc.signIn,
       backTooltip: backLabel,
       onBackPressed: () {
         _hapticTap();
@@ -187,14 +189,14 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
-                    const AuthHeaderChip(
+                    AuthHeaderChip(
                       icon: Icons.shield_moon_rounded,
-                      text: 'Modo enfoque activado',
+                      text: loc.loginFocusChip,
                     ),
                     const SizedBox(height: 20),
-                    const AuthSectionTitle(
-                      title: '¡Bienvenido de vuelta!',
-                      subtitle: 'Inicia sesión para continuar con tu progreso diario.',
+                    AuthSectionTitle(
+                      title: loc.loginWelcomeBackTitle,
+                      subtitle: loc.loginWelcomeBackSubtitle,
                     ),
                     const SizedBox(height: 20),
                     AuthGlassCard(
@@ -202,7 +204,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           Text(
-                            'Accede a tu cuenta',
+                            loc.loginAccessAccount,
                             style: TextStyle(
                               fontSize: 17,
                               fontWeight: FontWeight.w700,
@@ -213,7 +215,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           AuthInputField(
                             controller: _emailController,
                             focusNode: _emailFocus,
-                            label: 'Email',
+                            label: loc.email,
                             icon: Icons.alternate_email_rounded,
                             keyboardType: TextInputType.emailAddress,
                             textInputAction: TextInputAction.next,
@@ -221,13 +223,13 @@ class _LoginScreenState extends State<LoginScreen> {
                             enableSuggestions: false,
                             onFieldSubmitted: (_) =>
                                 FocusScope.of(context).requestFocus(_passwordFocus),
-                            validator: _validateEmail,
+                            validator: (v) => _validateEmail(v, loc),
                           ),
                 const SizedBox(height: 16),
                           AuthInputField(
                             controller: _passwordController,
                             focusNode: _passwordFocus,
-                            label: 'Contraseña',
+                            label: loc.password,
                             icon: Icons.lock_outline_rounded,
                             suffixIcon: IconButton(
                               tooltip: _passwordVisible ? loc.hidePasswordA11y : loc.showPasswordA11y,
@@ -246,7 +248,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               FocusManager.instance.primaryFocus?.unfocus();
                               _loginUser();
                             },
-                            validator: _validatePassword,
+                            validator: (v) => _validatePassword(v, loc),
                           ),
                 const SizedBox(height: 8),
                           Align(
@@ -266,7 +268,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           const SizedBox(height: 8),
                           AuthPrimaryButton(
-                            text: 'Iniciar Sesión',
+                            text: loc.signIn,
                             isLoading: _isLoading,
                             onPressed: () {
                               _hapticTap();
@@ -285,7 +287,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Text(
-                        'o',
+                        loc.loginSeparatorOr,
                         style: TextStyle(color: AppColors.textLight.withValues(alpha: 0.7)),
                       ),
                     ),
@@ -311,7 +313,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     child: Text(
-                      'Crear cuenta nueva',
+                      loc.loginCreateNewAccount,
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
@@ -333,7 +335,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '💡 Consejo',
+                          loc.loginTipTitle,
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -342,7 +344,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Una vez que inicies sesión, podrás configurar límites de tiempo y recibir recordatorios para un uso más saludable de Facebook.',
+                          loc.loginTipBody,
                           style: TextStyle(
                             fontSize: 14,
                             color: AppColors.textLight.withValues(alpha: 0.8),
