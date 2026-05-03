@@ -24,6 +24,8 @@ class _LoginScreenState extends State<LoginScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final FocusNode _emailFocus = FocusNode();
+  final FocusNode _passwordFocus = FocusNode();
 
   bool _passwordVisible = false;
   bool _isLoading = false;
@@ -149,6 +151,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   void dispose() {
+    _emailFocus.dispose();
+    _passwordFocus.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -175,6 +179,8 @@ class _LoginScreenState extends State<LoginScreen> {
       child: ProEntrance(
                 delayMs: 80,
                 child: SingleChildScrollView(
+                  keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                  physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.fromLTRB(24, 18, 24, 24),
                   child: Form(
                   key: _formKey,
@@ -206,15 +212,21 @@ class _LoginScreenState extends State<LoginScreen> {
                           const SizedBox(height: 18),
                           AuthInputField(
                             controller: _emailController,
+                            focusNode: _emailFocus,
                             label: 'Email',
                             icon: Icons.alternate_email_rounded,
                             keyboardType: TextInputType.emailAddress,
                             textInputAction: TextInputAction.next,
+                            autocorrect: false,
+                            enableSuggestions: false,
+                            onFieldSubmitted: (_) =>
+                                FocusScope.of(context).requestFocus(_passwordFocus),
                             validator: _validateEmail,
                           ),
                 const SizedBox(height: 16),
                           AuthInputField(
                             controller: _passwordController,
+                            focusNode: _passwordFocus,
                             label: 'Contraseña',
                             icon: Icons.lock_outline_rounded,
                             suffixIcon: IconButton(
@@ -230,6 +242,10 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             obscureText: !_passwordVisible,
                             textInputAction: TextInputAction.done,
+                            onFieldSubmitted: (_) {
+                              FocusManager.instance.primaryFocus?.unfocus();
+                              _loginUser();
+                            },
                             validator: _validatePassword,
                           ),
                 const SizedBox(height: 8),

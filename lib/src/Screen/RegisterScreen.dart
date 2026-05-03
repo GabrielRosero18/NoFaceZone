@@ -576,6 +576,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
       child: ProEntrance(
                 delayMs: 80,
                 child: SingleChildScrollView(
+                  keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                  physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.fromLTRB(24, 18, 24, 24),
                   child: Form(
                   key: _formKey,
@@ -602,6 +604,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             label: localizations.fullName,
                             icon: Icons.person_outline_rounded,
                             textInputAction: TextInputAction.next,
+                            onFieldSubmitted: (_) =>
+                                FocusScope.of(context).nextFocus(),
                             validator: (value) => _validateName(value, localizations),
                             inputFormatters: [NameCapitalizationFormatter()],
                           ),
@@ -635,6 +639,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   icon: Icons.alternate_email_rounded,
                   keyboardType: TextInputType.emailAddress,
                   textInputAction: TextInputAction.next,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  onFieldSubmitted: (_) =>
+                      FocusScope.of(context).nextFocus(),
                   validator: (value) => _validateEmail(value, localizations),
                 ),
                 const SizedBox(height: 16),
@@ -670,7 +678,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   controller: _passwordController,
                   label: localizations.password,
                   icon: Icons.lock_outline_rounded,
+                  textInputAction: TextInputAction.next,
                   onChanged: (value) => setState(() {}), // Para actualizar la barra de fortaleza
+                  onFieldSubmitted: (_) =>
+                      FocusScope.of(context).nextFocus(),
                   suffixIcon: IconButton(
                     tooltip: _passwordVisible ? localizations.hidePasswordA11y : localizations.showPasswordA11y,
                     icon: Icon(
@@ -739,6 +750,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   controller: _confirmPasswordController,
                   label: localizations.confirmPassword,
                   icon: Icons.verified_user_outlined,
+                  textInputAction: TextInputAction.done,
+                  onFieldSubmitted: (_) =>
+                      FocusManager.instance.primaryFocus?.unfocus(),
                   suffixIcon: IconButton(
                     tooltip: _confirmPasswordVisible ? localizations.hidePasswordA11y : localizations.showPasswordA11y,
                     icon: Icon(

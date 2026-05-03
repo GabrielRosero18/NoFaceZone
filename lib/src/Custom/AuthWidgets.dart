@@ -41,7 +41,15 @@ class AuthScaffold extends StatelessWidget {
         child: Stack(
           children: [
             ...AuthTheme.buildBackgroundOrbs(),
-            SafeArea(child: child),
+            SafeArea(
+              child: GestureDetector(
+                // "Tap outside" / quitar foco: oculta el teclado en Android al tocar fuera del campo.
+                onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+                behavior: HitTestBehavior.translucent,
+                excludeFromSemantics: true,
+                child: child,
+              ),
+            ),
           ],
         ),
       ),
@@ -232,6 +240,10 @@ class AuthInputField extends StatelessWidget {
   final String? Function(String?)? validator;
   final ValueChanged<String>? onChanged;
   final List<TextInputFormatter>? inputFormatters;
+  final FocusNode? focusNode;
+  final ValueChanged<String>? onFieldSubmitted;
+  final bool? autocorrect;
+  final bool? enableSuggestions;
 
   const AuthInputField({
     super.key,
@@ -246,12 +258,18 @@ class AuthInputField extends StatelessWidget {
     this.validator,
     this.onChanged,
     this.inputFormatters,
+    this.focusNode,
+    this.onFieldSubmitted,
+    this.autocorrect,
+    this.enableSuggestions,
   });
 
   @override
   Widget build(BuildContext context) {
+    final bool noSpellForSecret = obscureText;
     return TextFormField(
       controller: controller,
+      focusNode: focusNode,
       style: style ?? const TextStyle(color: AppColors.textLight),
       decoration: AuthTheme.inputDecoration(
         label: label,
@@ -261,9 +279,13 @@ class AuthInputField extends StatelessWidget {
       keyboardType: keyboardType,
       textInputAction: textInputAction,
       obscureText: obscureText,
+      autocorrect: autocorrect ?? !noSpellForSecret,
+      enableSuggestions: enableSuggestions ?? !noSpellForSecret,
       validator: validator,
       onChanged: onChanged,
+      onFieldSubmitted: onFieldSubmitted,
       inputFormatters: inputFormatters,
+      onTapOutside: (_) => FocusManager.instance.primaryFocus?.unfocus(),
     );
   }
 }
