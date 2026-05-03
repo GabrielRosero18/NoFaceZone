@@ -461,11 +461,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       // Mapear valores traducidos de vuelta a valores para la BD
       // El género y frecuencia se guardan como están (ya están en el idioma actual)
       // El idioma se guarda como código (es/en)
+      final String profileLanguageCode =
+          _selectedLanguage ?? appProvider.resolvedUiLanguageCode;
       final updateResult = await UserService.updateUser(
         name: _nameController.text.trim(),
         age: _extractMinAgeFromRange(_selectedAge),
         gender: _selectedGender, // Ya está mapeado a la traducción actual
-        language: _selectedLanguage ?? appProvider.resolvedUiLanguageCode,
+        language: profileLanguageCode,
         frequency: _selectedFrequency, // Ya está mapeado a la traducción actual
         fotoPerfil: imageUrl, // Actualizar la foto de perfil en la base de datos
       );
@@ -484,6 +486,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
       // Recargar datos del usuario desde Supabase para sincronizar
       if (updateResult['success']) {
+        // Misma preferencia que Supabase: SharedPreferences solo se actualizaba
+        // al cambiar el dropdown (onChanged), no al pulsar Guardar.
+        if (profileLanguageCode == 'es' || profileLanguageCode == 'en') {
+          await appProvider.setLanguage(profileLanguageCode);
+        }
         // Otorgar puntos por actualizar perfil
         await PointsService.awardUpdateProfilePoints();
         

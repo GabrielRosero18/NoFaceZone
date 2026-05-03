@@ -58,7 +58,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
   int _mandatoryPauseIntervalMinutes = 30;
   bool _isInNightBlockWindow = false;
   String _dailyMotivationMessage = '';
-  String _dailyMotivationDateKey = '';
+  /// Incluye día e idioma para que el mensaje se regenere al cambiar locale.
+  String _dailyMotivationCacheKey = '';
   List<_ActivityRecommendation> _activeActivityRecommendations = [];
   Set<String> _completedActivityIds = <String>{};
   int _activityShuffleSeed = 0;
@@ -86,10 +87,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     return '${now.year}-$mm-$dd';
   }
 
-  String _resolveDailyMotivation(AppLocalizations localizations) {
+  String _resolveDailyMotivation(BuildContext context, AppLocalizations localizations) {
     final todayKey = _todayDateKey();
-    if (_dailyMotivationDateKey != todayKey || _dailyMotivationMessage.isEmpty) {
-      _dailyMotivationDateKey = todayKey;
+    final lang = Localizations.localeOf(context).languageCode;
+    final cacheKey = '$todayKey|$lang';
+    if (_dailyMotivationCacheKey != cacheKey || _dailyMotivationMessage.isEmpty) {
+      _dailyMotivationCacheKey = cacheKey;
       _dailyMotivationMessage = AppMessages.getRandomMessage(localizations);
     }
     return _dailyMotivationMessage;
@@ -1282,7 +1285,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       builder: (context, appProvider, child) {
         final localizations = AppLocalizations.of(context)!;
         // Mantener el mismo mensaje durante todo el día para evitar cambios bruscos.
-        final message = _resolveDailyMotivation(localizations);
+        final message = _resolveDailyMotivation(context, localizations);
         
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -1387,12 +1390,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         ? Colors.redAccent
         : (isNearLimit ? Colors.orange : Colors.green);
     final statusText = isDailyBlocked
-        ? 'Bloqueado por límite diario'
+        ? localizations.homeStatusBlockedDaily
         : (isNightBlocked
-            ? 'Bloqueo nocturno activo'
+            ? localizations.homeStatusNightBlockActive
             : (isBreakBlocked
-                ? 'Pausa obligatoria activa'
-                : (isNearLimit ? 'Cerca del límite' : 'Dentro del límite')));
+                ? localizations.homeStatusMandatoryBreakActive
+                : (isNearLimit ? localizations.homeStatusNearLimit : localizations.homeStatusWithinLimit)));
 
     return AnimatedBuilder(
       animation: _ambientGlowController,
@@ -1434,10 +1437,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
             children: [
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Text(
-                  '📊 Tu autocontrol hoy',
-                  style: TextStyle(
+                  localizations.homeDashboardTitle,
+                  style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
                     color: AppColors.textLight,
@@ -1542,7 +1545,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                         border: Border.all(color: statusColor.withValues(alpha: 0.35)),
                       ),
                       child: Text(
-                        'Rendimiento ${(100 - (progress * 100)).round().clamp(0, 100)}%',
+                        localizations.homeDashboardPerformancePercent(
+                          (100 - (progress * 100)).round().clamp(0, 100),
+                        ),
                         style: TextStyle(
                           color: statusColor,
                           fontSize: 11.5,
@@ -1584,7 +1589,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
             children: [
               Expanded(
                 child: _buildUsageStatMini(
-                  'Usado',
+                  localizations.homeUsedLabel,
                   _formatMinutesHm(usedMinutes),
                   Icons.schedule,
                 ),
@@ -1619,7 +1624,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                   label: localizations.nightBlock,
                   value: appProvider.nightBlockActive
                       ? (_isInNightBlockWindow ? localizations.active : localizations.usageStatusStandby)
-                      : 'Off',
+                      : localizations.featureOff,
                   color: _isInNightBlockWindow ? Colors.purpleAccent : AppColors.textLight,
                   isOn: appProvider.nightBlockActive,
                   onTap: _showNightBlockQuickConfig,
@@ -1633,10 +1638,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                   value: appProvider.mandatoryBreaksActive
                       ? (_minutesToNextMandatoryPause != null
                           ? (_minutesToNextMandatoryPause! <= 0
-                              ? 'Ahora'
+                              ? localizations.homeMandatoryBreakNow
                               : '${localizations.nextIn} ${_formatMinutesHm(_minutesToNextMandatoryPause!)}')
                           : localizations.usageStatusStandby)
-                      : 'Off',
+                      : localizations.featureOff,
                   color: isBreakBlocked ? Colors.orange : AppColors.textLight,
                   isOn: appProvider.mandatoryBreaksActive,
                   onTap: _showMandatoryBreakQuickConfig,
@@ -1647,7 +1652,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                 child: _buildStatusIndicator(
                   icon: Icons.block,
                   label: localizations.dailyLimitHome,
-                  value: isDailyBlocked ? localizations.active : 'Off',
+                  value: isDailyBlocked ? localizations.active : localizations.featureOff,
                   color: isDailyBlocked ? Colors.redAccent : AppColors.textLight,
                   isOn: isDailyBlocked,
                   onTap: _showDailyLimitQuickConfig,
@@ -1657,7 +1662,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
           ),
           const SizedBox(height: 14),
           Text(
-            'Impacto rápido',
+            localizations.homeQuickImpact,
             style: TextStyle(
               color: AppColors.textLight.withValues(alpha: 0.86),
               fontWeight: FontWeight.w600,
@@ -1704,7 +1709,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                   Expanded(
                     child: _buildDashboardActionPill(
                       icon: Icons.timer_outlined,
-                      label: 'Ver reloj',
+                      label: localizations.homeSeeTimer,
                       color: Colors.teal,
                       fullWidth: true,
                       onTap: () => _showTimeRemainingDialog(localizations),
@@ -1714,7 +1719,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                   Expanded(
                     child: _buildDashboardActionPill(
                       icon: Icons.sentiment_satisfied_alt,
-                      label: 'Emociones',
+                      label: localizations.emotionTracking,
                       color: Colors.pinkAccent,
                       fullWidth: true,
                       onTap: () => navigate(context, CustomScreen.emotionTracking),

@@ -88,6 +88,7 @@ class AppLocalizations {
       'export_data': 'Exportar datos',
       'reset_app': 'Restablecer aplicación',
       'logout': 'Cerrar sesión',
+      'logout_confirm_message': '¿Cerrar sesión en esta cuenta en este dispositivo?',
       'private_mode': 'Modo privado',
       
       // About
@@ -237,6 +238,17 @@ class AppLocalizations {
       'days_completed': 'días completados',
       'of_word': 'de',
       'quick_navigation': 'Navegación rápida',
+      'home_dashboard_title': '📊 Tu autocontrol hoy',
+      'home_used_label': 'Usado',
+      'home_status_blocked_daily': 'Bloqueado por límite diario',
+      'home_status_night_block_active': 'Bloqueo nocturno activo',
+      'home_status_mandatory_break_active': 'Pausa obligatoria activa',
+      'home_status_near_limit': 'Cerca del límite',
+      'home_status_within_limit': 'Dentro del límite',
+      'home_performance_percent': 'Rendimiento {percent}%',
+      'home_quick_impact': 'Impacto rápido',
+      'home_see_timer': 'Ver reloj',
+      'home_mandatory_break_now': 'Ahora',
       
       // Emotion Tracking
       'emotion_tracking': 'Emociones',
@@ -653,6 +665,7 @@ class AppLocalizations {
       'export_data': 'Export data',
       'reset_app': 'Reset application',
       'logout': 'Logout',
+      'logout_confirm_message': 'Sign out from this account on this device?',
       'private_mode': 'Private mode',
       
       // About
@@ -802,6 +815,17 @@ class AppLocalizations {
       'days_completed': 'days completed',
       'of_word': 'of',
       'quick_navigation': 'Quick navigation',
+      'home_dashboard_title': '📊 Your self-control today',
+      'home_used_label': 'Used',
+      'home_status_blocked_daily': 'Blocked: daily limit reached',
+      'home_status_night_block_active': 'Night block active',
+      'home_status_mandatory_break_active': 'Mandatory break active',
+      'home_status_near_limit': 'Near the limit',
+      'home_status_within_limit': 'Within limit',
+      'home_performance_percent': 'Performance {percent}%',
+      'home_quick_impact': 'Quick impact',
+      'home_see_timer': 'View timer',
+      'home_mandatory_break_now': 'Now',
       
       // Emotion Tracking
       'emotion_tracking': 'Emotions',
@@ -1211,6 +1235,7 @@ class AppLocalizations {
   String get exportData => translate('export_data');
   String get resetApp => translate('reset_app');
   String get logout => translate('logout');
+  String get logoutConfirmMessage => translate('logout_confirm_message');
   String get privateMode => translate('private_mode');
   String get about => translate('about');
   String get version => translate('version');
@@ -1335,6 +1360,18 @@ class AppLocalizations {
   String get daysCompleted => translate('days_completed');
   String get ofWord => translate('of_word');
   String get quickNavigation => translate('quick_navigation');
+  String get homeDashboardTitle => translate('home_dashboard_title');
+  String get homeUsedLabel => translate('home_used_label');
+  String get homeStatusBlockedDaily => translate('home_status_blocked_daily');
+  String get homeStatusNightBlockActive => translate('home_status_night_block_active');
+  String get homeStatusMandatoryBreakActive => translate('home_status_mandatory_break_active');
+  String get homeStatusNearLimit => translate('home_status_near_limit');
+  String get homeStatusWithinLimit => translate('home_status_within_limit');
+  String homeDashboardPerformancePercent(int percent) =>
+      translate('home_performance_percent').replaceAll('{percent}', percent.toString());
+  String get homeQuickImpact => translate('home_quick_impact');
+  String get homeSeeTimer => translate('home_see_timer');
+  String get homeMandatoryBreakNow => translate('home_mandatory_break_now');
   String get notificationsTitle => translate('notifications_title');
   String get enableNotificationsTitle => translate('enable_notifications_title');
   String get receiveAlerts => translate('receive_alerts');

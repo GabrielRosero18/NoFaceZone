@@ -37,11 +37,12 @@ class _SettingsState extends State<Settings> {
         final appProvider = Provider.of<AppProvider>(context, listen: false);
         AppColors.setTheme(appProvider.colorTheme);
         final backLabel = MaterialLocalizations.of(context).backButtonTooltip;
+        final loc = AppLocalizations.of(context)!;
 
         return Scaffold(
           appBar: AppBar(
             title: Text(
-              AppLocalizations.of(context)?.settings ?? 'Configuración',
+              loc.settings,
               style: const TextStyle(color: AppColors.textLight, fontWeight: FontWeight.w700),
             ),
             backgroundColor: Colors.transparent,
@@ -51,6 +52,19 @@ class _SettingsState extends State<Settings> {
               icon: const Icon(Icons.arrow_back, color: AppColors.textLight),
               onPressed: () => Navigator.of(context).pop(),
             ),
+            actions: [
+              IconButton(
+                tooltip: loc.logout,
+                icon: Icon(
+                  Icons.logout_rounded,
+                  color: AppColors.textLight.withValues(alpha: 0.88),
+                ),
+                onPressed: () {
+                  HapticFeedback.selectionClick();
+                  _logout();
+                },
+              ),
+            ],
           ),
           extendBodyBehindAppBar: true,
           body: Container(
@@ -828,26 +842,27 @@ class _SettingsState extends State<Settings> {
   }
 
   Future<void> _logout() async {
+    final loc = AppLocalizations.of(context)!;
     final shouldLogout = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         backgroundColor: const Color(0xFF1A1F3A),
-        title: const Text(
-          'Cerrar sesión',
-          style: TextStyle(color: AppColors.textLight),
+        title: Text(
+          loc.logout,
+          style: const TextStyle(color: AppColors.textLight),
         ),
-        content: const Text(
-          '¿Está seguro de que desea cerrar sesión?',
-          style: TextStyle(color: AppColors.textLight),
+        content: Text(
+          loc.logoutConfirmMessage,
+          style: const TextStyle(color: AppColors.textLight),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(loc.cancel),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Cerrar sesión', style: TextStyle(color: AppColors.error)),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(loc.logout, style: const TextStyle(color: AppColors.error)),
           ),
         ],
       ),

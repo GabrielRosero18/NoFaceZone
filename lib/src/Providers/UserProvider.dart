@@ -235,6 +235,7 @@ class UserProvider extends ChangeNotifier {
   /// Cerrar sesión
   Future<void> logout() async {
     try {
+      await UserService.signOut();
       SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.remove(Constants.userTokenKey);
       await prefs.remove(Constants.userDataKey);
