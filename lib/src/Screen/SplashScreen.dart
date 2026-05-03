@@ -173,6 +173,9 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
     await appProvider.syncLocalNotificationSchedule();
   }
 
+  /// Primera instalación o primer uso: no hay clave `onboarding` = "completed" → se muestra
+  /// la guía (páginas informativas). Tras "Empezar" o "Saltar" queda guardado y aquí se va
+  /// directo al welcome. Eso solo afecta a este dispositivo (SharedPreferences).
   void _navigateFromSplash(bool isOnboardingCompleted) {
     final target = isOnboardingCompleted ? const WelcomeScreen() : const OnboardingScreen();
 

@@ -589,6 +589,9 @@ class AppLocalizations {
       'onboarding_skip': 'Saltar',
       'onboarding_next': 'Siguiente',
       'onboarding_start': 'Empezar',
+      'replay_onboarding_section': 'Guía de bienvenida',
+      'replay_onboarding_title': 'Ver introducción otra vez',
+      'replay_onboarding_subtitle': 'Qué es la app, límites y privacidad (Siguiente / Saltar)',
     },
     'en': {
       // General
@@ -1167,6 +1170,9 @@ class AppLocalizations {
       'onboarding_skip': 'Skip',
       'onboarding_next': 'Next',
       'onboarding_start': 'Start',
+      'replay_onboarding_section': 'Welcome tour',
+      'replay_onboarding_title': 'Show intro again',
+      'replay_onboarding_subtitle': 'What the app is, limits and privacy (Next / Skip)',
     },
   };
 
@@ -1579,6 +1585,9 @@ class AppLocalizations {
   String get onboardingSkip => translate('onboarding_skip');
   String get onboardingNext => translate('onboarding_next');
   String get onboardingStart => translate('onboarding_start');
+  String get replayOnboardingSection => translate('replay_onboarding_section');
+  String get replayOnboardingTitle => translate('replay_onboarding_title');
+  String get replayOnboardingSubtitle => translate('replay_onboarding_subtitle');
   String get colorThemes => translate('color_themes');
   String get unlockThemesDescription => translate('unlock_themes_description');
   String get themeOceanBlue => translate('theme_ocean_blue');

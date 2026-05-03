@@ -8,6 +8,7 @@ import 'package:nofacezone/src/Custom/Config.dart';
 import 'package:nofacezone/src/Custom/Constans.dart';
 import 'package:nofacezone/src/Custom/Library.dart';
 import 'package:nofacezone/src/Providers/AppProvider.dart';
+import 'package:nofacezone/src/Providers/UserProvider.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -79,10 +80,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     // Marcar que el usuario ya completó el onboarding usando Provider
     final appProvider = Provider.of<AppProvider>(context, listen: false);
     await appProvider.completeOnboarding();
-    
-    if (mounted) {
-      navigate(context, CustomScreen.welcome, finishCurrent: true);
-    }
+
+    if (!mounted) return;
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    final next = userProvider.isLoggedIn ? CustomScreen.home : CustomScreen.welcome;
+    navigate(context, next, finishCurrent: true);
   }
 
   @override

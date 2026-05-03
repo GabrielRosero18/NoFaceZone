@@ -209,6 +209,17 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
+  /// Volver a mostrar el onboarding (p. ej. desde Ajustes).
+  Future<void> resetOnboarding() async {
+    try {
+      await PreferencesService.setOnboardingCompleted(false);
+      _isOnboardingCompleted = false;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error resetting onboarding: $e');
+    }
+  }
+
   /// Cambiar tema de la aplicación
   Future<void> setThemeMode(ThemeMode mode) async {
     try {

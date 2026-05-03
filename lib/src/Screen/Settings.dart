@@ -97,6 +97,12 @@ class _SettingsState extends State<Settings> {
                               child: _buildNotificationsSection(),
                             ),
                           ),
+                          const SizedBox(height: 16),
+                          RepaintBoundary(
+                            child: AuthGlassCard(
+                              child: _buildIntroReplaySection(),
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -108,6 +114,39 @@ class _SettingsState extends State<Settings> {
         );
       },
     );
+  }
+
+  Widget _buildIntroReplaySection() {
+    final localizations = AppLocalizations.of(context)!;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '📖 ${localizations.replayOnboardingSection}',
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: AppColors.textLight,
+          ),
+        ),
+        const SizedBox(height: 16),
+        _buildSettingItemWithValue(
+          localizations.replayOnboardingTitle,
+          localizations.replayOnboardingSubtitle,
+          Icons.waving_hand_outlined,
+          null,
+          _openIntroReplay,
+        ),
+      ],
+    );
+  }
+
+  Future<void> _openIntroReplay() async {
+    HapticFeedback.selectionClick();
+    final appProvider = Provider.of<AppProvider>(context, listen: false);
+    await appProvider.resetOnboarding();
+    if (!mounted) return;
+    navigate(context, CustomScreen.onboarding, finishCurrent: true);
   }
 
   Widget _buildProfileSection() {

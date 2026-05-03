@@ -55,7 +55,8 @@ class PreferencesService {
     return await prefs.setString(Constants.onboardingKey, completed ? "completed" : "");
   }
   
-  /// Verificar si el onboarding está completado
+  /// True solo si el usuario ya vio la guía (completó o pulsó Saltar) en este dispositivo.
+  /// Instalación nueva: la clave no existe → false → la app muestra el onboarding.
   static bool isOnboardingCompleted() {
     return prefs.getString(Constants.onboardingKey) == "completed";
   }
