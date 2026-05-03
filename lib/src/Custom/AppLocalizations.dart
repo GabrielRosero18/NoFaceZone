@@ -30,6 +30,13 @@ class AppLocalizations {
       
       // Settings
       'settings': 'Configuración',
+      'settings_screen_subtitle': 'Recordatorios y preferencias de la app.',
+      'notification_test_button': 'Probar notificación (temporal)',
+      'notification_test_sent': 'Notificación de prueba enviada.',
+      'notification_test_web_unavailable':
+          'Las notificaciones locales no están disponibles en la versión web.',
+      'notification_test_requires_enabled':
+          'Activa las notificaciones con el interruptor de arriba para poder probar.',
       'appearance': 'Apariencia',
       'theme': 'Tema',
       'language': 'Idioma',
@@ -582,6 +589,13 @@ class AppLocalizations {
       
       // Settings
       'settings': 'Settings',
+      'settings_screen_subtitle': 'Reminders and app preferences.',
+      'notification_test_button': 'Send test notification (temporary)',
+      'notification_test_sent': 'Test notification sent.',
+      'notification_test_web_unavailable':
+          'Local notifications are not available in the web build.',
+      'notification_test_requires_enabled':
+          'Turn on notifications with the switch above to run a test.',
       'appearance': 'Appearance',
       'theme': 'Theme',
       'language': 'Language',
@@ -1138,6 +1152,11 @@ class AppLocalizations {
   String get no => translate('no');
   String get ok => translate('ok');
   String get settings => translate('settings');
+  String get settingsScreenSubtitle => translate('settings_screen_subtitle');
+  String get notificationTestButton => translate('notification_test_button');
+  String get notificationTestSent => translate('notification_test_sent');
+  String get notificationTestWebUnavailable => translate('notification_test_web_unavailable');
+  String get notificationTestRequiresEnabled => translate('notification_test_requires_enabled');
   String get appearance => translate('appearance');
   String get theme => translate('theme');
   String get language => translate('language');

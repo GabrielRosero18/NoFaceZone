@@ -14,6 +14,9 @@ class LocalNotificationService {
   static bool _initialized = false;
   static bool _timeZoneReady = false;
 
+  /// ID aparte de los recordatorios programados ([Constants.localNotificationIdBase]).
+  static const int testNotificationId = 999001;
+
   static Future<void> configureTimeZone() async {
     if (_timeZoneReady) return;
     if (kIsWeb) {
@@ -151,6 +154,41 @@ class LocalNotificationService {
       }
     } catch (e, st) {
       debugPrint('LocalNotificationService.syncReminderSchedule: $e\n$st');
+    }
+  }
+
+  /// Notificación inmediata para comprobar permisos y canal (solo móvil/desktop con plugin).
+  static Future<void> showTestNotification({required String resolvedLanguageCode}) async {
+    if (kIsWeb || !_initialized) return;
+
+    final lang = resolvedLanguageCode == 'en' ? 'en' : 'es';
+    const title = 'NoFaceZone';
+    final body = lang == 'en'
+        ? 'Test notification — if you see this, local notifications work.'
+        : 'Notificación de prueba: si ves esto, las notificaciones locales funcionan.';
+
+    final androidDetails = AndroidNotificationDetails(
+      Constants.notificationChannelId,
+      Constants.notificationChannelName,
+      channelDescription: Constants.notificationChannelDescription,
+      importance: Importance.high,
+      priority: Priority.high,
+    );
+    const darwinDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+    final details = NotificationDetails(
+      android: androidDetails,
+      iOS: darwinDetails,
+      macOS: darwinDetails,
+    );
+
+    try {
+      await _plugin.show(testNotificationId, title, body, details);
+    } catch (e, st) {
+      debugPrint('LocalNotificationService.showTestNotification: $e\n$st');
     }
   }
 }

@@ -135,6 +135,15 @@ class PreferencesService {
   static int getNotificationInterval() {
     return prefs.getInt('notification_interval') ?? 15;
   }
+
+  /// Si ya se mostró el diálogo automático de permisos de notificación al iniciar.
+  static bool wasNotificationAutoPromptDone() {
+    return prefs.getBool(Constants.notificationAutoPromptDoneKey) ?? false;
+  }
+
+  static Future<bool> setNotificationAutoPromptDone(bool done) async {
+    return await prefs.setBool(Constants.notificationAutoPromptDoneKey, done);
+  }
   
   /// Guardar si es la primera vez que se abre la app
   static Future<bool> setFirstTimeOpen(bool isFirstTime) async {

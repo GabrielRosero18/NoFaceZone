@@ -24,6 +24,7 @@ class Constants {
   // Claves adicionales para funcionalidades
   static const String notificationsEnabledKey = 'notifications_enabled';
   static const String notificationIntervalKey = 'notification_interval';
+  static const String notificationAutoPromptDoneKey = 'notification_auto_prompt_done_v1';
   static const String dailyUsageLimitKey = 'daily_usage_limit';
   static const String todayUsageTimeKey = 'today_usage_time';
   static const String lastUsageDateKey = 'last_usage_date';

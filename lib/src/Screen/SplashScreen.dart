@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:nofacezone/src/Custom/AppColors.dart';
@@ -5,6 +6,8 @@ import 'package:nofacezone/src/Custom/AppLocalizations.dart';
 import 'package:nofacezone/src/Providers/AppProvider.dart';
 import 'package:nofacezone/src/Screen/OnboardingScreen.dart';
 import 'package:nofacezone/src/Screen/WelcomeScreen.dart';
+import 'package:nofacezone/src/Services/LocalNotificationService.dart';
+import 'package:nofacezone/src/Services/PreferencesService.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -30,11 +33,28 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     while (appProvider.isLoading) {
       await Future.delayed(const Duration(milliseconds: 100));
     }
+
+    if (mounted) {
+      await _maybeRequestNotificationPermissionOnColdStart(appProvider);
+    }
     
     Future.delayed(const Duration(seconds: 3), () {
       if (!mounted) return;
       _navigateFromSplash(appProvider.isOnboardingCompleted);
     });
+  }
+
+  /// Primera vez tras instalar / actualizar: pedir permiso de notificaciones si el usuario las tiene activadas.
+  Future<void> _maybeRequestNotificationPermissionOnColdStart(AppProvider appProvider) async {
+    if (kIsWeb) return;
+    if (PreferencesService.wasNotificationAutoPromptDone()) return;
+    await PreferencesService.setNotificationAutoPromptDone(true);
+    if (!appProvider.notificationsEnabled) {
+      await appProvider.syncLocalNotificationSchedule();
+      return;
+    }
+    await LocalNotificationService.requestPermissions();
+    await appProvider.syncLocalNotificationSchedule();
   }
 
   void _navigateFromSplash(bool isOnboardingCompleted) {
