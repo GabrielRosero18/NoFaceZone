@@ -19,6 +19,7 @@ import 'package:nofacezone/src/Screen/UsageLimitBlockedScreen.dart';
 import 'package:nofacezone/src/Screen/EditProfileScreen.dart';
 import 'package:nofacezone/src/Custom/Library.dart';
 import 'package:nofacezone/src/Custom/AppImageProviders.dart';
+import 'package:nofacezone/src/Custom/time_remaining_clock_painters.dart';
 
 enum _BlockReason { dailyLimit, nightBlock, mandatoryBreak }
 
@@ -3322,22 +3323,46 @@ class _TimeRemainingDialogState extends State<_TimeRemainingDialog> with SingleT
           final isNeon = _clockStyle == 'neon';
           final isAurora = _clockStyle == 'aurora';
           final isQuantum = _clockStyle == 'quantum';
-          final topBg = Color.lerp(
-                AppColors.darkSurface,
-                isQuantum
-                    ? Colors.cyanAccent
-                    : (isAurora ? Colors.tealAccent : (isNeon ? AppColors.accentBlue : clockColor)),
-                isClassic ? 0.04 : (0.10 + (0.12 * riskLevel)),
-              ) ??
-              AppColors.darkSurface;
-          final bottomBg = Color.lerp(
-                AppColors.darkSurface.withValues(alpha: 0.95),
-                isQuantum
-                    ? Colors.deepPurpleAccent
-                    : (isAurora ? Colors.greenAccent : (isNeon ? AppColors.accentPurple : clockColor)),
-                isClassic ? 0.03 : (0.05 + (0.10 * riskLevel)),
-              ) ??
-              AppColors.darkSurface.withValues(alpha: 0.95);
+          final topBg = isClassic
+              ? Color.lerp(AppColors.darkSurface, const Color(0xFF2A3440), 0.35 + 0.2 * riskLevel)!
+              : isNeon
+                  ? Color.lerp(AppColors.darkSurface, const Color(0xFF1A0D2E), 0.5 + 0.15 * riskLevel)!
+                  : isAurora
+                      ? Color.lerp(AppColors.darkSurface, const Color(0xFF0D2830), 0.45 + 0.15 * riskLevel)!
+                      : isQuantum
+                          ? Color.lerp(AppColors.darkSurface, const Color(0xFF051018), 0.55 + 0.12 * riskLevel)!
+                          : Color.lerp(AppColors.darkSurface, clockColor, 0.10 + (0.12 * riskLevel)) ??
+                              AppColors.darkSurface;
+          final bottomBg = isClassic
+              ? Color.lerp(
+                  AppColors.darkSurface.withValues(alpha: 0.95),
+                  const Color(0xFF1E2630),
+                  0.4 + 0.15 * riskLevel,
+                )!
+              : isNeon
+                  ? Color.lerp(
+                      AppColors.darkSurface.withValues(alpha: 0.95),
+                      const Color(0xFF12082A),
+                      0.5 + 0.1 * riskLevel,
+                    )!
+                  : isAurora
+                      ? Color.lerp(
+                          AppColors.darkSurface.withValues(alpha: 0.95),
+                          const Color(0xFF082220),
+                          0.45 + 0.12 * riskLevel,
+                        )!
+                      : isQuantum
+                          ? Color.lerp(
+                              AppColors.darkSurface.withValues(alpha: 0.95),
+                              const Color(0xFF020810),
+                              0.55 + 0.1 * riskLevel,
+                            )!
+                          : Color.lerp(
+                                AppColors.darkSurface.withValues(alpha: 0.95),
+                                clockColor,
+                                0.05 + (0.10 * riskLevel),
+                              ) ??
+                              AppColors.darkSurface.withValues(alpha: 0.95);
 
           return AnimatedBuilder(
             animation: _entryController,
@@ -3395,172 +3420,22 @@ class _TimeRemainingDialogState extends State<_TimeRemainingDialog> with SingleT
               ],
             ),
             const SizedBox(height: 24),
-            
-            // Reloj circular (rediseño premium)
-            SizedBox(
-              width: dialSize,
-              height: dialSize,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: RadialGradient(
-                        colors: [
-                          ((isNeon || isQuantum)
-                                  ? AppColors.accentBlue
-                                  : (isAurora ? Colors.tealAccent : AppColors.textLight))
-                              .withValues(
-                            alpha: isClassic ? 0.05 : (isNeon ? 0.16 : 0.08),
-                          ),
-                          ((isNeon || isQuantum)
-                                  ? AppColors.accentPurple
-                                  : (isAurora ? Colors.greenAccent : AppColors.darkSurface))
-                              .withValues(
-                            alpha: isClassic ? 0.03 : (isNeon ? 0.10 : 0.05),
-                          ),
-                        ],
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: clockColor.withValues(alpha: isClassic ? 0.18 : ((isNeon || isQuantum) ? 0.40 : 0.28)),
-                          blurRadius: (isNeon || isQuantum) ? 28 : 22,
-                          spreadRadius: (isNeon || isQuantum) ? 5 : 3,
-                        ),
-                      ],
-                    ),
-                  ),
-                  Semantics(
-                    label: loc?.remaining ?? 'Remaining',
-                    value: '${(progress * 100).round()}%',
-                    child: TweenAnimationBuilder<double>(
-                      duration: const Duration(milliseconds: 500),
-                      curve: Curves.easeOutCubic,
-                      tween: Tween<double>(end: progress),
-                      builder: (context, animatedProgress, _) {
-                        return CustomPaint(
-                          size: Size.square(outerRingSize),
-                          painter: _TimeDialPainter(
-                            remainingProgress: animatedProgress,
-                            usedProgress: usedProgress,
-                            mainColor: clockColor,
-                            tickColor: AppColors.textLight.withValues(alpha: 0.26),
-                            entryProgress: isClassic ? 1.0 : entryProgress,
-                            showCriticalParticles: isCritical && !isClassic,
-                            particlePhase: pulseFactor,
-                            neonMode: isNeon || isQuantum,
-                            classicMode: isClassic,
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  Container(
-                    width: innerRingSize - 8,
-                    height: innerRingSize - 8,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          AppColors.textLight.withValues(alpha: isClassic ? 0.06 : 0.10),
-                          AppColors.textLight.withValues(alpha: isClassic ? 0.02 : 0.04),
-                        ],
-                      ),
-                      border: Border.all(
-                        color: AppColors.textLight.withValues(alpha: isClassic ? 0.14 : 0.20),
-                        width: 1.2,
-                      ),
-                    ),
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: centerPadding, vertical: 4),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (hours > 0) ...[
-                            FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child: Text(
-                                hours.toString().padLeft(2, '0'),
-                                style: const TextStyle(
-                                  fontSize: 46,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 0.2,
-                                  color: AppColors.textLight,
-                                  height: 1.0,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 1),
-                            Text(
-                              'Horas',
-                              style: TextStyle(
-                                fontSize: 17,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: 0.1,
-                                height: 0.95,
-                                color: AppColors.textLight.withValues(alpha: 0.72),
-                              ),
-                            ),
-                            const SizedBox(height: 1),
-                          ],
-                          FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Text(
-                              minutes.toString().padLeft(2, '0'),
-                              style: TextStyle(
-                                fontSize: hours > 0 ? 36 : 42,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: 0.2,
-                                color: AppColors.textLight,
-                                height: 1.0,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 1),
-                          Text(
-                            'Minutos',
-                            style: TextStyle(
-                              fontSize: hours > 0 ? 13 : 15,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 0.1,
-                              height: 0.95,
-                              color: AppColors.textLight.withValues(alpha: 0.72),
-                            ),
-                          ),
-                          const SizedBox(height: 1),
-                          FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Text(
-                              seconds.toString().padLeft(2, '0'),
-                              style: TextStyle(
-                                fontSize: 26,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 0.1,
-                                color: AppColors.textLight.withValues(alpha: 0.92),
-                                height: 1.0,
-                              ),
-                            ),
-                          ),
-                          Text(
-                            'Segundos',
-                            style: TextStyle(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.05,
-                              height: 0.95,
-                              color: AppColors.textLight.withValues(alpha: 0.62),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+
+            _buildTimerClockVisual(
+              hours: hours,
+              minutes: minutes,
+              seconds: seconds,
+              progress: progress,
+              usedProgress: usedProgress,
+              clockColor: clockColor,
+              entryProgress: entryProgress,
+              isCritical: isCritical,
+              pulseFactor: pulseFactor,
+              dialSize: dialSize,
+              outerRingSize: outerRingSize,
+              innerRingSize: innerRingSize,
+              centerPadding: centerPadding,
+              loc: loc,
             ),
             const SizedBox(height: 14),
             Text(
@@ -3623,6 +3498,719 @@ class _TimeRemainingDialogState extends State<_TimeRemainingDialog> with SingleT
     );
   }
 
+  Widget _buildTimerClockVisual({
+    required int hours,
+    required int minutes,
+    required int seconds,
+    required double progress,
+    required double usedProgress,
+    required Color clockColor,
+    required double entryProgress,
+    required bool isCritical,
+    required double pulseFactor,
+    required double dialSize,
+    required double outerRingSize,
+    required double innerRingSize,
+    required double centerPadding,
+    required AppLocalizations? loc,
+  }) {
+    switch (_clockStyle) {
+      case 'classic':
+        return _buildClassicSquareClock(
+          hours: hours,
+          minutes: minutes,
+          seconds: seconds,
+          progress: progress,
+          usedProgress: usedProgress,
+          clockColor: clockColor,
+          entryProgress: entryProgress,
+          isCritical: isCritical,
+          pulseFactor: pulseFactor,
+          dialSize: dialSize,
+          outerRingSize: outerRingSize,
+          innerRingSize: innerRingSize,
+          centerPadding: centerPadding,
+          loc: loc,
+        );
+      case 'neon':
+        return _buildNeonHexClock(
+          hours: hours,
+          minutes: minutes,
+          seconds: seconds,
+          progress: progress,
+          usedProgress: usedProgress,
+          clockColor: clockColor,
+          entryProgress: entryProgress,
+          isCritical: isCritical,
+          pulseFactor: pulseFactor,
+          dialSize: dialSize,
+          outerRingSize: outerRingSize,
+          innerRingSize: innerRingSize,
+          centerPadding: centerPadding,
+          loc: loc,
+        );
+      case 'aurora':
+        return _buildAuroraEllipseClock(
+          hours: hours,
+          minutes: minutes,
+          seconds: seconds,
+          progress: progress,
+          usedProgress: usedProgress,
+          clockColor: clockColor,
+          entryProgress: entryProgress,
+          isCritical: isCritical,
+          pulseFactor: pulseFactor,
+          dialSize: dialSize,
+          outerRingSize: outerRingSize,
+          innerRingSize: innerRingSize,
+          centerPadding: centerPadding,
+          loc: loc,
+        );
+      case 'quantum':
+        return _buildQuantumDiamondClock(
+          hours: hours,
+          minutes: minutes,
+          seconds: seconds,
+          progress: progress,
+          usedProgress: usedProgress,
+          clockColor: clockColor,
+          entryProgress: entryProgress,
+          isCritical: isCritical,
+          pulseFactor: pulseFactor,
+          dialSize: dialSize,
+          outerRingSize: outerRingSize,
+          innerRingSize: innerRingSize,
+          centerPadding: centerPadding,
+          loc: loc,
+        );
+      default:
+        return _buildProCircularClock(
+          hours: hours,
+          minutes: minutes,
+          seconds: seconds,
+          progress: progress,
+          usedProgress: usedProgress,
+          clockColor: clockColor,
+          entryProgress: entryProgress,
+          isCritical: isCritical,
+          pulseFactor: pulseFactor,
+          dialSize: dialSize,
+          outerRingSize: outerRingSize,
+          innerRingSize: innerRingSize,
+          centerPadding: centerPadding,
+          loc: loc,
+        );
+    }
+  }
+
+  Widget _buildTimeDigitsColumn({
+    required int hours,
+    required int minutes,
+    required int seconds,
+    required double centerPadding,
+  }) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: centerPadding, vertical: 4),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (hours > 0) ...[
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                hours.toString().padLeft(2, '0'),
+                style: const TextStyle(
+                  fontSize: 46,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0.2,
+                  color: AppColors.textLight,
+                  height: 1.0,
+                ),
+              ),
+            ),
+            const SizedBox(height: 1),
+            Text(
+              'Horas',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0.1,
+                height: 0.95,
+                color: AppColors.textLight.withValues(alpha: 0.72),
+              ),
+            ),
+            const SizedBox(height: 1),
+          ],
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              minutes.toString().padLeft(2, '0'),
+              style: TextStyle(
+                fontSize: hours > 0 ? 36 : 42,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0.2,
+                color: AppColors.textLight,
+                height: 1.0,
+              ),
+            ),
+          ),
+          const SizedBox(height: 1),
+          Text(
+            'Minutos',
+            style: TextStyle(
+              fontSize: hours > 0 ? 13 : 15,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.1,
+              height: 0.95,
+              color: AppColors.textLight.withValues(alpha: 0.72),
+            ),
+          ),
+          const SizedBox(height: 1),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              seconds.toString().padLeft(2, '0'),
+              style: TextStyle(
+                fontSize: 26,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.1,
+                color: AppColors.textLight.withValues(alpha: 0.92),
+                height: 1.0,
+              ),
+            ),
+          ),
+          Text(
+            'Segundos',
+            style: TextStyle(
+              fontSize: 9,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.05,
+              height: 0.95,
+              color: AppColors.textLight.withValues(alpha: 0.62),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProCircularClock({
+    required int hours,
+    required int minutes,
+    required int seconds,
+    required double progress,
+    required double usedProgress,
+    required Color clockColor,
+    required double entryProgress,
+    required bool isCritical,
+    required double pulseFactor,
+    required double dialSize,
+    required double outerRingSize,
+    required double innerRingSize,
+    required double centerPadding,
+    required AppLocalizations? loc,
+  }) {
+    return SizedBox(
+      width: dialSize,
+      height: dialSize,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [
+                  AppColors.textLight.withValues(alpha: 0.08),
+                  AppColors.darkSurface.withValues(alpha: 0.05),
+                ],
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: clockColor.withValues(alpha: 0.28),
+                  blurRadius: 22,
+                  spreadRadius: 3,
+                ),
+              ],
+            ),
+          ),
+          Semantics(
+            label: loc?.remaining ?? 'Remaining',
+            value: '${(progress * 100).round()}%',
+            child: TweenAnimationBuilder<double>(
+              duration: const Duration(milliseconds: 500),
+              curve: Curves.easeOutCubic,
+              tween: Tween<double>(end: progress),
+              builder: (context, animatedProgress, _) {
+                return CustomPaint(
+                  size: Size.square(outerRingSize),
+                  painter: TimeRemainingClockProPainter(
+                    remainingProgress: animatedProgress,
+                    usedProgress: usedProgress,
+                    mainColor: clockColor,
+                    tickColor: AppColors.textLight.withValues(alpha: 0.26),
+                    entryProgress: entryProgress,
+                    showCriticalParticles: isCritical,
+                    particlePhase: pulseFactor,
+                  ),
+                );
+              },
+            ),
+          ),
+          Container(
+            width: innerRingSize - 8,
+            height: innerRingSize - 8,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  AppColors.textLight.withValues(alpha: 0.10),
+                  AppColors.textLight.withValues(alpha: 0.04),
+                ],
+              ),
+              border: Border.all(
+                color: AppColors.textLight.withValues(alpha: 0.20),
+                width: 1.2,
+              ),
+            ),
+            child: _buildTimeDigitsColumn(
+              hours: hours,
+              minutes: minutes,
+              seconds: seconds,
+              centerPadding: centerPadding,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildClassicSquareClock({
+    required int hours,
+    required int minutes,
+    required int seconds,
+    required double progress,
+    required double usedProgress,
+    required Color clockColor,
+    required double entryProgress,
+    required bool isCritical,
+    required double pulseFactor,
+    required double dialSize,
+    required double outerRingSize,
+    required double innerRingSize,
+    required double centerPadding,
+    required AppLocalizations? loc,
+  }) {
+    return SizedBox(
+      width: dialSize,
+      height: dialSize,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(28),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  AppColors.textLight.withValues(alpha: 0.07),
+                  const Color(0xFF1A222C).withValues(alpha: 0.85),
+                ],
+              ),
+              border: Border.all(
+                color: AppColors.textLight.withValues(alpha: 0.12),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: clockColor.withValues(alpha: 0.12),
+                  blurRadius: 16,
+                ),
+              ],
+            ),
+          ),
+          Semantics(
+            label: loc?.remaining ?? 'Remaining',
+            value: '${(progress * 100).round()}%',
+            child: TweenAnimationBuilder<double>(
+              duration: const Duration(milliseconds: 500),
+              curve: Curves.easeOutCubic,
+              tween: Tween<double>(end: progress),
+              builder: (context, animatedProgress, _) {
+                return CustomPaint(
+                  size: Size.square(outerRingSize),
+                  painter: TimeRemainingClockSquarePainter(
+                    remainingProgress: animatedProgress,
+                    usedProgress: usedProgress,
+                    mainColor: clockColor,
+                    tickColor: AppColors.textLight.withValues(alpha: 0.22),
+                    entryProgress: 1.0,
+                    showCriticalParticles: isCritical,
+                    particlePhase: pulseFactor,
+                  ),
+                );
+              },
+            ),
+          ),
+          Container(
+            width: innerRingSize - 4,
+            height: innerRingSize - 4,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              gradient: LinearGradient(
+                colors: [
+                  AppColors.textLight.withValues(alpha: 0.06),
+                  AppColors.textLight.withValues(alpha: 0.02),
+                ],
+              ),
+              border: Border.all(
+                color: AppColors.textLight.withValues(alpha: 0.16),
+                width: 1.2,
+              ),
+            ),
+            child: _buildTimeDigitsColumn(
+              hours: hours,
+              minutes: minutes,
+              seconds: seconds,
+              centerPadding: centerPadding,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNeonHexClock({
+    required int hours,
+    required int minutes,
+    required int seconds,
+    required double progress,
+    required double usedProgress,
+    required Color clockColor,
+    required double entryProgress,
+    required bool isCritical,
+    required double pulseFactor,
+    required double dialSize,
+    required double outerRingSize,
+    required double innerRingSize,
+    required double centerPadding,
+    required AppLocalizations? loc,
+  }) {
+    final accent = Color.lerp(AppColors.accentPurple, const Color(0xFF7A5CFF), 0.5)!;
+    return SizedBox(
+      width: dialSize,
+      height: dialSize,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [
+                  accent.withValues(alpha: 0.22),
+                  const Color(0xFF12081E).withValues(alpha: 0.9),
+                ],
+              ),
+              boxShadow: [
+                BoxShadow(color: accent.withValues(alpha: 0.45), blurRadius: 32, spreadRadius: 2),
+                BoxShadow(color: AppColors.accentBlue.withValues(alpha: 0.25), blurRadius: 24),
+              ],
+            ),
+          ),
+          Semantics(
+            label: loc?.remaining ?? 'Remaining',
+            value: '${(progress * 100).round()}%',
+            child: TweenAnimationBuilder<double>(
+              duration: const Duration(milliseconds: 500),
+              curve: Curves.easeOutCubic,
+              tween: Tween<double>(end: progress),
+              builder: (context, animatedProgress, _) {
+                return CustomPaint(
+                  size: Size.square(outerRingSize),
+                  painter: TimeRemainingClockHexPainter(
+                    remainingProgress: animatedProgress,
+                    usedProgress: usedProgress,
+                    mainColor: clockColor,
+                    accentColor: accent,
+                    entryProgress: entryProgress,
+                    showCriticalParticles: isCritical,
+                    particlePhase: pulseFactor,
+                  ),
+                );
+              },
+            ),
+          ),
+          Container(
+            width: innerRingSize - 14,
+            height: innerRingSize - 14,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  const Color(0xFF1E1035).withValues(alpha: 0.95),
+                  const Color(0xFF0D0618).withValues(alpha: 0.98),
+                ],
+              ),
+              border: Border.all(
+                color: accent.withValues(alpha: 0.55),
+                width: 1.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.accentBlue.withValues(alpha: 0.2),
+                  blurRadius: 12,
+                ),
+              ],
+            ),
+            child: _buildTimeDigitsColumn(
+              hours: hours,
+              minutes: minutes,
+              seconds: seconds,
+              centerPadding: centerPadding,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAuroraEllipseClock({
+    required int hours,
+    required int minutes,
+    required int seconds,
+    required double progress,
+    required double usedProgress,
+    required Color clockColor,
+    required double entryProgress,
+    required bool isCritical,
+    required double pulseFactor,
+    required double dialSize,
+    required double outerRingSize,
+    required double innerRingSize,
+    required double centerPadding,
+    required AppLocalizations? loc,
+  }) {
+    const mint = Color(0xFF2BD6B4);
+    const deep = Color(0xFF0A3D36);
+    return SizedBox(
+      width: dialSize,
+      height: dialSize * 0.94,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(100),
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  mint.withValues(alpha: 0.12),
+                  deep.withValues(alpha: 0.5),
+                ],
+              ),
+            ),
+          ),
+          Semantics(
+            label: loc?.remaining ?? 'Remaining',
+            value: '${(progress * 100).round()}%',
+            child: TweenAnimationBuilder<double>(
+              duration: const Duration(milliseconds: 500),
+              curve: Curves.easeOutCubic,
+              tween: Tween<double>(end: progress),
+              builder: (context, animatedProgress, _) {
+                return CustomPaint(
+                  size: Size(outerRingSize, outerRingSize * 0.88),
+                  painter: TimeRemainingClockEllipsePainter(
+                    remainingProgress: animatedProgress,
+                    usedProgress: usedProgress,
+                    mainColor: clockColor,
+                    auraMint: mint,
+                    auraDeep: deep,
+                    entryProgress: entryProgress,
+                    showCriticalParticles: isCritical,
+                    particlePhase: pulseFactor,
+                  ),
+                );
+              },
+            ),
+          ),
+          Container(
+            width: innerRingSize - 12,
+            height: (innerRingSize - 12) * 0.88,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(999),
+              gradient: LinearGradient(
+                colors: [
+                  AppColors.textLight.withValues(alpha: 0.11),
+                  mint.withValues(alpha: 0.06),
+                ],
+              ),
+              border: Border.all(
+                color: mint.withValues(alpha: 0.35),
+                width: 1.2,
+              ),
+            ),
+            child: _buildTimeDigitsColumn(
+              hours: hours,
+              minutes: minutes,
+              seconds: seconds,
+              centerPadding: centerPadding,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuantumDiamondClock({
+    required int hours,
+    required int minutes,
+    required int seconds,
+    required double progress,
+    required double usedProgress,
+    required Color clockColor,
+    required double entryProgress,
+    required bool isCritical,
+    required double pulseFactor,
+    required double dialSize,
+    required double outerRingSize,
+    required double innerRingSize,
+    required double centerPadding,
+    required AppLocalizations? loc,
+  }) {
+    const cyan = Color(0xFF1DEBFF);
+    return SizedBox(
+      width: dialSize,
+      height: dialSize,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [
+                  cyan.withValues(alpha: 0.08),
+                  const Color(0xFF020810).withValues(alpha: 0.95),
+                ],
+              ),
+            ),
+          ),
+          Semantics(
+            label: loc?.remaining ?? 'Remaining',
+            value: '${(progress * 100).round()}%',
+            child: TweenAnimationBuilder<double>(
+              duration: const Duration(milliseconds: 500),
+              curve: Curves.easeOutCubic,
+              tween: Tween<double>(end: progress),
+              builder: (context, animatedProgress, _) {
+                return CustomPaint(
+                  size: Size.square(outerRingSize),
+                  painter: TimeRemainingClockDiamondPainter(
+                    remainingProgress: animatedProgress,
+                    usedProgress: usedProgress,
+                    mainColor: clockColor,
+                    hudColor: cyan,
+                    entryProgress: entryProgress,
+                    showCriticalParticles: isCritical,
+                    particlePhase: pulseFactor,
+                  ),
+                );
+              },
+            ),
+          ),
+          Container(
+            width: innerRingSize - 10,
+            height: innerRingSize - 10,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(4),
+              color: const Color(0xFF050C12).withValues(alpha: 0.92),
+              border: Border.all(color: cyan.withValues(alpha: 0.4)),
+              boxShadow: [
+                BoxShadow(color: cyan.withValues(alpha: 0.15), blurRadius: 14),
+              ],
+            ),
+            child: Stack(
+              children: [
+                Positioned(
+                  left: 6,
+                  top: 6,
+                  child: Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      border: Border(
+                        top: BorderSide(color: cyan.withValues(alpha: 0.7), width: 2),
+                        left: BorderSide(color: cyan.withValues(alpha: 0.7), width: 2),
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  right: 6,
+                  top: 6,
+                  child: Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      border: Border(
+                        top: BorderSide(color: cyan.withValues(alpha: 0.7), width: 2),
+                        right: BorderSide(color: cyan.withValues(alpha: 0.7), width: 2),
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: 6,
+                  bottom: 6,
+                  child: Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(color: cyan.withValues(alpha: 0.7), width: 2),
+                        left: BorderSide(color: cyan.withValues(alpha: 0.7), width: 2),
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  right: 6,
+                  bottom: 6,
+                  child: Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(color: cyan.withValues(alpha: 0.7), width: 2),
+                        right: BorderSide(color: cyan.withValues(alpha: 0.7), width: 2),
+                      ),
+                    ),
+                  ),
+                ),
+                Center(
+                  child: _buildTimeDigitsColumn(
+                    hours: hours,
+                    minutes: minutes,
+                    seconds: seconds,
+                    centerPadding: centerPadding,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildInfoItem(String label, String value, IconData icon) {
     return Column(
       children: [
@@ -3645,173 +4233,5 @@ class _TimeRemainingDialogState extends State<_TimeRemainingDialog> with SingleT
         ),
       ],
     );
-  }
-}
-
-class _TimeDialPainter extends CustomPainter {
-  final double remainingProgress;
-  final double usedProgress;
-  final Color mainColor;
-  final Color tickColor;
-  final double entryProgress;
-  final bool showCriticalParticles;
-  final double particlePhase;
-  final bool neonMode;
-  final bool classicMode;
-
-  const _TimeDialPainter({
-    required this.remainingProgress,
-    required this.usedProgress,
-    required this.mainColor,
-    required this.tickColor,
-    required this.entryProgress,
-    required this.showCriticalParticles,
-    required this.particlePhase,
-    required this.neonMode,
-    required this.classicMode,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = (size.width / 2) - 8;
-    const startAngle = -1.5708; // -pi/2
-    const fullSweep = 6.28318; // 2pi
-
-    final baseRing = Paint()
-      ..color = AppColors.textLight.withValues(alpha: classicMode ? 0.08 : 0.10)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 12
-      ..strokeCap = StrokeCap.round;
-
-    final usedRing = Paint()
-      ..color = (neonMode ? AppColors.accentPurple : AppColors.accentBlue).withValues(
-        alpha: classicMode ? 0.20 : (neonMode ? 0.52 : 0.32),
-      )
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = classicMode ? 4 : 6
-      ..strokeCap = StrokeCap.round;
-
-    final reveal = entryProgress.clamp(0.0, 1.0);
-    final remainingSweep = (remainingProgress.clamp(0.0, 1.0)) * fullSweep * reveal;
-    final remainingRing = Paint()
-      ..shader = SweepGradient(
-        startAngle: startAngle,
-        endAngle: startAngle + remainingSweep,
-        colors: [
-          mainColor.withValues(alpha: neonMode ? 0.85 : 0.65),
-          neonMode ? AppColors.accentBlue : mainColor,
-        ],
-      ).createShader(Rect.fromCircle(center: center, radius: radius))
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = classicMode ? 10 : 12
-      ..strokeCap = StrokeCap.round;
-
-    canvas.drawCircle(center, radius, baseRing);
-
-    // Marcas 0/25/50/75%.
-    final tickPaint = Paint()
-      ..color = tickColor
-      ..strokeWidth = 2
-      ..strokeCap = StrokeCap.round;
-    for (var i = 0; i < 4; i++) {
-      final angle = startAngle + (i * (fullSweep / 4));
-      final p1 = Offset(
-        center.dx + (radius - 10) * cos(angle),
-        center.dy + (radius - 10) * sin(angle),
-      );
-      final p2 = Offset(
-        center.dx + radius * cos(angle),
-        center.dy + radius * sin(angle),
-      );
-      canvas.drawLine(p1, p2, tickPaint);
-    }
-
-    // Arco principal de tiempo restante.
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius),
-      startAngle,
-      remainingSweep,
-      false,
-      remainingRing,
-    );
-
-    // Arco secundario de usado, revelado con la animación de entrada.
-    final usedRadius = radius - 16;
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: usedRadius),
-      startAngle,
-      (usedProgress.clamp(0.0, 1.0)) * fullSweep * reveal,
-      false,
-      usedRing,
-    );
-
-    // Orbital sweep de entrada (destello recorriendo el anillo al abrir).
-    if (!classicMode && reveal < 1.0) {
-      final sweepHead = startAngle + (fullSweep * reveal);
-      final sweepPaint = Paint()
-        ..shader = SweepGradient(
-          startAngle: sweepHead - 0.45,
-          endAngle: sweepHead + 0.15,
-          colors: [
-            Colors.transparent,
-            mainColor.withValues(alpha: 0.05),
-            mainColor.withValues(alpha: 0.85),
-          ],
-        ).createShader(Rect.fromCircle(center: center, radius: radius))
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 13
-        ..strokeCap = StrokeCap.round;
-      canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius),
-        sweepHead - 0.45,
-        0.60,
-        false,
-        sweepPaint,
-      );
-    }
-
-    // Punto brillo al final del arco principal.
-    final endAngle = startAngle + remainingSweep;
-    final endPoint = Offset(
-      center.dx + radius * cos(endAngle),
-      center.dy + radius * sin(endAngle),
-    );
-    final glow = Paint()
-      ..color = (neonMode ? AppColors.accentBlue : mainColor).withValues(
-        alpha: classicMode ? 0.8 : 0.95,
-      )
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
-    canvas.drawCircle(endPoint, 4.2, glow);
-
-    // Micro partículas sutiles en estado crítico.
-    if (showCriticalParticles) {
-      final pPaint = Paint()..style = PaintingStyle.fill;
-      final alphaBase = (0.22 + (0.20 * particlePhase)).clamp(0.0, 1.0);
-      const particleAngles = <double>[0.15, 0.9, 1.75, 2.45, 3.2, 4.05, 4.9, 5.55];
-      for (var i = 0; i < particleAngles.length; i++) {
-        final a = startAngle + particleAngles[i];
-        final r = radius + 3 + (i.isEven ? 2.0 : 0.0);
-        final p = Offset(
-          center.dx + r * cos(a),
-          center.dy + r * sin(a),
-        );
-        pPaint.color = mainColor.withValues(alpha: (alphaBase * (0.6 + ((i % 3) * 0.15))).clamp(0.0, 1.0));
-        canvas.drawCircle(p, i.isEven ? 1.9 : 1.4, pPaint);
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _TimeDialPainter oldDelegate) {
-    return oldDelegate.remainingProgress != remainingProgress ||
-        oldDelegate.usedProgress != usedProgress ||
-        oldDelegate.mainColor != mainColor ||
-        oldDelegate.tickColor != tickColor ||
-        oldDelegate.entryProgress != entryProgress ||
-        oldDelegate.showCriticalParticles != showCriticalParticles ||
-        oldDelegate.particlePhase != particlePhase ||
-        oldDelegate.neonMode != neonMode ||
-        oldDelegate.classicMode != classicMode;
   }
 }

@@ -7,6 +7,7 @@ import 'package:nofacezone/src/Custom/AppLocalizations.dart';
 import 'package:nofacezone/src/Custom/AppMessages.dart';
 import 'package:nofacezone/src/Custom/CustomSnackBar.dart';
 import 'package:nofacezone/src/Custom/ProAnimations.dart';
+import 'package:nofacezone/src/Custom/time_remaining_clock_painters.dart';
 import 'package:nofacezone/src/Providers/AppProvider.dart';
 import 'package:nofacezone/src/Services/RewardService.dart';
 import 'package:nofacezone/src/Services/PointsService.dart';
@@ -2022,6 +2023,121 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
     );
   }
 
+  /// Miniatura con el mismo `CustomPainter` que el diálogo de tiempo restante.
+  Widget _buildClockFacePreview(_RewardClockStyle style) {
+    const demoRemaining = 0.62;
+    const demoUsed = 0.38;
+    final tick = AppColors.textLight.withValues(alpha: 0.28);
+    final main = Color.lerp(Colors.green, style.accent, 0.42)!;
+    const preview = 76.0;
+    const ring = preview - 10;
+
+    Widget painter;
+    switch (style.styleId) {
+      case 'classic':
+        painter = CustomPaint(
+          size: Size.square(ring),
+          painter: TimeRemainingClockSquarePainter(
+            remainingProgress: demoRemaining,
+            usedProgress: demoUsed,
+            mainColor: main,
+            tickColor: tick,
+            entryProgress: 1,
+            showCriticalParticles: false,
+            particlePhase: 0,
+          ),
+        );
+        break;
+      case 'neon':
+        final accent = Color.lerp(style.accent, const Color(0xFF7A5CFF), 0.45)!;
+        painter = CustomPaint(
+          size: Size.square(ring),
+          painter: TimeRemainingClockHexPainter(
+            remainingProgress: demoRemaining,
+            usedProgress: demoUsed,
+            mainColor: main,
+            accentColor: accent,
+            entryProgress: 1,
+            showCriticalParticles: false,
+            particlePhase: 0,
+          ),
+        );
+        break;
+      case 'aurora':
+        painter = CustomPaint(
+          size: Size(ring, ring * 0.88),
+          painter: TimeRemainingClockEllipsePainter(
+            remainingProgress: demoRemaining,
+            usedProgress: demoUsed,
+            mainColor: main,
+            auraMint: const Color(0xFF2BD6B4),
+            auraDeep: const Color(0xFF0A3D36),
+            entryProgress: 1,
+            showCriticalParticles: false,
+            particlePhase: 0,
+          ),
+        );
+        break;
+      case 'quantum':
+        painter = CustomPaint(
+          size: Size.square(ring),
+          painter: TimeRemainingClockDiamondPainter(
+            remainingProgress: demoRemaining,
+            usedProgress: demoUsed,
+            mainColor: main,
+            hudColor: const Color(0xFF1DEBFF),
+            entryProgress: 1,
+            showCriticalParticles: false,
+            particlePhase: 0,
+          ),
+        );
+        break;
+      default:
+        painter = CustomPaint(
+          size: Size.square(ring),
+          painter: TimeRemainingClockProPainter(
+            remainingProgress: demoRemaining,
+            usedProgress: demoUsed,
+            mainColor: main,
+            tickColor: tick,
+            entryProgress: 1,
+            showCriticalParticles: false,
+            particlePhase: 0,
+          ),
+        );
+    }
+
+    return SizedBox(
+      width: preview,
+      height: preview,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.darkSurface.withValues(alpha: 0.55),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: style.accent.withValues(alpha: 0.45), width: 1.2),
+            ),
+            child: Center(child: painter),
+          ),
+          if (!style.unlocked)
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.42),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+            ),
+          if (!style.unlocked)
+            Icon(Icons.lock_rounded, color: Colors.white.withValues(alpha: 0.9), size: 26),
+        ],
+      ),
+    );
+  }
+
   Widget _buildClockStyleCard({
     required _RewardClockStyle style,
     required bool isSelected,
@@ -2033,6 +2149,7 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
           eventType: 'clock_style_click',
           rewardId: style.rewardId,
         );
+        if (!mounted) return;
 
         if (!style.unlocked) {
           final shouldBuy = await _confirmPurchase(
@@ -2041,9 +2158,9 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
             price: style.price,
           );
           if (!shouldBuy) return;
+          if (!mounted) return;
 
           if (userPoints < style.price) {
-            if (!mounted) return;
             CustomSnackBar.showWarning(
               context,
               'Necesitas ${style.price} puntos para desbloquear este estilo',
@@ -2063,14 +2180,17 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
           }
           userPoints = (result['puntos_restantes'] ?? userPoints - style.price) as int;
           await _refreshUserRewardsAndPoints();
+          if (!mounted) return;
           await RewardService.trackRewardEvent(
             eventType: 'purchase_success',
             rewardId: style.rewardId,
             metadata: {'type': 'clock_style', 'price': style.price},
           );
+          if (!mounted) return;
         }
 
         await _setCurrentClockStyle(style.styleId);
+        if (!mounted) return;
         await RewardService.trackRewardEvent(
           eventType: 'clock_style_apply',
           rewardId: style.rewardId,
@@ -2106,24 +2226,8 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
         ),
         child: Row(
           children: [
-            Container(
-              width: 58,
-              height: 58,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    style.accent.withValues(alpha: 0.75),
-                    style.accent.withValues(alpha: 0.30),
-                  ],
-                ),
-              ),
-              child: Icon(
-                style.unlocked ? Icons.motion_photos_on_rounded : Icons.lock_rounded,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(width: 14),
+            _buildClockFacePreview(style),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
