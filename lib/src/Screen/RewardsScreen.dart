@@ -120,6 +120,10 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
     }
   }
 
+  Future<void> _handlePullToRefresh() async {
+    await _loadData();
+  }
+
   @override
   void dispose() {
     _tabController.dispose();
@@ -193,14 +197,18 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
               Expanded(
                 child: ProEntrance(
                   delayMs: 120,
-                  child: TabBarView(
-                    controller: _tabController,
-                    children: [
-                      _buildThemesTab(),
-                      _buildFontsTab(),
-                      _buildMessagesTab(),
-                      _buildBadgesTab(),
-                    ],
+                  child: RefreshIndicator(
+                    onRefresh: _handlePullToRefresh,
+                    notificationPredicate: (_) => true,
+                    child: TabBarView(
+                      controller: _tabController,
+                      children: [
+                        _buildThemesTab(),
+                        _buildFontsTab(),
+                        _buildMessagesTab(),
+                        _buildBadgesTab(),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -501,6 +509,9 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
 
   Widget _buildLoadingPlaceholder({bool grid = false}) {
     return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(
+        parent: BouncingScrollPhysics(),
+      ),
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -648,6 +659,9 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
         }
 
         return SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
+          ),
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1004,6 +1018,9 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
         }
 
         return SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
+          ),
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1336,6 +1353,9 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
         }
 
         return SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
+          ),
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1712,6 +1732,9 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
             }
 
             return SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(
+                parent: BouncingScrollPhysics(),
+              ),
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

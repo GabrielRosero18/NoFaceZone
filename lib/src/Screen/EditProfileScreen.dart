@@ -143,6 +143,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       debugPrint('Error loading user details: $e');
     }
   }
+
+  Future<void> _handlePullToRefresh() async {
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    await userProvider.reloadUser();
+    _loadUserData();
+    await _loadUserDetails();
+  }
   
   /// Mapear género de la base de datos a la traducción actual
   String? _mapGenderFromDatabase(String genderFromDb, AppLocalizations localizations) {
@@ -619,36 +626,41 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           children: [
             ...AuthTheme.buildBackgroundOrbs(),
             SafeArea(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 18, 24, 24),
-                child: Form(
-                  key: _formKey,
-                  autovalidateMode: _autoValidate ? AutovalidateMode.always : AutovalidateMode.disabled,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const ProEntrance(
-                        delayMs: 40,
-                        child: AuthHeaderChip(
-                          icon: Icons.edit_note_rounded,
-                          text: 'Personaliza tu perfil',
+              child: RefreshIndicator(
+                onRefresh: _handlePullToRefresh,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(
+                    parent: BouncingScrollPhysics(),
+                  ),
+                  padding: const EdgeInsets.fromLTRB(24, 18, 24, 24),
+                  child: Form(
+                    key: _formKey,
+                    autovalidateMode: _autoValidate ? AutovalidateMode.always : AutovalidateMode.disabled,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const ProEntrance(
+                          delayMs: 40,
+                          child: AuthHeaderChip(
+                            icon: Icons.edit_note_rounded,
+                            text: 'Personaliza tu perfil',
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 14),
-                      ProEntrance(
-                        delayMs: 90,
-                        child: AuthSectionTitle(
-                          title: localizations.editProfileTitle,
-                          subtitle: localizations.profileUpdatedSuccessfully,
+                        const SizedBox(height: 14),
+                        ProEntrance(
+                          delayMs: 90,
+                          child: AuthSectionTitle(
+                            title: localizations.editProfileTitle,
+                            subtitle: localizations.profileUpdatedSuccessfully,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 18),
-                      ProEntrance(
-                        delayMs: 140,
-                        child: AuthGlassCard(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
+                        const SizedBox(height: 18),
+                        ProEntrance(
+                          delayMs: 140,
+                          child: AuthGlassCard(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
                   // Foto de perfil
                   Center(
                     child: Stack(
@@ -881,10 +893,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     onPressed: _saveProfile,
                   ),
                 ],
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),

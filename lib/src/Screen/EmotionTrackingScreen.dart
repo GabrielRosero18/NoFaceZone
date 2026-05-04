@@ -244,54 +244,61 @@ class _EmotionTrackingScreenState extends State<EmotionTrackingScreen> {
               ),
             ),
             child: SafeArea(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Header con botón de regreso
-                    _buildHeader(context),
-                    const SizedBox(height: 32),
-                    
-                    // Layout principal: formulario a la izquierda, registro a la derecha
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        // En pantallas pequeñas, mostrar verticalmente
-                        if (constraints.maxWidth < 800) {
-                          return Column(
+              child: RefreshIndicator(
+                color: AppColors.accentBlue,
+                onRefresh: _loadRecentEmotions,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(
+                    parent: BouncingScrollPhysics(),
+                  ),
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Header con botón de regreso
+                      _buildHeader(context),
+                      const SizedBox(height: 32),
+                      
+                      // Layout principal: formulario a la izquierda, registro a la derecha
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          // En pantallas pequeñas, mostrar verticalmente
+                          if (constraints.maxWidth < 800) {
+                            return Column(
+                              children: [
+                                _buildEmotionForm(localizations),
+                                const SizedBox(height: 24),
+                                _buildInsightsCard(localizations),
+                                const SizedBox(height: 24),
+                                _buildRecentLog(localizations),
+                              ],
+                            );
+                          }
+                          // En pantallas grandes, mostrar horizontalmente
+                          return Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _buildEmotionForm(localizations),
-                              const SizedBox(height: 24),
-                              _buildInsightsCard(localizations),
-                              const SizedBox(height: 24),
-                              _buildRecentLog(localizations),
+                              Expanded(
+                                flex: 1,
+                                child: _buildEmotionForm(localizations),
+                              ),
+                              const SizedBox(width: 24),
+                              Expanded(
+                                flex: 1,
+                                child: Column(
+                                  children: [
+                                    _buildInsightsCard(localizations),
+                                    const SizedBox(height: 24),
+                                    _buildRecentLog(localizations),
+                                  ],
+                                ),
+                              ),
                             ],
                           );
-                        }
-                        // En pantallas grandes, mostrar horizontalmente
-                        return Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              flex: 1,
-                              child: _buildEmotionForm(localizations),
-                            ),
-                            const SizedBox(width: 24),
-                            Expanded(
-                              flex: 1,
-                              child: Column(
-                                children: [
-                                  _buildInsightsCard(localizations),
-                                  const SizedBox(height: 24),
-                                  _buildRecentLog(localizations),
-                                ],
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                  ],
+                        },
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

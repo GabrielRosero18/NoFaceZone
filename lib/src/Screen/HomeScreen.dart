@@ -884,6 +884,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     }
   }
 
+  Future<void> _handlePullToRefresh() async {
+    final appProvider = Provider.of<AppProvider>(context, listen: false);
+    final localizations = AppLocalizations.of(context);
+
+    await _loadUsageData();
+
+    if (localizations != null) {
+      await _syncActivityRecommendations(localizations, appProvider);
+    }
+  }
+
   /// Mostrar pantalla de bloqueo cuando se alcanza el límite
   void _showBlockedScreen(_BlockReason reason) {
     if (!mounted || _isBlockedScreenShown) return;
@@ -1062,53 +1073,62 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
             colors: AppColors.backgroundGradient,
           ),
         ),
-        child: SafeArea(
-          child: (liteEffects)
-              ? SingleChildScrollView(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildStaggeredSection(index: 0, child: _buildHeader()),
-                      const SizedBox(height: 24),
-                      _buildStaggeredSection(index: 1, child: _buildMotivationalMessage()),
-                      const SizedBox(height: 24),
-                      _buildStaggeredSection(index: 2, child: _buildDailyDashboard()),
-                      const SizedBox(height: 24),
-                      _buildStaggeredSection(index: 3, child: _buildActivityRecommendations()),
-                      const SizedBox(height: 24),
-                    ],
-                  ),
-                )
-              : FadeTransition(
-                  opacity: _fadeInAnimation,
-                  child: SlideTransition(
-                    position: _slideAnimation,
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Header con saludo y perfil
-                          _buildStaggeredSection(index: 0, child: _buildHeader()),
-                          const SizedBox(height: 24),
-                          
-                          // Mensaje motivacional
-                          _buildStaggeredSection(index: 1, child: _buildMotivationalMessage()),
-                          const SizedBox(height: 24),
+            child: SafeArea(
+              child: RefreshIndicator(
+                onRefresh: _handlePullToRefresh,
+                child: (liteEffects)
+                    ? SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(
+                          parent: BouncingScrollPhysics(),
+                        ),
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildStaggeredSection(index: 0, child: _buildHeader()),
+                            const SizedBox(height: 24),
+                            _buildStaggeredSection(index: 1, child: _buildMotivationalMessage()),
+                            const SizedBox(height: 24),
+                            _buildStaggeredSection(index: 2, child: _buildDailyDashboard()),
+                            const SizedBox(height: 24),
+                            _buildStaggeredSection(index: 3, child: _buildActivityRecommendations()),
+                            const SizedBox(height: 24),
+                          ],
+                        ),
+                      )
+                    : FadeTransition(
+                        opacity: _fadeInAnimation,
+                        child: SlideTransition(
+                          position: _slideAnimation,
+                          child: SingleChildScrollView(
+                            physics: const AlwaysScrollableScrollPhysics(
+                              parent: BouncingScrollPhysics(),
+                            ),
+                            padding: const EdgeInsets.all(24),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Header con saludo y perfil
+                                _buildStaggeredSection(index: 0, child: _buildHeader()),
+                                const SizedBox(height: 24),
 
-                          // Dashboard unificado (resumen + límites)
-                          _buildStaggeredSection(index: 2, child: _buildDailyDashboard()),
-                          const SizedBox(height: 24),
+                                // Mensaje motivacional
+                                _buildStaggeredSection(index: 1, child: _buildMotivationalMessage()),
+                                const SizedBox(height: 24),
 
-                          // Recomendaciones de actividad
-                          _buildStaggeredSection(index: 3, child: _buildActivityRecommendations()),
-                          const SizedBox(height: 24),
-                        ],
+                                // Dashboard unificado (resumen + límites)
+                                _buildStaggeredSection(index: 2, child: _buildDailyDashboard()),
+                                const SizedBox(height: 24),
+
+                                // Recomendaciones de actividad
+                                _buildStaggeredSection(index: 3, child: _buildActivityRecommendations()),
+                                const SizedBox(height: 24),
+                              ],
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                ),
+              ),
         ),
       ),
     );
