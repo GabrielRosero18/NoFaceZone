@@ -2321,7 +2321,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
 
 
   /// Mostrar diálogo con reloj de tiempo restante
-  void _showTimeRemainingDialog(AppLocalizations localizations) {
+  Future<void> _showTimeRemainingDialog(AppLocalizations localizations) async {
+    if (!_isLoadingUsageData) {
+      await _loadUsageData();
+    }
+
+    if (!mounted) return;
     showDialog(
       context: context,
       barrierDismissible: true,
@@ -2329,15 +2334,27 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         return _TimeRemainingDialog(
           remainingMinutes: _remainingMinutes,
           dailyLimitMinutes: _dailyLimitMinutes,
-          onRefresh: () async {
-            // Solo recargar si no está ya cargando
-            if (!_isLoadingUsageData) {
-              await _loadUsageData();
-            }
-          },
+          fetchSnapshot: _fetchTimeRemainingSnapshot,
         );
       },
     );
+  }
+
+  Future<({int remainingMinutes, int dailyLimitMinutes})> _fetchTimeRemainingSnapshot() async {
+    try {
+      final remainingFromService = await UsageLimitsService.getRemainingTimeToday();
+      final limits = await UsageLimitsService.getOrCreateUsageLimits();
+      final limitMinutes = limits?['limite_diario_minutos'] as int? ?? _dailyLimitMinutes;
+      return (
+        remainingMinutes: remainingFromService,
+        dailyLimitMinutes: limitMinutes,
+      );
+    } catch (_) {
+      return (
+        remainingMinutes: _remainingMinutes,
+        dailyLimitMinutes: _dailyLimitMinutes,
+      );
+    }
   }
 
   Future<void> _showNightBlockQuickConfig() async {
@@ -3102,12 +3119,12 @@ class _ActivityRecommendation {
 class _TimeRemainingDialog extends StatefulWidget {
   final int remainingMinutes;
   final int dailyLimitMinutes;
-  final VoidCallback onRefresh;
+  final Future<({int remainingMinutes, int dailyLimitMinutes})> Function() fetchSnapshot;
 
   const _TimeRemainingDialog({
     required this.remainingMinutes,
     required this.dailyLimitMinutes,
-    required this.onRefresh,
+    required this.fetchSnapshot,
   });
 
   @override
@@ -3118,64 +3135,26 @@ class _TimeRemainingDialogState extends State<_TimeRemainingDialog> {
   Timer? _updateTimer;
   Timer? _syncTimer;
   int _currentRemainingSeconds = 0;
+  int _currentLimitSeconds = 60;
   DateTime _dialogStartTime = DateTime.now();
   int _initialRemainingSeconds = 0;
   bool _isSyncing = false;
+  bool _criticalPulsePhase = false;
+  DateTime? _lastSyncAt;
+  int _syncIntervalSeconds = 15;
 
   @override
   void initState() {
     super.initState();
-    _initialRemainingSeconds = widget.remainingMinutes * 60;
+    _currentLimitSeconds = (widget.dailyLimitMinutes * 60).clamp(60, 24 * 60 * 60).toInt();
+    _initialRemainingSeconds = (widget.remainingMinutes * 60).clamp(0, _currentLimitSeconds).toInt();
     _currentRemainingSeconds = _initialRemainingSeconds;
     _dialogStartTime = DateTime.now();
     _startTimer();
-  }
-
-  @override
-  void didUpdateWidget(_TimeRemainingDialog oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    // Actualizar el contador cuando cambia el tiempo restante
-    final newInitialSeconds = widget.remainingMinutes * 60;
-    final oldInitialSeconds = oldWidget.remainingMinutes * 60;
-    final now = DateTime.now();
-    final currentElapsed = now.difference(_dialogStartTime).inSeconds;
-    final currentCalculated = _initialRemainingSeconds - currentElapsed;
-    final newRemainingSeconds = newInitialSeconds;
-    
-    // Si el tiempo restante aumentó (probablemente se agregó tiempo)
-    if (newInitialSeconds > oldInitialSeconds) {
-      // Calcular la diferencia de tiempo agregado
-      final tiempoAgregado = newInitialSeconds - oldInitialSeconds;
-      // Ajustar el tiempo inicial
-      _initialRemainingSeconds = newInitialSeconds;
-      // Ajustar el tiempo actual agregando el tiempo adicional
-      final newCurrentSeconds = (_currentRemainingSeconds + tiempoAgregado).clamp(0, _initialRemainingSeconds);
-      
-      setState(() {
-        _currentRemainingSeconds = newCurrentSeconds;
-      });
-      
-      // Resetear el tiempo de inicio para mantener la sincronización correcta
-      // El nuevo tiempo de inicio debe ser tal que: nuevo_tiempo_inicial - elapsed = nuevo_tiempo_actual
-      _dialogStartTime = now.subtract(Duration(
-        seconds: _initialRemainingSeconds - _currentRemainingSeconds
-      ));
-    } else if (newInitialSeconds != oldInitialSeconds) {
-      // Si el tiempo cambió pero no aumentó, verificar si hay desincronización
-      final diff = newRemainingSeconds - currentCalculated;
-      if (diff.abs() > 10) {
-        // Hay una desincronización significativa, ajustar
-        _initialRemainingSeconds = newInitialSeconds;
-        final newCalculated = (_initialRemainingSeconds - currentElapsed).clamp(0, _initialRemainingSeconds);
-        setState(() {
-          _currentRemainingSeconds = newCalculated;
-        });
-        // Ajustar el tiempo de inicio para sincronizar
-        _dialogStartTime = now.subtract(Duration(
-          seconds: _initialRemainingSeconds - _currentRemainingSeconds
-        ));
-      }
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      unawaited(_refreshFromService());
+    });
   }
 
   void _startTimer() {
@@ -3191,72 +3170,83 @@ class _TimeRemainingDialogState extends State<_TimeRemainingDialog> {
       final elapsed = now.difference(_dialogStartTime).inSeconds;
       final calculatedRemaining = _initialRemainingSeconds - elapsed;
       
+      final shouldPulse = calculatedRemaining > 0 && calculatedRemaining <= 5 * 60;
+      final desiredSync = _desiredSyncIntervalSeconds(calculatedRemaining);
+
       setState(() {
         if (calculatedRemaining > 0) {
           _currentRemainingSeconds = calculatedRemaining;
         } else {
           _currentRemainingSeconds = 0;
-          // Si llegó a 0, recargar datos para verificar si realmente se agotó
-          if (!_isSyncing) {
-            _isSyncing = true;
-            widget.onRefresh();
-            // Resetear el estado de sincronización después de un momento
-            Future.delayed(const Duration(milliseconds: 1500), () {
-              if (mounted) {
-                _isSyncing = false;
-              }
-            });
-          }
+          // Si llegó a 0, sincronizar con backend para evitar desfases.
+          unawaited(_refreshFromService());
+        }
+
+        if (shouldPulse) {
+          _criticalPulsePhase = !_criticalPulsePhase;
+        } else {
+          _criticalPulsePhase = false;
         }
       });
-    });
-    
-    // Timer para sincronizar con Supabase cada 15 segundos (optimizado)
-    // Sincroniza el tiempo restante con el servidor para mantener precisión
-    _syncTimer = Timer.periodic(const Duration(seconds: 15), (timer) {
-      if (!mounted || _isSyncing) {
-        return;
+
+      if (desiredSync != _syncIntervalSeconds) {
+        _syncIntervalSeconds = desiredSync;
+        _restartSyncTimer();
       }
-      
-      _isSyncing = true;
-      widget.onRefresh();
-      
-      // Actualizar el tiempo después de la sincronización
-      Future.delayed(const Duration(milliseconds: 800), () {
-        if (!mounted) {
-          _isSyncing = false;
-          return;
-        }
-        
-        final newInitialSeconds = widget.remainingMinutes * 60;
-        final currentElapsed = DateTime.now().difference(_dialogStartTime).inSeconds;
-        final currentCalculated = _initialRemainingSeconds - currentElapsed;
-        final diff = newInitialSeconds - currentCalculated;
-        
-        // Si la diferencia es significativa (más de 10 segundos), actualizar
-        // Esto puede ocurrir si se agregó tiempo o si hay desincronización
-        if (diff.abs() > 10) {
-          final oldInitial = _initialRemainingSeconds;
-          _initialRemainingSeconds = newInitialSeconds;
-          
-          // Recalcular el tiempo restante actual considerando el tiempo transcurrido
-          final newCalculated = (_initialRemainingSeconds - currentElapsed).clamp(0, _initialRemainingSeconds);
-          
-          setState(() {
-            _currentRemainingSeconds = newCalculated;
-          });
-          
-          // Si el tiempo aumentó, resetear el tiempo de inicio del diálogo para sincronización
-          if (newInitialSeconds > oldInitial) {
-            _dialogStartTime = DateTime.now().subtract(Duration(
-              seconds: _initialRemainingSeconds - _currentRemainingSeconds
-            ));
-          }
-        }
-        
-        _isSyncing = false;
-      });
     });
+
+    _restartSyncTimer();
+  }
+
+  int _desiredSyncIntervalSeconds(int remainingSeconds) {
+    if (remainingSeconds <= 60) return 5;
+    if (remainingSeconds <= 5 * 60) return 10;
+    return 20;
+  }
+
+  void _restartSyncTimer() {
+    _syncTimer?.cancel();
+    _syncTimer = Timer.periodic(Duration(seconds: _syncIntervalSeconds), (timer) {
+      if (!mounted) return;
+      unawaited(_refreshFromService());
+    });
+  }
+
+  Future<void> _refreshFromService() async {
+    if (_isSyncing) return;
+    _isSyncing = true;
+    try {
+      final snapshot = await widget.fetchSnapshot();
+      final remainingFromService = snapshot.remainingMinutes;
+      final limitMinutes = snapshot.dailyLimitMinutes;
+
+      final updatedLimitSeconds = (limitMinutes * 60).clamp(60, 24 * 60 * 60).toInt();
+      final updatedRemainingSeconds = (remainingFromService * 60)
+          .clamp(0, updatedLimitSeconds)
+          .toInt();
+
+      final now = DateTime.now();
+      final elapsed = now.difference(_dialogStartTime).inSeconds;
+      final currentCalculated = (_initialRemainingSeconds - elapsed).clamp(0, _currentLimitSeconds);
+
+      // El servicio suele venir en minutos enteros; eso puede "subir" 1-59s artificialmente.
+      // Solo aceptamos subidas si son >= 60s (p.ej. se agregó tiempo real).
+      final diff = updatedRemainingSeconds - currentCalculated;
+      final shouldIgnoreSmallUpwardCorrection = diff > 0 && diff < 60;
+      final targetRemainingSeconds =
+          shouldIgnoreSmallUpwardCorrection ? currentCalculated.toInt() : updatedRemainingSeconds;
+
+      if (!mounted) return;
+      setState(() {
+        _currentLimitSeconds = updatedLimitSeconds;
+        _initialRemainingSeconds = targetRemainingSeconds;
+        _currentRemainingSeconds = targetRemainingSeconds;
+        _dialogStartTime = now;
+        _lastSyncAt = now;
+      });
+    } finally {
+      _isSyncing = false;
+    }
   }
 
   @override
@@ -3277,17 +3267,20 @@ class _TimeRemainingDialogState extends State<_TimeRemainingDialog> {
     Color clockColor;
     if (_currentRemainingSeconds <= 0) {
       clockColor = Colors.red;
-    } else if (_currentRemainingSeconds <= widget.dailyLimitMinutes * 60 * 0.25) {
+    } else if (_currentRemainingSeconds <= _currentLimitSeconds * 0.25) {
       clockColor = Colors.orange;
     } else {
       clockColor = Colors.green;
     }
 
-    // Calcular porcentaje usado
-    final totalSeconds = widget.dailyLimitMinutes * 60;
+    // Calcular porcentaje restante para iniciar exactamente en el tiempo real.
+    final totalSeconds = _currentLimitSeconds;
     final progress = totalSeconds > 0 
-        ? (1.0 - (_currentRemainingSeconds / totalSeconds)).clamp(0.0, 1.0)
+        ? (_currentRemainingSeconds / totalSeconds).clamp(0.0, 1.0)
         : 0.0;
+    final isCritical = _currentRemainingSeconds > 0 && _currentRemainingSeconds <= 5 * 60;
+    final pulseFactor = isCritical && _criticalPulsePhase ? 1.0 : 0.0;
+    final loc = AppLocalizations.of(context);
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -3305,13 +3298,13 @@ class _TimeRemainingDialogState extends State<_TimeRemainingDialog> {
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
             color: clockColor.withValues(alpha: 0.5),
-            width: 2,
+            width: isCritical ? (2.0 + pulseFactor) : 2.0,
           ),
           boxShadow: [
             BoxShadow(
-              color: clockColor.withValues(alpha: 0.3),
-              blurRadius: 20,
-              spreadRadius: 5,
+              color: clockColor.withValues(alpha: isCritical ? (0.3 + (0.2 * pulseFactor)) : 0.3),
+              blurRadius: isCritical ? (20 + (8 * pulseFactor)) : 20,
+              spreadRadius: isCritical ? (5 + (2 * pulseFactor)) : 5,
             ),
           ],
         ),
@@ -3323,12 +3316,20 @@ class _TimeRemainingDialogState extends State<_TimeRemainingDialog> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  '⏱️ Tiempo Restante',
+                  loc?.remaining ?? 'Remaining',
                   style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
                     color: AppColors.textLight,
                   ),
+                ),
+                IconButton(
+                  tooltip: loc?.refresh ?? 'Refresh',
+                  icon: Icon(
+                    _isSyncing ? Icons.sync : Icons.refresh,
+                    color: AppColors.textLight,
+                  ),
+                  onPressed: _isSyncing ? null : () => unawaited(_refreshFromService()),
                 ),
                 IconButton(
                   tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
@@ -3365,13 +3366,20 @@ class _TimeRemainingDialogState extends State<_TimeRemainingDialog> {
                     width: 224,
                     height: 224,
                     child: Semantics(
-                    label: 'Progreso de uso del día',
-                    value: '${(progress * 100).round()} por ciento',
-                    child: CircularProgressIndicator(
-                      value: progress,
-                      strokeWidth: 8,
-                      backgroundColor: AppColors.textLight.withValues(alpha: 0.1),
-                      valueColor: AlwaysStoppedAnimation<Color>(clockColor),
+                    label: loc?.remaining ?? 'Remaining',
+                    value: '${(progress * 100).round()}%',
+                    child: TweenAnimationBuilder<double>(
+                      duration: const Duration(milliseconds: 450),
+                      curve: Curves.easeOutCubic,
+                      tween: Tween<double>(end: progress),
+                      builder: (context, animatedProgress, _) {
+                        return CircularProgressIndicator(
+                          value: animatedProgress,
+                          strokeWidth: 8,
+                          backgroundColor: AppColors.textLight.withValues(alpha: 0.1),
+                          valueColor: AlwaysStoppedAnimation<Color>(clockColor),
+                        );
+                      },
                     ),
                   ),
                   ),
@@ -3388,60 +3396,72 @@ class _TimeRemainingDialogState extends State<_TimeRemainingDialog> {
                             child: Text(
                               hours.toString().padLeft(2, '0'),
                               style: const TextStyle(
-                                fontSize: 38,
+                                fontSize: 46,
                                 fontWeight: FontWeight.w900,
+                                letterSpacing: 0.2,
                                 color: AppColors.textLight,
                                 height: 1.0,
                               ),
                             ),
                           ),
-                          const SizedBox(height: 2),
+                          const SizedBox(height: 1),
                           Text(
-                            'horas',
+                            'Horas',
                             style: TextStyle(
-                              fontSize: 10,
+                              fontSize: 17,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.1,
+                              height: 0.95,
                               color: AppColors.textLight.withValues(alpha: 0.7),
                             ),
                           ),
-                          const SizedBox(height: 2),
+                          const SizedBox(height: 1),
                         ],
                         FittedBox(
                           fit: BoxFit.scaleDown,
                           child: Text(
                             minutes.toString().padLeft(2, '0'),
                             style: TextStyle(
-                              fontSize: hours > 0 ? 30 : 38,
+                              fontSize: hours > 0 ? 36 : 42,
                               fontWeight: FontWeight.w900,
+                              letterSpacing: 0.2,
                               color: AppColors.textLight,
                               height: 1.0,
                             ),
                           ),
                         ),
-                        const SizedBox(height: 2),
+                        const SizedBox(height: 1),
                         Text(
-                          'minutos',
+                          'Minutos',
                           style: TextStyle(
-                            fontSize: 10,
+                            fontSize: hours > 0 ? 13 : 15,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.1,
+                            height: 0.95,
                             color: AppColors.textLight.withValues(alpha: 0.7),
                           ),
                         ),
-                        const SizedBox(height: 2),
+                        const SizedBox(height: 1),
                         FittedBox(
                           fit: BoxFit.scaleDown,
                           child: Text(
                             seconds.toString().padLeft(2, '0'),
                             style: TextStyle(
-                              fontSize: 24,
+                              fontSize: 26,
                               fontWeight: FontWeight.w800,
+                              letterSpacing: 0.1,
                               color: AppColors.textLight.withValues(alpha: 0.9),
                               height: 1.0,
                             ),
                           ),
                         ),
                         Text(
-                          'segundos',
+                          'Segundos',
                           style: TextStyle(
                             fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.05,
+                            height: 0.95,
                             color: AppColors.textLight.withValues(alpha: 0.6),
                           ),
                         ),
@@ -3490,29 +3510,40 @@ class _TimeRemainingDialogState extends State<_TimeRemainingDialog> {
               builder: (context) {
                 // Calcular valores basados en el tiempo actual del contador
                 final currentRemainingMinutes = (_currentRemainingSeconds / 60).ceil();
-                final usedMinutes = widget.dailyLimitMinutes - currentRemainingMinutes;
+                final totalLimitMinutes = (totalSeconds / 60).round();
+                final usedMinutes = totalLimitMinutes - currentRemainingMinutes;
                 
                 return Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
                     _buildInfoItem(
-                      'Límite',
-                      '${widget.dailyLimitMinutes}m',
+                      loc?.dailyLimitHome ?? 'Limit',
+                      '${totalLimitMinutes.clamp(0, 24 * 60)}m',
                       Icons.timer_outlined,
                     ),
                     _buildInfoItem(
-                      'Usado',
-                      '${usedMinutes.clamp(0, widget.dailyLimitMinutes)}m',
+                      loc?.homeUsedLabel ?? 'Used',
+                      '${usedMinutes.clamp(0, totalLimitMinutes)}m',
                       Icons.access_time,
                     ),
                     _buildInfoItem(
-                      'Restante',
-                      '${currentRemainingMinutes.clamp(0, widget.dailyLimitMinutes)}m',
+                      loc?.remaining ?? 'Remaining',
+                      '${currentRemainingMinutes.clamp(0, totalLimitMinutes)}m',
                       Icons.hourglass_empty,
                     ),
                   ],
                 );
               },
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _lastSyncAt == null
+                  ? (loc?.refresh ?? 'Refresh')
+                  : '${loc?.refresh ?? 'Refresh'}: ${DateTime.now().difference(_lastSyncAt!).inSeconds}s',
+              style: TextStyle(
+                fontSize: 11,
+                color: AppColors.textLight.withValues(alpha: 0.6),
+              ),
             ),
           ],
         ),
