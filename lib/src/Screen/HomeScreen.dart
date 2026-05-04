@@ -3131,29 +3131,48 @@ class _TimeRemainingDialog extends StatefulWidget {
   State<_TimeRemainingDialog> createState() => _TimeRemainingDialogState();
 }
 
-class _TimeRemainingDialogState extends State<_TimeRemainingDialog> {
+class _TimeRemainingDialogState extends State<_TimeRemainingDialog> with SingleTickerProviderStateMixin {
   Timer? _updateTimer;
   Timer? _syncTimer;
   int _currentRemainingSeconds = 0;
   int _currentLimitSeconds = 60;
+  final ValueNotifier<int> _remainingSecondsNotifier = ValueNotifier<int>(0);
   DateTime _dialogStartTime = DateTime.now();
   int _initialRemainingSeconds = 0;
   bool _isSyncing = false;
   bool _criticalPulsePhase = false;
   DateTime? _lastSyncAt;
   int _syncIntervalSeconds = 15;
+  late final AnimationController _entryController;
+  String _clockStyle = 'pro';
+  static const String _clockStylePrefKey = 'time_clock_style_v1';
 
   @override
   void initState() {
     super.initState();
+    _entryController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 950),
+    )..forward();
     _currentLimitSeconds = (widget.dailyLimitMinutes * 60).clamp(60, 24 * 60 * 60).toInt();
     _initialRemainingSeconds = (widget.remainingMinutes * 60).clamp(0, _currentLimitSeconds).toInt();
     _currentRemainingSeconds = _initialRemainingSeconds;
+    _remainingSecondsNotifier.value = _currentRemainingSeconds;
     _dialogStartTime = DateTime.now();
     _startTimer();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      unawaited(_loadClockStyle());
       unawaited(_refreshFromService());
+    });
+  }
+
+  Future<void> _loadClockStyle() async {
+    await PreferencesService.init();
+    final saved = PreferencesService.getString(_clockStylePrefKey) ?? 'pro';
+    if (!mounted) return;
+    setState(() {
+      _clockStyle = saved;
     });
   }
 
@@ -3169,25 +3188,25 @@ class _TimeRemainingDialogState extends State<_TimeRemainingDialog> {
       final now = DateTime.now();
       final elapsed = now.difference(_dialogStartTime).inSeconds;
       final calculatedRemaining = _initialRemainingSeconds - elapsed;
-      
-      final shouldPulse = calculatedRemaining > 0 && calculatedRemaining <= 5 * 60;
-      final desiredSync = _desiredSyncIntervalSeconds(calculatedRemaining);
 
-      setState(() {
-        if (calculatedRemaining > 0) {
-          _currentRemainingSeconds = calculatedRemaining;
-        } else {
-          _currentRemainingSeconds = 0;
-          // Si llegó a 0, sincronizar con backend para evitar desfases.
-          unawaited(_refreshFromService());
-        }
+      final boundedRemaining = calculatedRemaining > 0 ? calculatedRemaining : 0;
+      if (_currentRemainingSeconds != boundedRemaining) {
+        _currentRemainingSeconds = boundedRemaining;
+        _remainingSecondsNotifier.value = boundedRemaining;
+      }
+      if (boundedRemaining == 0) {
+        // Si llegó a 0, sincronizar con backend para evitar desfases.
+        unawaited(_refreshFromService());
+      }
 
-        if (shouldPulse) {
-          _criticalPulsePhase = !_criticalPulsePhase;
-        } else {
-          _criticalPulsePhase = false;
-        }
-      });
+      final shouldPulse = boundedRemaining > 0 && boundedRemaining <= 5 * 60;
+      final desiredSync = _desiredSyncIntervalSeconds(boundedRemaining);
+      final nextPulsePhase = shouldPulse ? !_criticalPulsePhase : false;
+      if (nextPulsePhase != _criticalPulsePhase) {
+        setState(() {
+          _criticalPulsePhase = nextPulsePhase;
+        });
+      }
 
       if (desiredSync != _syncIntervalSeconds) {
         _syncIntervalSeconds = desiredSync;
@@ -3241,6 +3260,7 @@ class _TimeRemainingDialogState extends State<_TimeRemainingDialog> {
         _currentLimitSeconds = updatedLimitSeconds;
         _initialRemainingSeconds = targetRemainingSeconds;
         _currentRemainingSeconds = targetRemainingSeconds;
+        _remainingSecondsNotifier.value = targetRemainingSeconds;
         _dialogStartTime = now;
         _lastSyncAt = now;
       });
@@ -3253,64 +3273,100 @@ class _TimeRemainingDialogState extends State<_TimeRemainingDialog> {
   void dispose() {
     _updateTimer?.cancel();
     _syncTimer?.cancel();
+    _entryController.dispose();
+    _remainingSecondsNotifier.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    // Calcular horas, minutos y segundos
-    final hours = _currentRemainingSeconds ~/ 3600;
-    final minutes = (_currentRemainingSeconds % 3600) ~/ 60;
-    final seconds = _currentRemainingSeconds % 60;
-
-    // Color según el tiempo restante
-    Color clockColor;
-    if (_currentRemainingSeconds <= 0) {
-      clockColor = Colors.red;
-    } else if (_currentRemainingSeconds <= _currentLimitSeconds * 0.25) {
-      clockColor = Colors.orange;
-    } else {
-      clockColor = Colors.green;
-    }
-
-    // Calcular porcentaje restante para iniciar exactamente en el tiempo real.
-    final totalSeconds = _currentLimitSeconds;
-    final progress = totalSeconds > 0 
-        ? (_currentRemainingSeconds / totalSeconds).clamp(0.0, 1.0)
-        : 0.0;
-    final isCritical = _currentRemainingSeconds > 0 && _currentRemainingSeconds <= 5 * 60;
-    final pulseFactor = isCritical && _criticalPulsePhase ? 1.0 : 0.0;
-    final loc = AppLocalizations.of(context);
-
     return Dialog(
       backgroundColor: Colors.transparent,
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              AppColors.darkSurface,
-              AppColors.darkSurface.withValues(alpha: 0.95),
-            ],
-          ),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(
-            color: clockColor.withValues(alpha: 0.5),
-            width: isCritical ? (2.0 + pulseFactor) : 2.0,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: clockColor.withValues(alpha: isCritical ? (0.3 + (0.2 * pulseFactor)) : 0.3),
-              blurRadius: isCritical ? (20 + (8 * pulseFactor)) : 20,
-              spreadRadius: isCritical ? (5 + (2 * pulseFactor)) : 5,
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
+      child: ValueListenableBuilder<int>(
+        valueListenable: _remainingSecondsNotifier,
+        builder: (context, remainingSeconds, _) {
+          final hours = remainingSeconds ~/ 3600;
+          final minutes = (remainingSeconds % 3600) ~/ 60;
+          final seconds = remainingSeconds % 60;
+
+          Color clockColor;
+          if (remainingSeconds <= 0) {
+            clockColor = Colors.red;
+          } else if (remainingSeconds <= _currentLimitSeconds * 0.25) {
+            final dangerZone = (_currentLimitSeconds * 0.25).clamp(1, _currentLimitSeconds);
+            final t = ((dangerZone - remainingSeconds) / dangerZone).clamp(0.0, 1.0);
+            clockColor = Color.lerp(Colors.orange, Colors.red, t) ?? Colors.orange;
+          } else {
+            clockColor = Colors.green;
+          }
+
+          final totalSeconds = _currentLimitSeconds;
+          final progress = totalSeconds > 0
+              ? (remainingSeconds / totalSeconds).clamp(0.0, 1.0)
+              : 0.0;
+          final isCritical = remainingSeconds > 0 && remainingSeconds <= 5 * 60;
+          final pulseFactor = isCritical && _criticalPulsePhase ? 1.0 : 0.0;
+          final loc = AppLocalizations.of(context);
+          final usedProgress = (1.0 - progress).clamp(0.0, 1.0);
+          final dialogWidth = MediaQuery.sizeOf(context).width;
+          final dialSize = dialogWidth < 380 ? 220.0 : 240.0;
+          final outerRingSize = dialSize - 16;
+          final innerRingSize = outerRingSize - 22;
+          final centerPadding = dialogWidth < 380 ? 6.0 : 8.0;
+          final remainingMinutesLabel = (remainingSeconds / 60).ceil().clamp(0, 24 * 60);
+          final contextualStatus = remainingSeconds <= 0
+              ? 'Tiempo agotado'
+              : 'Te quedan $remainingMinutesLabel min';
+          final riskLevel = (1.0 - progress).clamp(0.0, 1.0);
+          final isClassic = _clockStyle == 'classic';
+          final isNeon = _clockStyle == 'neon';
+          final isAurora = _clockStyle == 'aurora';
+          final isQuantum = _clockStyle == 'quantum';
+          final topBg = Color.lerp(
+                AppColors.darkSurface,
+                isQuantum
+                    ? Colors.cyanAccent
+                    : (isAurora ? Colors.tealAccent : (isNeon ? AppColors.accentBlue : clockColor)),
+                isClassic ? 0.04 : (0.10 + (0.12 * riskLevel)),
+              ) ??
+              AppColors.darkSurface;
+          final bottomBg = Color.lerp(
+                AppColors.darkSurface.withValues(alpha: 0.95),
+                isQuantum
+                    ? Colors.deepPurpleAccent
+                    : (isAurora ? Colors.greenAccent : (isNeon ? AppColors.accentPurple : clockColor)),
+                isClassic ? 0.03 : (0.05 + (0.10 * riskLevel)),
+              ) ??
+              AppColors.darkSurface.withValues(alpha: 0.95);
+
+          return AnimatedBuilder(
+            animation: _entryController,
+            builder: (context, _) {
+              final entryProgress = Curves.easeOutCubic.transform(_entryController.value);
+              return Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [topBg, bottomBg],
+                  ),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: clockColor.withValues(alpha: 0.5),
+                    width: isCritical ? (2.0 + pulseFactor) : 2.0,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: clockColor.withValues(alpha: isCritical ? (0.3 + (0.2 * pulseFactor)) : 0.3),
+                      blurRadius: isCritical ? (20 + (8 * pulseFactor)) : 20,
+                      spreadRadius: isCritical ? (5 + (2 * pulseFactor)) : 5,
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
             // Título
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -3340,63 +3396,123 @@ class _TimeRemainingDialogState extends State<_TimeRemainingDialog> {
             ),
             const SizedBox(height: 24),
             
-            // Reloj circular
-            Container(
-              width: 240,
-              height: 240,
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    clockColor.withValues(alpha: 0.15),
-                    clockColor.withValues(alpha: 0.05),
-                  ],
-                ),
-                border: Border.all(
-                  color: clockColor.withValues(alpha: 0.5),
-                  width: 3,
-                ),
-              ),
+            // Reloj circular (rediseño premium)
+            SizedBox(
+              width: dialSize,
+              height: dialSize,
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  // Indicador de progreso circular
-                  SizedBox(
-                    width: 224,
-                    height: 224,
-                    child: Semantics(
+                  Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          ((isNeon || isQuantum)
+                                  ? AppColors.accentBlue
+                                  : (isAurora ? Colors.tealAccent : AppColors.textLight))
+                              .withValues(
+                            alpha: isClassic ? 0.05 : (isNeon ? 0.16 : 0.08),
+                          ),
+                          ((isNeon || isQuantum)
+                                  ? AppColors.accentPurple
+                                  : (isAurora ? Colors.greenAccent : AppColors.darkSurface))
+                              .withValues(
+                            alpha: isClassic ? 0.03 : (isNeon ? 0.10 : 0.05),
+                          ),
+                        ],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: clockColor.withValues(alpha: isClassic ? 0.18 : ((isNeon || isQuantum) ? 0.40 : 0.28)),
+                          blurRadius: (isNeon || isQuantum) ? 28 : 22,
+                          spreadRadius: (isNeon || isQuantum) ? 5 : 3,
+                        ),
+                      ],
+                    ),
+                  ),
+                  Semantics(
                     label: loc?.remaining ?? 'Remaining',
                     value: '${(progress * 100).round()}%',
                     child: TweenAnimationBuilder<double>(
-                      duration: const Duration(milliseconds: 450),
+                      duration: const Duration(milliseconds: 500),
                       curve: Curves.easeOutCubic,
                       tween: Tween<double>(end: progress),
                       builder: (context, animatedProgress, _) {
-                        return CircularProgressIndicator(
-                          value: animatedProgress,
-                          strokeWidth: 8,
-                          backgroundColor: AppColors.textLight.withValues(alpha: 0.1),
-                          valueColor: AlwaysStoppedAnimation<Color>(clockColor),
+                        return CustomPaint(
+                          size: Size.square(outerRingSize),
+                          painter: _TimeDialPainter(
+                            remainingProgress: animatedProgress,
+                            usedProgress: usedProgress,
+                            mainColor: clockColor,
+                            tickColor: AppColors.textLight.withValues(alpha: 0.26),
+                            entryProgress: isClassic ? 1.0 : entryProgress,
+                            showCriticalParticles: isCritical && !isClassic,
+                            particlePhase: pulseFactor,
+                            neonMode: isNeon || isQuantum,
+                            classicMode: isClassic,
+                          ),
                         );
                       },
                     ),
                   ),
-                  ),
-                  // Tiempo en el centro - layout flexible para evitar overflow
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (hours > 0) ...[
+                  Container(
+                    width: innerRingSize - 8,
+                    height: innerRingSize - 8,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          AppColors.textLight.withValues(alpha: isClassic ? 0.06 : 0.10),
+                          AppColors.textLight.withValues(alpha: isClassic ? 0.02 : 0.04),
+                        ],
+                      ),
+                      border: Border.all(
+                        color: AppColors.textLight.withValues(alpha: isClassic ? 0.14 : 0.20),
+                        width: 1.2,
+                      ),
+                    ),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: centerPadding, vertical: 4),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (hours > 0) ...[
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                hours.toString().padLeft(2, '0'),
+                                style: const TextStyle(
+                                  fontSize: 46,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0.2,
+                                  color: AppColors.textLight,
+                                  height: 1.0,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 1),
+                            Text(
+                              'Horas',
+                              style: TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 0.1,
+                                height: 0.95,
+                                color: AppColors.textLight.withValues(alpha: 0.72),
+                              ),
+                            ),
+                            const SizedBox(height: 1),
+                          ],
                           FittedBox(
                             fit: BoxFit.scaleDown,
                             child: Text(
-                              hours.toString().padLeft(2, '0'),
-                              style: const TextStyle(
-                                fontSize: 46,
+                              minutes.toString().padLeft(2, '0'),
+                              style: TextStyle(
+                                fontSize: hours > 0 ? 36 : 42,
                                 fontWeight: FontWeight.w900,
                                 letterSpacing: 0.2,
                                 color: AppColors.textLight,
@@ -3406,101 +3522,53 @@ class _TimeRemainingDialogState extends State<_TimeRemainingDialog> {
                           ),
                           const SizedBox(height: 1),
                           Text(
-                            'Horas',
+                            'Minutos',
                             style: TextStyle(
-                              fontSize: 17,
+                              fontSize: hours > 0 ? 13 : 15,
                               fontWeight: FontWeight.w900,
                               letterSpacing: 0.1,
                               height: 0.95,
-                              color: AppColors.textLight.withValues(alpha: 0.7),
+                              color: AppColors.textLight.withValues(alpha: 0.72),
                             ),
                           ),
                           const SizedBox(height: 1),
-                        ],
-                        FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text(
-                            minutes.toString().padLeft(2, '0'),
-                            style: TextStyle(
-                              fontSize: hours > 0 ? 36 : 42,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 0.2,
-                              color: AppColors.textLight,
-                              height: 1.0,
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              seconds.toString().padLeft(2, '0'),
+                              style: TextStyle(
+                                fontSize: 26,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.1,
+                                color: AppColors.textLight.withValues(alpha: 0.92),
+                                height: 1.0,
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 1),
-                        Text(
-                          'Minutos',
-                          style: TextStyle(
-                            fontSize: hours > 0 ? 13 : 15,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 0.1,
-                            height: 0.95,
-                            color: AppColors.textLight.withValues(alpha: 0.7),
-                          ),
-                        ),
-                        const SizedBox(height: 1),
-                        FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text(
-                            seconds.toString().padLeft(2, '0'),
+                          Text(
+                            'Segundos',
                             style: TextStyle(
-                              fontSize: 26,
+                              fontSize: 9,
                               fontWeight: FontWeight.w800,
-                              letterSpacing: 0.1,
-                              color: AppColors.textLight.withValues(alpha: 0.9),
-                              height: 1.0,
+                              letterSpacing: 0.05,
+                              height: 0.95,
+                              color: AppColors.textLight.withValues(alpha: 0.62),
                             ),
                           ),
-                        ),
-                        Text(
-                          'Segundos',
-                          style: TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.05,
-                            height: 0.95,
-                            color: AppColors.textLight.withValues(alpha: 0.6),
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 24),
-            
-            // Tiempo en formato digital
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              decoration: BoxDecoration(
-                color: clockColor.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: clockColor.withValues(alpha: 0.4),
-                  width: 1.5,
-                ),
-              ),
-              child: Text(
-                hours > 0
-                    ? '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}'
-                    : '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textLight,
-                  fontFeatures: [const FontFeature.tabularFigures()],
-                  shadows: [
-                    Shadow(
-                      color: clockColor.withValues(alpha: 0.5),
-                      blurRadius: 4,
-                      offset: const Offset(0, 1),
-                    ),
-                  ],
-                ),
+            const SizedBox(height: 14),
+            Text(
+              contextualStatus,
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textLight.withValues(alpha: 0.82),
               ),
             ),
             const SizedBox(height: 16),
@@ -3546,7 +3614,11 @@ class _TimeRemainingDialogState extends State<_TimeRemainingDialog> {
               ),
             ),
           ],
-        ),
+                ),
+              );
+            },
+      );
+        },
       ),
     );
   }
@@ -3573,5 +3645,173 @@ class _TimeRemainingDialogState extends State<_TimeRemainingDialog> {
         ),
       ],
     );
+  }
+}
+
+class _TimeDialPainter extends CustomPainter {
+  final double remainingProgress;
+  final double usedProgress;
+  final Color mainColor;
+  final Color tickColor;
+  final double entryProgress;
+  final bool showCriticalParticles;
+  final double particlePhase;
+  final bool neonMode;
+  final bool classicMode;
+
+  const _TimeDialPainter({
+    required this.remainingProgress,
+    required this.usedProgress,
+    required this.mainColor,
+    required this.tickColor,
+    required this.entryProgress,
+    required this.showCriticalParticles,
+    required this.particlePhase,
+    required this.neonMode,
+    required this.classicMode,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = (size.width / 2) - 8;
+    const startAngle = -1.5708; // -pi/2
+    const fullSweep = 6.28318; // 2pi
+
+    final baseRing = Paint()
+      ..color = AppColors.textLight.withValues(alpha: classicMode ? 0.08 : 0.10)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 12
+      ..strokeCap = StrokeCap.round;
+
+    final usedRing = Paint()
+      ..color = (neonMode ? AppColors.accentPurple : AppColors.accentBlue).withValues(
+        alpha: classicMode ? 0.20 : (neonMode ? 0.52 : 0.32),
+      )
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = classicMode ? 4 : 6
+      ..strokeCap = StrokeCap.round;
+
+    final reveal = entryProgress.clamp(0.0, 1.0);
+    final remainingSweep = (remainingProgress.clamp(0.0, 1.0)) * fullSweep * reveal;
+    final remainingRing = Paint()
+      ..shader = SweepGradient(
+        startAngle: startAngle,
+        endAngle: startAngle + remainingSweep,
+        colors: [
+          mainColor.withValues(alpha: neonMode ? 0.85 : 0.65),
+          neonMode ? AppColors.accentBlue : mainColor,
+        ],
+      ).createShader(Rect.fromCircle(center: center, radius: radius))
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = classicMode ? 10 : 12
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawCircle(center, radius, baseRing);
+
+    // Marcas 0/25/50/75%.
+    final tickPaint = Paint()
+      ..color = tickColor
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round;
+    for (var i = 0; i < 4; i++) {
+      final angle = startAngle + (i * (fullSweep / 4));
+      final p1 = Offset(
+        center.dx + (radius - 10) * cos(angle),
+        center.dy + (radius - 10) * sin(angle),
+      );
+      final p2 = Offset(
+        center.dx + radius * cos(angle),
+        center.dy + radius * sin(angle),
+      );
+      canvas.drawLine(p1, p2, tickPaint);
+    }
+
+    // Arco principal de tiempo restante.
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      startAngle,
+      remainingSweep,
+      false,
+      remainingRing,
+    );
+
+    // Arco secundario de usado, revelado con la animación de entrada.
+    final usedRadius = radius - 16;
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: usedRadius),
+      startAngle,
+      (usedProgress.clamp(0.0, 1.0)) * fullSweep * reveal,
+      false,
+      usedRing,
+    );
+
+    // Orbital sweep de entrada (destello recorriendo el anillo al abrir).
+    if (!classicMode && reveal < 1.0) {
+      final sweepHead = startAngle + (fullSweep * reveal);
+      final sweepPaint = Paint()
+        ..shader = SweepGradient(
+          startAngle: sweepHead - 0.45,
+          endAngle: sweepHead + 0.15,
+          colors: [
+            Colors.transparent,
+            mainColor.withValues(alpha: 0.05),
+            mainColor.withValues(alpha: 0.85),
+          ],
+        ).createShader(Rect.fromCircle(center: center, radius: radius))
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 13
+        ..strokeCap = StrokeCap.round;
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        sweepHead - 0.45,
+        0.60,
+        false,
+        sweepPaint,
+      );
+    }
+
+    // Punto brillo al final del arco principal.
+    final endAngle = startAngle + remainingSweep;
+    final endPoint = Offset(
+      center.dx + radius * cos(endAngle),
+      center.dy + radius * sin(endAngle),
+    );
+    final glow = Paint()
+      ..color = (neonMode ? AppColors.accentBlue : mainColor).withValues(
+        alpha: classicMode ? 0.8 : 0.95,
+      )
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
+    canvas.drawCircle(endPoint, 4.2, glow);
+
+    // Micro partículas sutiles en estado crítico.
+    if (showCriticalParticles) {
+      final pPaint = Paint()..style = PaintingStyle.fill;
+      final alphaBase = (0.22 + (0.20 * particlePhase)).clamp(0.0, 1.0);
+      const particleAngles = <double>[0.15, 0.9, 1.75, 2.45, 3.2, 4.05, 4.9, 5.55];
+      for (var i = 0; i < particleAngles.length; i++) {
+        final a = startAngle + particleAngles[i];
+        final r = radius + 3 + (i.isEven ? 2.0 : 0.0);
+        final p = Offset(
+          center.dx + r * cos(a),
+          center.dy + r * sin(a),
+        );
+        pPaint.color = mainColor.withValues(alpha: (alphaBase * (0.6 + ((i % 3) * 0.15))).clamp(0.0, 1.0));
+        canvas.drawCircle(p, i.isEven ? 1.9 : 1.4, pPaint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _TimeDialPainter oldDelegate) {
+    return oldDelegate.remainingProgress != remainingProgress ||
+        oldDelegate.usedProgress != usedProgress ||
+        oldDelegate.mainColor != mainColor ||
+        oldDelegate.tickColor != tickColor ||
+        oldDelegate.entryProgress != entryProgress ||
+        oldDelegate.showCriticalParticles != showCriticalParticles ||
+        oldDelegate.particlePhase != particlePhase ||
+        oldDelegate.neonMode != neonMode ||
+        oldDelegate.classicMode != classicMode;
   }
 }

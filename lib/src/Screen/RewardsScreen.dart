@@ -10,6 +10,7 @@ import 'package:nofacezone/src/Custom/ProAnimations.dart';
 import 'package:nofacezone/src/Providers/AppProvider.dart';
 import 'package:nofacezone/src/Services/RewardService.dart';
 import 'package:nofacezone/src/Services/PointsService.dart';
+import 'package:nofacezone/src/Services/PreferencesService.dart';
 
 class RewardsScreen extends StatefulWidget {
   const RewardsScreen({super.key});
@@ -19,6 +20,7 @@ class RewardsScreen extends StatefulWidget {
 }
 
 class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProviderStateMixin {
+  static const String _clockStylePrefKey = 'time_clock_style_v1';
   late TabController _tabController;
   int userPoints = 0; // Puntos del usuario
   bool _isLoading = true;
@@ -30,6 +32,7 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
     'font': _RewardsFilter.all,
     'message': _RewardsFilter.all,
     'badge': _RewardsFilter.all,
+    'clock': _RewardsFilter.all,
   };
 
   void _hapticTap() => HapticFeedback.selectionClick();
@@ -38,7 +41,7 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
     _lastTabIndex = _tabController.index;
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging && _lastTabIndex != _tabController.index) {
@@ -172,6 +175,7 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
             Builder(
               builder: (context) => Tab(text: AppLocalizations.of(context)!.badges),
             ),
+            const Tab(text: 'Reloj'),
           ],
         ),
       ),
@@ -207,6 +211,7 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
                         _buildFontsTab(),
                         _buildMessagesTab(),
                         _buildBadgesTab(),
+                      _buildClockStylesTab(),
                       ],
                     ),
                   ),
@@ -488,6 +493,12 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
       case 'insignia':
       case 'insignias':
         return 'badge';
+      case 'clock_style':
+      case 'clock':
+      case 'reloj':
+      case 'relojes':
+      case 'clockstyle':
+        return 'clock';
       default:
         return value;
     }
@@ -504,6 +515,7 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
     if (rewardId.startsWith('font_')) return 'font';
     if (rewardId.startsWith('message_')) return 'message';
     if (rewardId.startsWith('badge_')) return 'badge';
+    if (rewardId.startsWith('clock_')) return 'clock';
     return '';
   }
 
@@ -1888,6 +1900,316 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
     );
   }
 
+  Future<String> _getCurrentClockStyle() async {
+    await PreferencesService.init();
+    return PreferencesService.getString(_clockStylePrefKey) ?? 'pro';
+  }
+
+  Future<void> _setCurrentClockStyle(String styleId) async {
+    await PreferencesService.init();
+    await PreferencesService.setString(_clockStylePrefKey, styleId);
+  }
+
+  String _styleIdFromRewardId(String rewardId) {
+    return rewardId.startsWith('clock_') ? rewardId.substring(6) : rewardId;
+  }
+
+  Widget _buildClockStylesTab() {
+    if (_isLoading) {
+      return _buildLoadingPlaceholder();
+    }
+
+    return FutureBuilder<String>(
+      future: _getCurrentClockStyle(),
+      builder: (context, styleSnapshot) {
+        final currentStyle = styleSnapshot.data ?? 'pro';
+        final clockRewards = _allRewards.where((r) => _getRewardType(r) == 'clock').toList();
+
+        if (clockRewards.isEmpty) {
+          return _buildEmptyState(
+            'No hay estilos de reloj aún',
+            icon: Icons.watch_later_outlined,
+          );
+        }
+
+        final styles = clockRewards.map((reward) {
+          final rewardId = reward['id'] as String;
+          final unlocked = rewardId == 'clock_pro' || _isRewardUnlocked(rewardId);
+          final styleId = _styleIdFromRewardId(rewardId);
+          final metadata = reward['metadata'] as Map<String, dynamic>?;
+          final accentHex = (metadata?['accent'] ?? '#4F8CFF').toString().replaceAll('#', '');
+          Color accent;
+          try {
+            accent = Color(int.parse('FF$accentHex', radix: 16));
+          } catch (_) {
+            accent = AppColors.accentBlue;
+          }
+          return _RewardClockStyle(
+            rewardId: rewardId,
+            styleId: styleId,
+            name: reward['name_es'] ?? reward['name'] ?? styleId,
+            description: reward['description_es'] ?? reward['description'] ?? '',
+            price: reward['price'] ?? 0,
+            unlocked: unlocked,
+            accent: accent,
+          );
+        }).toList();
+
+        final filter = _tabFilters['clock'] ?? _RewardsFilter.all;
+        final filtered = styles.where((style) {
+          switch (filter) {
+            case _RewardsFilter.unlocked:
+              return style.unlocked;
+            case _RewardsFilter.affordable:
+              return !style.unlocked && userPoints >= style.price;
+            case _RewardsFilter.active:
+              return style.styleId == currentStyle;
+            case _RewardsFilter.all:
+              return true;
+          }
+        }).toList();
+        final visibleStyles = filtered.isEmpty && styles.isNotEmpty ? styles : filtered;
+
+        return SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
+          ),
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Estilos de reloj',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textLight,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Desbloquea apariencias premium para el reloj de tiempo restante.',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textLight.withValues(alpha: 0.8),
+                ),
+              ),
+              const SizedBox(height: 20),
+              _buildFilterChips(
+                tabKey: 'clock',
+                available: const {
+                  _RewardsFilter.all,
+                  _RewardsFilter.unlocked,
+                  _RewardsFilter.affordable,
+                  _RewardsFilter.active,
+                },
+              ),
+              const SizedBox(height: 14),
+              ...visibleStyles.asMap().entries.map((entry) => Padding(
+                    padding: const EdgeInsets.only(bottom: 14),
+                    child: ProEntrance(
+                      delayMs: 60 + (entry.key * 35),
+                      child: _buildClockStyleCard(
+                        style: entry.value,
+                        isSelected: entry.value.styleId == currentStyle,
+                      ),
+                    ),
+                  )),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildClockStyleCard({
+    required _RewardClockStyle style,
+    required bool isSelected,
+  }) {
+    return ProPressable(
+      onTap: () async {
+        _hapticTap();
+        await RewardService.trackRewardEvent(
+          eventType: 'clock_style_click',
+          rewardId: style.rewardId,
+        );
+
+        if (!style.unlocked) {
+          final shouldBuy = await _confirmPurchase(
+            context: context,
+            rewardName: style.name,
+            price: style.price,
+          );
+          if (!shouldBuy) return;
+
+          if (userPoints < style.price) {
+            if (!mounted) return;
+            CustomSnackBar.showWarning(
+              context,
+              'Necesitas ${style.price} puntos para desbloquear este estilo',
+              icon: Icons.lock_rounded,
+            );
+            return;
+          }
+
+          final result = await RewardService.purchaseReward(style.rewardId);
+          if (result['success'] != true) {
+            if (!mounted) return;
+            CustomSnackBar.showError(
+              context,
+              result['error'] ?? 'No se pudo comprar el estilo',
+            );
+            return;
+          }
+          userPoints = (result['puntos_restantes'] ?? userPoints - style.price) as int;
+          await _refreshUserRewardsAndPoints();
+          await RewardService.trackRewardEvent(
+            eventType: 'purchase_success',
+            rewardId: style.rewardId,
+            metadata: {'type': 'clock_style', 'price': style.price},
+          );
+        }
+
+        await _setCurrentClockStyle(style.styleId);
+        await RewardService.trackRewardEvent(
+          eventType: 'clock_style_apply',
+          rewardId: style.rewardId,
+        );
+        if (!mounted) return;
+        setState(() {});
+        CustomSnackBar.showSuccess(
+          context,
+          'Estilo "${style.name}" aplicado',
+          icon: Icons.watch_later_rounded,
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.textLight.withValues(alpha: 0.14),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected
+                ? AppColors.textLight
+                : style.unlocked
+                    ? style.accent.withValues(alpha: 0.5)
+                    : AppColors.textLight.withValues(alpha: 0.2),
+            width: isSelected ? 2.2 : 1.4,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: style.accent.withValues(alpha: 0.18),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 58,
+              height: 58,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    style.accent.withValues(alpha: 0.75),
+                    style.accent.withValues(alpha: 0.30),
+                  ],
+                ),
+              ),
+              child: Icon(
+                style.unlocked ? Icons.motion_photos_on_rounded : Icons.lock_rounded,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    style.name,
+                    style: const TextStyle(
+                      color: AppColors.textLight,
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    style.description,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: AppColors.textLight.withValues(alpha: 0.82),
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            if (!style.unlocked)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.amber.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.stars, color: Colors.amber, size: 14),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${style.price}',
+                      style: const TextStyle(
+                        color: Colors.amber,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? Colors.white.withValues(alpha: 0.28)
+                      : Colors.green.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      isSelected ? Icons.star : Icons.check_circle,
+                      size: 16,
+                      color: isSelected ? Colors.white : Colors.green,
+                    ),
+                    if (isSelected) ...[
+                      const SizedBox(width: 4),
+                      const Text(
+                        'Activo',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   String currentThemeId(BuildContext context) =>
       Provider.of<AppProvider>(context, listen: false).colorTheme;
 
@@ -2031,6 +2353,26 @@ class _RewardBadge {
     required this.color,
     required this.unlocked,
     required this.progress,
+  });
+}
+
+class _RewardClockStyle {
+  final String rewardId;
+  final String styleId;
+  final String name;
+  final String description;
+  final int price;
+  final bool unlocked;
+  final Color accent;
+
+  _RewardClockStyle({
+    required this.rewardId,
+    required this.styleId,
+    required this.name,
+    required this.description,
+    required this.price,
+    required this.unlocked,
+    required this.accent,
   });
 }
 
