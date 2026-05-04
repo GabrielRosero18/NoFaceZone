@@ -8,6 +8,7 @@ import 'package:nofacezone/src/Custom/AppMessages.dart';
 import 'package:nofacezone/src/Custom/CustomSnackBar.dart';
 import 'package:nofacezone/src/Custom/ProAnimations.dart';
 import 'package:nofacezone/src/Custom/time_remaining_clock_painters.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:nofacezone/src/Providers/AppProvider.dart';
 import 'package:nofacezone/src/Services/RewardService.dart';
 import 'package:nofacezone/src/Services/PointsService.dart';
@@ -1079,6 +1080,88 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
     );
   }
 
+  /// Misma idea que la previsualización de relojes: muestra la fuente real (Google Fonts).
+  TextStyle _googleFontPreviewStyle(String fontId, {required double fontSize, FontWeight weight = FontWeight.w700}) {
+    final c = AppColors.textLight;
+    switch (fontId) {
+      case 'elegant':
+        return GoogleFonts.playfairDisplay(fontSize: fontSize, fontWeight: weight, color: c, height: 1.05);
+      case 'modern':
+        return GoogleFonts.poppins(fontSize: fontSize, fontWeight: weight, color: c, height: 1.05);
+      case 'friendly':
+        return GoogleFonts.comfortaa(fontSize: fontSize, fontWeight: weight, color: c, height: 1.05);
+      case 'bold':
+        return GoogleFonts.montserrat(fontSize: fontSize, fontWeight: weight, color: c, height: 1.05);
+      case 'inter':
+        return GoogleFonts.inter(fontSize: fontSize, fontWeight: weight, color: c, height: 1.05);
+      case 'nunito':
+        return GoogleFonts.nunito(fontSize: fontSize, fontWeight: weight, color: c, height: 1.05);
+      case 'manrope':
+        return GoogleFonts.manrope(fontSize: fontSize, fontWeight: weight, color: c, height: 1.05);
+      case 'space':
+        return GoogleFonts.spaceGrotesk(fontSize: fontSize, fontWeight: weight, color: c, height: 1.05);
+      case 'default':
+      default:
+        return GoogleFonts.roboto(fontSize: fontSize, fontWeight: weight, color: c, height: 1.05);
+    }
+  }
+
+  Widget _buildFontFacePreview(_RewardFont font) {
+    const preview = 76.0;
+    final accent = AppColors.accentBlue;
+    return SizedBox(
+      width: preview,
+      height: preview,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.darkSurface.withValues(alpha: 0.55),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: accent.withValues(alpha: 0.45), width: 1.2),
+            ),
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Aa',
+                        style: _googleFontPreviewStyle(font.id, fontSize: 30, weight: FontWeight.w800),
+                        textAlign: TextAlign.center,
+                      ),
+                      Text(
+                        'Bb 123',
+                        style: _googleFontPreviewStyle(font.id, fontSize: 13, weight: FontWeight.w500),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          if (!font.unlocked)
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.42),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+            ),
+          if (!font.unlocked)
+            Icon(Icons.lock_rounded, color: Colors.white.withValues(alpha: 0.9), size: 26),
+        ],
+      ),
+    );
+  }
+
   Widget _buildFontCard(_RewardFont font) {
     return Builder(
       builder: (context) {
@@ -1199,23 +1282,8 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
         ),
         child: Row(
           children: [
-            Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                gradient: font.unlocked
-                    ? LinearGradient(colors: AppColors.accentGradient)
-                    : null,
-                color: font.unlocked ? null : AppColors.textLight.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                font.unlocked ? Icons.text_fields : Icons.lock,
-                color: AppColors.textLight,
-                size: 28,
-              ),
-            ),
-            const SizedBox(width: 16),
+            _buildFontFacePreview(font),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
