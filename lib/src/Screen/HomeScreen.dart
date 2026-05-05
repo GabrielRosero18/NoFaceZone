@@ -1391,9 +1391,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     final today = DateTime.now();
     final todayLabel =
         '${today.day.toString().padLeft(2, '0')}/${today.month.toString().padLeft(2, '0')}';
-    final limitMinutes = appProvider.dailyUsageLimit.clamp(1, 24 * 60);
-    final usedMinutes = appProvider.todayUsageMinutes.clamp(0, limitMinutes);
-    final remainingMinutes = (limitMinutes - usedMinutes).clamp(0, limitMinutes);
+    // Usar estado en vivo para reflejar descuento continuo del tiempo
+    // (incluye sesión activa) y evitar que la UI se "congele" hasta persistir en BD.
+    final limitMinutes = _dailyLimitMinutes.clamp(1, 24 * 60);
+    final remainingMinutes = _remainingMinutes.clamp(0, limitMinutes);
+    final usedMinutes = (limitMinutes - remainingMinutes).clamp(0, limitMinutes);
     final progress = (usedMinutes / limitMinutes).clamp(0.0, 1.0);
     final recordHours = PreferencesService.getRecordTimeWithoutFacebook();
     final blockedSessions = PreferencesService.getBlockedSessionsCount();
@@ -2222,9 +2224,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       return _buildUsageSectionSkeleton(titleEmoji: '⏰');
     }
     final appProvider = Provider.of<AppProvider>(context, listen: false);
-    final usedMinutes = appProvider.todayUsageMinutes;
-    final limitMinutes = appProvider.dailyUsageLimit;
-    final remainingMinutes = (limitMinutes - usedMinutes).clamp(0, limitMinutes);
+    final limitMinutes = _dailyLimitMinutes.clamp(1, 24 * 60);
+    final remainingMinutes = _remainingMinutes.clamp(0, limitMinutes);
+    final usedMinutes = (limitMinutes - remainingMinutes).clamp(0, limitMinutes);
 
     String limitText;
     if (limitMinutes >= 60) {

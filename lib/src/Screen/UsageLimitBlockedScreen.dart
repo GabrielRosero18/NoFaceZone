@@ -1,8 +1,11 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:nofacezone/src/Custom/AppColors.dart';
+import 'package:nofacezone/src/Custom/CustomSnackBar.dart';
+import 'package:nofacezone/src/Services/PreferencesService.dart';
 import 'package:nofacezone/src/Services/UsageLimitsService.dart';
 import 'package:nofacezone/src/Providers/AppProvider.dart';
 
@@ -35,6 +38,17 @@ class _UsageLimitBlockedScreenState extends State<UsageLimitBlockedScreen>
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
   bool _isAddingTime = false;
+  bool _strictModeEnabled = true;
+  Timer? _strictCountdownTimer;
+  int _strictCountdownSeconds = 0;
+  bool _strictTaskDone = false;
+  bool _isStrictUnlockFlowOpen = false;
+  late _ActivitySuggestion _suggestedActivity;
+
+  static const int _baseStrictCountdownSeconds = 15;
+  static const String _strictModeEnabledKey = 'strict_unlock_mode_enabled_v1';
+  static const String _strictUnlockAttemptsKey = 'strict_unlock_attempts_v1';
+  static const String _strictUnlockCompletionsKey = 'strict_unlock_completions_v1';
 
   @override
   void initState() {
@@ -68,12 +82,201 @@ class _UsageLimitBlockedScreenState extends State<UsageLimitBlockedScreen>
         _animationController.forward();
       }
     });
+    _suggestedActivity = _pickActivitySuggestion();
+    _loadStrictModeConfig();
   }
 
   @override
   void dispose() {
+    _strictCountdownTimer?.cancel();
     _animationController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadStrictModeConfig() async {
+    await PreferencesService.init();
+    if (!mounted) return;
+    setState(() {
+      _strictModeEnabled = PreferencesService.prefs.getBool(_strictModeEnabledKey) ?? true;
+    });
+  }
+
+  _ActivitySuggestion _pickActivitySuggestion() {
+    final hour = DateTime.now().hour;
+    final source = <_ActivitySuggestion>[
+      const _ActivitySuggestion(
+        id: 'walk',
+        title: 'Camina 5 minutos',
+        subtitle: 'Rompe el impulso, activa tu cuerpo y despeja tu mente.',
+        icon: Icons.directions_walk,
+        color: Colors.green,
+      ),
+      const _ActivitySuggestion(
+        id: 'breathe',
+        title: 'Respira 60 segundos',
+        subtitle: 'Inhala 4s, exhala 6s durante 1 minuto.',
+        icon: Icons.self_improvement,
+        color: Colors.purpleAccent,
+      ),
+      const _ActivitySuggestion(
+        id: 'hydrate',
+        title: 'Toma un vaso de agua',
+        subtitle: 'Una micro-acción física ayuda a cortar el bucle de impulso.',
+        icon: Icons.local_drink,
+        color: Colors.blueAccent,
+      ),
+      const _ActivitySuggestion(
+        id: 'plan',
+        title: 'Define una mini-meta',
+        subtitle: 'Escribe una tarea concreta para los próximos 10 minutos.',
+        icon: Icons.edit_note,
+        color: Colors.orangeAccent,
+      ),
+      const _ActivitySuggestion(
+        id: 'stretch',
+        title: 'Haz estiramientos rápidos',
+        subtitle: '2 minutos de estiramiento para resetear foco y postura.',
+        icon: Icons.accessibility_new,
+        color: Colors.tealAccent,
+      ),
+    ];
+    final seed = DateTime.now().day + hour + Random().nextInt(99);
+    return source[seed % source.length];
+  }
+
+  int _resolveStrictCountdownSeconds() {
+    final attempts = PreferencesService.prefs.getInt(_strictUnlockAttemptsKey) ?? 0;
+    final extraSteps = (attempts ~/ 5).clamp(0, 3);
+    return _baseStrictCountdownSeconds + (extraSteps * 5);
+  }
+
+  Future<void> _handleRemoveBlockTap() async {
+    if (!_strictModeEnabled) {
+      _completeUnlockRemoval();
+      return;
+    }
+    if (_isStrictUnlockFlowOpen) return;
+
+    _isStrictUnlockFlowOpen = true;
+    final attempts = PreferencesService.prefs.getInt(_strictUnlockAttemptsKey) ?? 0;
+    await PreferencesService.prefs.setInt(_strictUnlockAttemptsKey, attempts + 1);
+
+    _strictTaskDone = false;
+    _strictCountdownSeconds = _resolveStrictCountdownSeconds();
+    _strictCountdownTimer?.cancel();
+
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        _strictCountdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+          if (!mounted) {
+            timer.cancel();
+            return;
+          }
+          if (_strictCountdownSeconds <= 0) {
+            timer.cancel();
+            return;
+          }
+          setState(() {
+            _strictCountdownSeconds -= 1;
+          });
+        });
+
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final canConfirm = _strictCountdownSeconds <= 0 && _strictTaskDone;
+            return AlertDialog(
+              backgroundColor: const Color(0xFF111111),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: const Text(
+                'Modo Estricto',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Para evitar desbloqueos por impulso, completa estos pasos:',
+                    style: TextStyle(color: Colors.white70, height: 1.4),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      const Icon(Icons.timer_outlined, color: Colors.orangeAccent),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _strictCountdownSeconds > 0
+                              ? 'Espera ${_strictCountdownSeconds}s antes de confirmar.'
+                              : 'Tiempo completado.',
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  CheckboxListTile(
+                    contentPadding: EdgeInsets.zero,
+                    activeColor: Colors.green,
+                    checkColor: Colors.white,
+                    value: _strictTaskDone,
+                    title: const Text(
+                      'Hice la micro-tarea: 15 segundos de respiración consciente.',
+                      style: TextStyle(color: Colors.white, fontSize: 13.5),
+                    ),
+                    controlAffinity: ListTileControlAffinity.leading,
+                    onChanged: (v) {
+                      setState(() {
+                        _strictTaskDone = v ?? false;
+                      });
+                      setDialogState(() {});
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    _strictCountdownTimer?.cancel();
+                    Navigator.of(dialogContext).pop();
+                  },
+                  child: const Text('Cancelar'),
+                ),
+                ElevatedButton(
+                  onPressed: canConfirm
+                      ? () async {
+                          _strictCountdownTimer?.cancel();
+                          final completed = PreferencesService.prefs.getInt(_strictUnlockCompletionsKey) ?? 0;
+                          await PreferencesService.prefs.setInt(_strictUnlockCompletionsKey, completed + 1);
+                          if (!mounted) return;
+                          Navigator.of(dialogContext).pop();
+                          _completeUnlockRemoval();
+                        }
+                      : null,
+                  child: const Text('Confirmar desbloqueo'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    _strictCountdownTimer?.cancel();
+    _isStrictUnlockFlowOpen = false;
+  }
+
+  void _completeUnlockRemoval() {
+    if (widget.onBlockRemoved != null) {
+      widget.onBlockRemoved!();
+    }
+    Navigator.of(context).pop();
   }
 
   /// Agregar 10 minutos más al límite del día actual
@@ -497,6 +700,95 @@ class _UsageLimitBlockedScreenState extends State<UsageLimitBlockedScreen>
                       ),
                       const SizedBox(height: 32),
 
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: _suggestedActivity.color.withValues(alpha: 0.6),
+                            width: 1.2,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Sugerencia de reemplazo',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 15,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 18,
+                                  backgroundColor: _suggestedActivity.color.withValues(alpha: 0.22),
+                                  child: Icon(_suggestedActivity.icon, color: _suggestedActivity.color),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        _suggestedActivity.title,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        _suggestedActivity.subtitle,
+                                        style: TextStyle(
+                                          color: Colors.white.withValues(alpha: 0.8),
+                                          fontSize: 12.5,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton.icon(
+                                    onPressed: () {
+                                      setState(() {
+                                        _suggestedActivity = _pickActivitySuggestion();
+                                      });
+                                    },
+                                    icon: const Icon(Icons.shuffle, size: 16),
+                                    label: const Text('Otra opción'),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    onPressed: () {
+                                      CustomSnackBar.showTheme(
+                                        context,
+                                        'Excelente. Cambiar de acción ahora te ahorra un desbloqueo impulsivo.',
+                                        icon: Icons.task_alt,
+                                      );
+                                    },
+                                    icon: const Icon(Icons.play_arrow, size: 16),
+                                    label: const Text('La haré'),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
                       Row(
                         children: [
                           if (widget.showDismissButton) ...[
@@ -522,12 +814,7 @@ class _UsageLimitBlockedScreenState extends State<UsageLimitBlockedScreen>
                                     button: true,
                                     label: 'Quitar bloqueo y cerrar',
                                     child: InkWell(
-                                      onTap: () {
-                                        if (widget.onBlockRemoved != null) {
-                                          widget.onBlockRemoved!();
-                                        }
-                                        Navigator.of(context).pop();
-                                      },
+                                      onTap: _handleRemoveBlockTap,
                                       borderRadius: BorderRadius.circular(16),
                                       child: const Center(
                                         child: Text(
@@ -618,7 +905,9 @@ class _UsageLimitBlockedScreenState extends State<UsageLimitBlockedScreen>
 
                       // Texto informativo
                       Text(
-                        'Este tiempo extra solo aplica para hoy',
+                        _strictModeEnabled
+                            ? 'Modo estricto activo: desbloqueo con espera y micro-tarea'
+                            : 'Este tiempo extra solo aplica para hoy',
                         style: TextStyle(
                           fontSize: 12,
                           color: Colors.white.withValues(alpha: 0.6),
@@ -636,5 +925,21 @@ class _UsageLimitBlockedScreenState extends State<UsageLimitBlockedScreen>
       ),
     );
   }
+}
+
+class _ActivitySuggestion {
+  final String id;
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color color;
+
+  const _ActivitySuggestion({
+    required this.id,
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.color,
+  });
 }
 
