@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:nofacezone/src/Services/RewardService.dart';
 import 'package:nofacezone/src/Services/PreferencesService.dart';
@@ -20,7 +21,20 @@ class PointsService {
   static const int pointsCompleteProfile = 25; // Puntos por completar perfil
   static const int pointsUpdateProfile = 5; // Puntos por actualizar perfil
   static const int pointsActivityCompletion = 3; // Puntos por completar actividad sugerida
-  static const int maxActivityCompletionsPerDay = 3; // Límite de actividades con puntos por día
+  static const int maxActivityCompletionsPerDay = 6; // Límite de actividades con puntos por día
+  static const int antiRelapseBonusPoints = 8; // Bonus cuando evita recaída
+
+  static const String _activityPointsDayPrefix = 'activity_points_day_';
+  static const String _activityPointsCountPrefix = 'activity_points_count_';
+  static const String _activityPointsMapPrefix = 'activity_points_map_';
+  static const String _antiRelapseBonusDayPrefix = 'anti_relapse_bonus_day_';
+
+  static String _todayKey() {
+    final today = DateTime.now();
+    final month = today.month.toString().padLeft(2, '0');
+    final day = today.day.toString().padLeft(2, '0');
+    return '${today.year}-$month-$day';
+  }
 
   // ============================================
   // MÉTODOS PARA OTORGAR PUNTOS
@@ -205,37 +219,105 @@ class PointsService {
     }
   }
 
-  /// Otorgar puntos por completar actividad recomendada (con límite diario).
-  static Future<void> awardActivityCompletionPoints() async {
+  static int _activityBasePointsByType(String activityId) {
+    switch (activityId) {
+      case 'walk':
+      case 'tidy':
+      case 'learn':
+        return 5;
+      case 'stretch':
+      case 'read':
+      case 'journal':
+      case 'plan_day':
+        return 4;
+      default:
+        return pointsActivityCompletion;
+    }
+  }
+
+  static Future<int> _streakMultiplierScaled() async {
+    final streak = await getConsecutiveDays();
+    if (streak >= 30) return 130;
+    if (streak >= 14) return 120;
+    if (streak >= 7) return 110;
+    return 100;
+  }
+
+  static int _repetitionDamping(int basePoints, int repeatedCountToday) {
+    if (repeatedCountToday <= 0) return basePoints;
+    if (repeatedCountToday == 1) return (basePoints * 0.8).round().clamp(1, basePoints);
+    return (basePoints * 0.5).round().clamp(1, basePoints);
+  }
+
+  /// Otorgar puntos por completar actividad recomendada (con límite diario y anti-farm).
+  static Future<void> awardActivityCompletionPoints({
+    String activityId = 'generic',
+    int activityMinutes = 5,
+  }) async {
     try {
       final authUser = _supabase.auth.currentUser;
       if (authUser == null) return;
 
-      final today = DateTime.now();
-      final todayKey = '${today.year}-${today.month}-${today.day}';
-      final dayKey = 'activity_points_day_${authUser.id}';
-      final countKey = 'activity_points_count_${authUser.id}';
+      final todayKey = _todayKey();
+      final dayKey = '$_activityPointsDayPrefix${authUser.id}';
+      final countKey = '$_activityPointsCountPrefix${authUser.id}';
+      final mapKey = '$_activityPointsMapPrefix${authUser.id}';
 
       final savedDay = PreferencesService.getString(dayKey);
       var count = int.tryParse(PreferencesService.getString(countKey) ?? '0') ?? 0;
+      final rawMap = PreferencesService.getString(mapKey);
+      final Map<String, int> repetitionMap = <String, int>{};
+      if (rawMap != null && rawMap.isNotEmpty) {
+        try {
+          final decoded = jsonDecode(rawMap);
+          if (decoded is Map) {
+            decoded.forEach((key, value) {
+              repetitionMap[key.toString()] = (value as num).toInt();
+            });
+          }
+        } catch (_) {}
+      }
 
       if (savedDay != todayKey) {
         await PreferencesService.setString(dayKey, todayKey);
         count = 0;
+        repetitionMap.clear();
       }
 
       if (count >= maxActivityCompletionsPerDay) {
         return;
       }
 
+      final streakMultiplier = await _streakMultiplierScaled();
+      final basePoints = _activityBasePointsByType(activityId) + (activityMinutes >= 10 ? 1 : 0);
+      final repeatedCountToday = repetitionMap[activityId] ?? 0;
+      final damped = _repetitionDamping(basePoints, repeatedCountToday);
+      final finalPoints = ((damped * streakMultiplier) / 100).round().clamp(1, 20);
+
       await RewardService.addPoints(
-        pointsActivityCompletion,
-        description: 'Actividad recomendada completada',
+        finalPoints,
+        description: 'Actividad completada ($activityId)',
       );
 
       count += 1;
+      repetitionMap[activityId] = repeatedCountToday + 1;
       await PreferencesService.setString(countKey, count.toString());
-      debugPrint('✅ Puntos por actividad completada: $pointsActivityCompletion ($count/$maxActivityCompletionsPerDay)');
+      await PreferencesService.setString(mapKey, jsonEncode(repetitionMap));
+
+      final blockedSessions = PreferencesService.getBlockedSessionsCount();
+      if (blockedSessions > 0) {
+        final antiRelapseDayKey = '$_antiRelapseBonusDayPrefix${authUser.id}';
+        final antiRelapseAwardedDay = PreferencesService.getString(antiRelapseDayKey);
+        if (antiRelapseAwardedDay != todayKey) {
+          await RewardService.addPoints(
+            antiRelapseBonusPoints,
+            description: 'Bonus por evitar recaida impulsiva',
+          );
+          await PreferencesService.setString(antiRelapseDayKey, todayKey);
+        }
+      }
+
+      debugPrint('✅ Puntos por actividad completada: $finalPoints ($count/$maxActivityCompletionsPerDay)');
     } catch (e) {
       debugPrint('Error al otorgar puntos por actividad completada: $e');
     }
@@ -307,5 +389,75 @@ class PointsService {
       return 0;
     }
   }
+
+  static Future<GamificationStats> getGamificationStats() async {
+    try {
+      final points = await RewardService.getUserPoints();
+      final totalPoints = points?['puntos_totales'] as int? ?? 0;
+      final currentPoints = points?['puntos_actuales'] as int? ?? 0;
+      final streak = await getConsecutiveDays();
+      final level = (totalPoints ~/ 250) + 1;
+      final currentLevelBase = (level - 1) * 250;
+      final nextLevelAt = level * 250;
+      final levelProgress = totalPoints <= 0
+          ? 0.0
+          : ((totalPoints - currentLevelBase) / 250).clamp(0.0, 1.0);
+      final dailyCapProgress = _getDailyActivityCapProgress();
+
+      return GamificationStats(
+        totalPoints: totalPoints,
+        currentPoints: currentPoints,
+        streakDays: streak,
+        level: level,
+        nextLevelAtTotalPoints: nextLevelAt,
+        progressToNextLevel: levelProgress,
+        dailyActivityCapProgress: dailyCapProgress,
+      );
+    } catch (_) {
+      return const GamificationStats.empty();
+    }
+  }
+
+  static double _getDailyActivityCapProgress() {
+    final authUser = _supabase.auth.currentUser;
+    if (authUser == null) return 0.0;
+
+    final todayKey = _todayKey();
+    final dayKey = '$_activityPointsDayPrefix${authUser.id}';
+    final countKey = '$_activityPointsCountPrefix${authUser.id}';
+    final savedDay = PreferencesService.getString(dayKey);
+    if (savedDay != todayKey) return 0.0;
+    final count = int.tryParse(PreferencesService.getString(countKey) ?? '0') ?? 0;
+    return (count / maxActivityCompletionsPerDay).clamp(0.0, 1.0);
+  }
+}
+
+class GamificationStats {
+  final int totalPoints;
+  final int currentPoints;
+  final int streakDays;
+  final int level;
+  final int nextLevelAtTotalPoints;
+  final double progressToNextLevel;
+  final double dailyActivityCapProgress;
+
+  const GamificationStats({
+    required this.totalPoints,
+    required this.currentPoints,
+    required this.streakDays,
+    required this.level,
+    required this.nextLevelAtTotalPoints,
+    required this.progressToNextLevel,
+    required this.dailyActivityCapProgress,
+  });
+
+  const GamificationStats.empty()
+      : totalPoints = 0,
+        currentPoints = 0,
+        streakDays = 0,
+        level = 1,
+        nextLevelAtTotalPoints = 250,
+        progressToNextLevel = 0.0,
+        dailyActivityCapProgress = 0.0;
 }
 

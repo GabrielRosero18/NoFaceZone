@@ -2,8 +2,10 @@ import 'dart:math';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:ui';
+import 'package:geolocator/geolocator.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:provider/provider.dart';
 import 'package:nofacezone/src/Custom/AppColors.dart';
 import 'package:nofacezone/src/Custom/AppLocalizations.dart';
@@ -15,6 +17,7 @@ import 'package:nofacezone/src/Providers/AppProvider.dart';
 import 'package:nofacezone/src/Services/PointsService.dart';
 import 'package:nofacezone/src/Services/UsageLimitsService.dart';
 import 'package:nofacezone/src/Services/PreferencesService.dart';
+import 'package:nofacezone/src/Services/NearbyRecommendationsService.dart';
 import 'package:nofacezone/src/Screen/UsageLimitBlockedScreen.dart';
 import 'package:nofacezone/src/Screen/EditProfileScreen.dart';
 import 'package:nofacezone/src/Custom/Library.dart';
@@ -66,11 +69,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
   int _activityShuffleSeed = 0;
   String _activityStateDateKey = '';
   Map<String, int> _activityCompletionByDay = <String, int>{};
+  bool _isLoadingNearbyPlaces = false;
+  String? _nearbyPlacesError;
+  List<NearbyPlace> _nearbyPlaces = <NearbyPlace>[];
+  bool _nearbyPermissionDeniedForever = false;
+  bool _nearbyLocationServiceDisabled = false;
+  String _nearbyCategoryFilter = 'all';
+  bool _nearbyShowExtendedList = false;
+  Set<String> _favoriteNearbyPlaceIds = <String>{};
 
   static const String _activityDatePrefKey = 'activity_recommendations_date_v1';
   static const String _activityCompletedPrefKey = 'activity_recommendations_completed_v1';
   static const String _activitySeedPrefKey = 'activity_recommendations_seed_v1';
   static const String _activityHistoryPrefKey = 'activity_recommendations_history_v1';
+  static const String _nearbyFavoritesPrefKey = 'nearby_places_favorites_v1';
 
   void _hapticLight() => HapticFeedback.selectionClick();
   void _hapticMedium() => HapticFeedback.mediumImpact();
@@ -308,7 +320,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     });
     await _saveActivityState();
     if (!isDone) {
-      await PointsService.awardActivityCompletionPoints();
+      await PointsService.awardActivityCompletionPoints(
+        activityId: rec.id,
+        activityMinutes: rec.minutes,
+      );
     }
     if (!mounted) return;
     CustomSnackBar.showTheme(
@@ -333,6 +348,111 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       _activeActivityRecommendations = next;
     }
     await _saveActivityState();
+  }
+
+  Future<void> _loadNearbyRecommendations({bool forceRefresh = false}) async {
+    if (_isLoadingNearbyPlaces) return;
+    setState(() {
+      _isLoadingNearbyPlaces = true;
+      _nearbyPlacesError = null;
+    });
+
+    try {
+      final result = await NearbyRecommendationsService.fetchNearbyWellbeingPlaces(
+        forceRefresh: forceRefresh,
+      );
+      if (!mounted) return;
+      setState(() {
+        _nearbyPlaces = result.places;
+        _nearbyPlacesError = result.errorMessage;
+        _nearbyPermissionDeniedForever = result.isPermissionDeniedForever;
+        _nearbyLocationServiceDisabled = result.isLocationServiceDisabled;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _nearbyPlacesError = 'No se pudieron cargar lugares cercanos.';
+        _nearbyPermissionDeniedForever = false;
+        _nearbyLocationServiceDisabled = false;
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingNearbyPlaces = false;
+        });
+      } else {
+        _isLoadingNearbyPlaces = false;
+      }
+    }
+  }
+
+  Future<void> _loadNearbyFavorites() async {
+    await PreferencesService.init();
+    final raw = PreferencesService.getString(_nearbyFavoritesPrefKey);
+    if (raw == null || raw.isEmpty) return;
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is List) {
+        final ids = decoded.map((e) => e.toString()).toSet();
+        if (!mounted) {
+          _favoriteNearbyPlaceIds = ids;
+          return;
+        }
+        setState(() {
+          _favoriteNearbyPlaceIds = ids;
+        });
+      }
+    } catch (_) {}
+  }
+
+  String _nearbyPlaceId(NearbyPlace place) {
+    return '${place.name}|${place.lat.toStringAsFixed(5)}|${place.lng.toStringAsFixed(5)}';
+  }
+
+  Future<void> _toggleNearbyFavorite(NearbyPlace place) async {
+    final placeId = _nearbyPlaceId(place);
+    final updated = Set<String>.from(_favoriteNearbyPlaceIds);
+    if (updated.contains(placeId)) {
+      updated.remove(placeId);
+    } else {
+      updated.add(placeId);
+    }
+    if (mounted) {
+      setState(() {
+        _favoriteNearbyPlaceIds = updated;
+      });
+    } else {
+      _favoriteNearbyPlaceIds = updated;
+    }
+    await PreferencesService.setString(
+      _nearbyFavoritesPrefKey,
+      jsonEncode(_favoriteNearbyPlaceIds.toList()),
+    );
+  }
+
+  Future<void> _clearNearbyFavorites() async {
+    if (mounted) {
+      setState(() {
+        _favoriteNearbyPlaceIds = <String>{};
+      });
+    } else {
+      _favoriteNearbyPlaceIds = <String>{};
+    }
+    await PreferencesService.setString(_nearbyFavoritesPrefKey, jsonEncode(<String>[]));
+  }
+
+  Future<void> _openPlaceInMaps(NearbyPlace place) async {
+    final lat = place.lat.toStringAsFixed(6);
+    final lng = place.lng.toStringAsFixed(6);
+    final uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng');
+    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!launched && mounted) {
+      CustomSnackBar.showWarning(
+        context,
+        'No se pudo abrir el mapa en este momento.',
+        icon: Icons.map_outlined,
+      );
+    }
   }
 
   Widget _buildActivityRecommendations() {
@@ -461,6 +581,328 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         ],
       ),
     );
+  }
+
+  Widget _buildNearbyRecommendations() {
+    final app = Provider.of<AppProvider>(context, listen: false);
+    final filtered = _nearbyCategoryFilter == 'all'
+        ? _nearbyPlaces
+        : _nearbyPlaces.where((p) => p.category == _nearbyCategoryFilter).toList();
+    final favorites = filtered.where((p) => _favoriteNearbyPlaceIds.contains(_nearbyPlaceId(p))).toList();
+    final nonFavorites = filtered.where((p) => !_favoriteNearbyPlaceIds.contains(_nearbyPlaceId(p))).toList();
+    final ordered = <NearbyPlace>[...favorites, ...nonFavorites];
+    final visible = _nearbyShowExtendedList ? ordered.take(12).toList() : ordered.take(6).toList();
+    final hasNoResultsForFilter = !_isLoadingNearbyPlaces && _nearbyPlaces.isNotEmpty && ordered.isEmpty;
+    final usageRatio = app.dailyUsageLimit > 0
+        ? (app.todayUsageMinutes / app.dailyUsageLimit)
+        : 0.0;
+    final nearbyMotivation = _buildNearbyMotivationalCopy(
+      filter: _nearbyCategoryFilter,
+      usageRatio: usageRatio,
+    );
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.textLight.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.textLight.withValues(alpha: 0.25)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            '📍 Lugares cercanos para reemplazar el hábito',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textLight,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _nearbyPlacesError ?? 'Parques, bibliotecas y espacios saludables cerca de ti.',
+            style: TextStyle(
+              fontSize: 13,
+              color: AppColors.textLight.withValues(alpha: 0.82),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            nearbyMotivation,
+            style: TextStyle(
+              fontSize: 12,
+              color: AppColors.textLight.withValues(alpha: 0.72),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (favorites.isNotEmpty)
+            Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.pinkAccent.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.pinkAccent.withValues(alpha: 0.32)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.favorite, color: Colors.pinkAccent),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Favoritos cercanos: ${favorites.length}',
+                      style: const TextStyle(
+                        color: AppColors.textLight,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: _clearNearbyFavorites,
+                    child: const Text('Limpiar favoritos'),
+                  ),
+                ],
+              ),
+            ),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _buildNearbyFilterChip('all', 'Todo'),
+              _buildNearbyFilterChip('park', 'Parques'),
+              _buildNearbyFilterChip('library', 'Bibliotecas'),
+              _buildNearbyFilterChip('gym', 'Deporte'),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (_isLoadingNearbyPlaces)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            )
+          else if (_nearbyPlaces.isEmpty)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextButton.icon(
+                  onPressed: _loadNearbyRecommendations,
+                  icon: const Icon(Icons.my_location),
+                  label: const Text('Activar ubicación y recomendar lugares'),
+                ),
+                if (_nearbyPermissionDeniedForever) ...[
+                  const SizedBox(height: 6),
+                  FilledButton.icon(
+                    onPressed: Geolocator.openAppSettings,
+                    icon: const Icon(Icons.settings),
+                    label: const Text('Abrir configuración de permisos'),
+                  ),
+                ] else if (_nearbyLocationServiceDisabled) ...[
+                  const SizedBox(height: 6),
+                  FilledButton.icon(
+                    onPressed: Geolocator.openLocationSettings,
+                    icon: const Icon(Icons.location_off),
+                    label: const Text('Abrir ajustes de ubicación'),
+                  ),
+                ],
+              ],
+            )
+          else
+            ...visible.map((place) {
+              return Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.textLight.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      NearbyRecommendationsService.iconForCategory(place.category),
+                      color: AppColors.accentBlue,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            place.name,
+                            style: const TextStyle(
+                              color: AppColors.textLight,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          Text(
+                            place.address,
+                            style: TextStyle(
+                              color: AppColors.textLight.withValues(alpha: 0.75),
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: AppColors.accentBlue.withValues(alpha: 0.18),
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: Text(
+                                  NearbyRecommendationsService.categoryLabel(place.category),
+                                  style: const TextStyle(
+                                    color: AppColors.textLight,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                NearbyRecommendationsService.distanceLabel(place.distanceMeters),
+                                style: TextStyle(
+                                  color: AppColors.textLight.withValues(alpha: 0.78),
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Favorito',
+                      onPressed: () => _toggleNearbyFavorite(place),
+                      icon: Icon(
+                        _favoriteNearbyPlaceIds.contains(_nearbyPlaceId(place))
+                            ? Icons.favorite
+                            : Icons.favorite_border,
+                        color: _favoriteNearbyPlaceIds.contains(_nearbyPlaceId(place))
+                            ? Colors.pinkAccent
+                            : AppColors.textLight,
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Abrir en mapa',
+                      onPressed: () => _openPlaceInMaps(place),
+                      icon: const Icon(Icons.open_in_new, color: AppColors.textLight),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          if (hasNoResultsForFilter)
+            Container(
+              margin: const EdgeInsets.only(top: 8),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.textLight.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Text(
+                'No hay resultados en este filtro para tu zona. Prueba "Todo" o recarga.',
+                style: TextStyle(color: AppColors.textLight),
+              ),
+            ),
+          if (!_isLoadingNearbyPlaces && _nearbyCategoryFilter != 'all')
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: () => _loadNearbyRecommendations(forceRefresh: true),
+                icon: const Icon(Icons.refresh),
+                label: const Text('Recargar esta categoría'),
+              ),
+            ),
+          if (!_isLoadingNearbyPlaces && ordered.length > 6)
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: () {
+                  setState(() {
+                    _nearbyShowExtendedList = !_nearbyShowExtendedList;
+                  });
+                },
+                icon: Icon(_nearbyShowExtendedList ? Icons.expand_less : Icons.expand_more),
+                label: Text(_nearbyShowExtendedList ? 'Ver menos' : 'Ver más lugares'),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNearbyFilterChip(String value, String label) {
+    final selected = _nearbyCategoryFilter == value;
+    return ChoiceChip(
+      label: Text(label),
+      selected: selected,
+      onSelected: (_) {
+        setState(() {
+          _nearbyCategoryFilter = value;
+          _nearbyShowExtendedList = false;
+        });
+      },
+      selectedColor: AppColors.textLight,
+      backgroundColor: AppColors.textLight.withValues(alpha: 0.12),
+      visualDensity: const VisualDensity(horizontal: -2, vertical: -2),
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+      labelStyle: TextStyle(
+        color: selected ? AppColors.primaryBlue : AppColors.textLight,
+        fontWeight: FontWeight.w700,
+        fontSize: 12,
+      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+    );
+  }
+
+  String _buildNearbyMotivationalCopy({
+    required String filter,
+    required double usageRatio,
+  }) {
+    final highUsage = usageRatio >= 0.85;
+    final mediumUsage = usageRatio >= 0.6;
+
+    switch (filter) {
+      case 'park':
+        if (highUsage) {
+          return 'Has usado mucho Facebook hoy; salir a este parque puede romper el impulso y recargar tu enfoque.';
+        }
+        if (mediumUsage) {
+          return 'Un paseo corto por un parque puede ayudarte a mantener el control del día.';
+        }
+        return 'Excelente ritmo: parque + aire libre para sostener tu progreso.';
+      case 'library':
+        if (highUsage) {
+          return 'Si hoy te consumió Facebook, una biblioteca cercana puede darte un reset mental potente.';
+        }
+        if (mediumUsage) {
+          return 'Biblioteca = entorno sin ruido digital para volver a lo importante.';
+        }
+        return 'Buen momento para invertir ese tiempo en lectura o estudio.';
+      case 'gym':
+        if (highUsage) {
+          return 'Cuando sube el uso de Facebook, mover el cuerpo corta el ciclo rápido. Dale a deporte.';
+        }
+        if (mediumUsage) {
+          return 'Una sesión corta de deporte puede bajar ansiedad y evitar recaídas.';
+        }
+        return 'Sigue así: actividad física para reforzar el hábito saludable.';
+      default:
+        if (highUsage) {
+          return 'Has usado bastante Facebook hoy; elegir un lugar cercano ahora puede salvar tu día.';
+        }
+        if (mediumUsage) {
+          return 'Vas a tiempo: elige un lugar cercano y cambia el impulso por una acción real.';
+        }
+        return 'Buen control hoy. Mantén la racha con una salida corta y consciente.';
+    }
   }
 
   List<int> _last7DaysActivityStats() {
@@ -636,6 +1078,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
           if (mounted) setState(() {});
         });
       }
+      _loadNearbyFavorites();
+      _loadNearbyRecommendations();
     });
   }
 
@@ -894,6 +1338,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     if (localizations != null) {
       await _syncActivityRecommendations(localizations, appProvider);
     }
+    await _loadNearbyRecommendations();
   }
 
   /// Mostrar pantalla de bloqueo cuando se alcanza el límite
@@ -1094,6 +1539,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                             const SizedBox(height: 24),
                             _buildStaggeredSection(index: 3, child: _buildActivityRecommendations()),
                             const SizedBox(height: 24),
+                            _buildStaggeredSection(index: 4, child: _buildNearbyRecommendations()),
+                            const SizedBox(height: 24),
                           ],
                         ),
                       )
@@ -1123,6 +1570,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
 
                                 // Recomendaciones de actividad
                                 _buildStaggeredSection(index: 3, child: _buildActivityRecommendations()),
+                                const SizedBox(height: 24),
+                                _buildStaggeredSection(index: 4, child: _buildNearbyRecommendations()),
                                 const SizedBox(height: 24),
                               ],
                             ),

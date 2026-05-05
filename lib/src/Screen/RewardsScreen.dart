@@ -25,6 +25,7 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
   static const String _clockStylePrefKey = 'time_clock_style_v1';
   late TabController _tabController;
   int userPoints = 0; // Puntos del usuario
+  GamificationStats _gamificationStats = const GamificationStats.empty();
   bool _isLoading = true;
   List<Map<String, dynamic>> _allRewards = [];
   List<Map<String, dynamic>> _userRewards = [];
@@ -65,6 +66,7 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
       if (pointsData != null) {
         userPoints = pointsData['puntos_actuales'] ?? 0;
       }
+      _gamificationStats = await PointsService.getGamificationStats();
 
       // Cargar todas las recompensas
       _allRewards = await RewardService.getAllRewards();
@@ -116,6 +118,7 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
       if (pointsData != null) {
         userPoints = pointsData['puntos_actuales'] ?? 0;
       }
+      _gamificationStats = await PointsService.getGamificationStats();
       _userRewards = await RewardService.getUserRewards();
       if (mounted) {
         setState(() {});
@@ -229,8 +232,9 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
   }
 
   Widget _buildPointsBar() {
-    final pointsToNextTier = 1000 - (userPoints % 1000);
-    final progress = (userPoints % 1000) / 1000;
+    final pointsToNextTier = (_gamificationStats.nextLevelAtTotalPoints - _gamificationStats.totalPoints)
+        .clamp(0, 250);
+    final progress = _gamificationStats.progressToNextLevel;
     return Container(
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(18),
@@ -285,11 +289,20 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
                           ),
                         ),
                         Text(
-                          '$userPoints ${localizations.pointsText}',
+                          '${_gamificationStats.currentPoints} ${localizations.pointsText}',
                           style: const TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
                             color: AppColors.textLight,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Nivel ${_gamificationStats.level} • Racha ${_gamificationStats.streakDays} días',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textLight.withValues(alpha: 0.82),
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                         const SizedBox(height: 6),
@@ -297,7 +310,7 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
                           borderRadius: BorderRadius.circular(10),
                           child: LinearProgressIndicator(
                             minHeight: 7,
-                            value: (userPoints % 1000) / 1000,
+                            value: progress,
                             backgroundColor: AppColors.textLight.withValues(alpha: 0.16),
                             valueColor: AlwaysStoppedAnimation<Color>(AppColors.accentBlue),
                           ),
@@ -316,7 +329,7 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
             builder: (context) {
               final localizations = AppLocalizations.of(context)!;
               return Text(
-                'Te faltan $pointsToNextTier ${localizations.pointsText} para el siguiente nivel',
+                'Te faltan $pointsToNextTier ${localizations.pointsText} para nivel ${_gamificationStats.level + 1}',
                 style: TextStyle(
                   fontSize: 12,
                   color: AppColors.textLight.withValues(alpha: 0.85),
@@ -333,6 +346,15 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
               value: progress,
               backgroundColor: AppColors.textLight.withValues(alpha: 0.16),
               valueColor: AlwaysStoppedAnimation<Color>(AppColors.accentBlue),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Cap diario actividades: ${(_gamificationStats.dailyActivityCapProgress * 100).round()}%',
+            style: TextStyle(
+              fontSize: 11.5,
+              color: AppColors.textLight.withValues(alpha: 0.75),
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
