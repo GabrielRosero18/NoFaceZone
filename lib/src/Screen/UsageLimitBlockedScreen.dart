@@ -254,7 +254,7 @@ class _UsageLimitBlockedScreenState extends State<UsageLimitBlockedScreen>
                           _strictCountdownTimer?.cancel();
                           final completed = PreferencesService.prefs.getInt(_strictUnlockCompletionsKey) ?? 0;
                           await PreferencesService.prefs.setInt(_strictUnlockCompletionsKey, completed + 1);
-                          if (!mounted) return;
+                          if (!dialogContext.mounted || !mounted) return;
                           Navigator.of(dialogContext).pop();
                           _completeUnlockRemoval();
                         }
