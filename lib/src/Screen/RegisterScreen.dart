@@ -6,7 +6,6 @@ import 'package:nofacezone/src/Custom/AppLocalizations.dart';
 import 'package:nofacezone/src/Custom/AuthWidgets.dart';
 import 'package:nofacezone/src/Custom/ProAnimations.dart';
 import 'package:nofacezone/src/Services/UserService.dart';
-import 'package:nofacezone/src/Services/PreferencesService.dart';
 import 'package:nofacezone/src/Providers/AppProvider.dart';
 import 'package:nofacezone/src/Providers/UserProvider.dart';
 import 'package:nofacezone/src/Custom/Library.dart';
@@ -372,29 +371,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     onPressed: () async {
                       _hapticTap();
                       Navigator.of(ctx).pop();
-                      final userProvider = Provider.of<UserProvider>(context, listen: false);
-                      final auth = result['authUser'];
-                      final userRow = result['user'] as Map<String, dynamic>;
-                      final ok = await userProvider.login(
-                        _emailController.text.trim(),
-                        _passwordController.text,
-                        userData: userRow,
-                        authUser: {
-                          'id': auth.id as String,
-                          'email': auth.email as String?,
-                          'email_confirmed_at': auth.emailConfirmedAt?.toString(),
-                        },
+                      final email = _emailController.text.trim();
+                      await Provider.of<UserProvider>(context, listen: false).logout();
+                      if (!mounted) return;
+                      navigate(
+                        context,
+                        CustomScreen.login,
+                        finishCurrent: true,
+                        loginInitialEmail: email,
+                        loginAfterRegistration: true,
                       );
-                      if (!mounted) return;
-                      if (!ok) {
-                        Navigator.of(context).pop();
-                        return;
-                      }
-                      await PreferencesService.init();
-                      if (!mounted) return;
-                      await Provider.of<AppProvider>(context, listen: false).refreshUsageLimits();
-                      if (!mounted) return;
-                      navigate(context, CustomScreen.firstTimeSetup, finishCurrent: true);
                     },
                     style: FilledButton.styleFrom(
                       backgroundColor: Colors.transparent,
@@ -405,7 +391,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
                     child: Text(
-                      localizations.firstSetupContinue,
+                      localizations.registrationGoToLogin,
                       style: const TextStyle(
                         color: AppColors.textLight,
                         fontWeight: FontWeight.w600,

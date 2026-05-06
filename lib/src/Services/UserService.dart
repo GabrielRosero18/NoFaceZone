@@ -21,7 +21,13 @@ class UserService {
     bool requireEmailConfirmation = false,
   }) async {
     try {
-      // Primero registrar el usuario en Supabase Auth (SIN confirmación de email)
+      // Evita mezclar cuentas: si ya había sesión, signUp puede no reemplazarla y
+      // la app quedaría con datos del usuario nuevo pero JWT de otro usuario.
+      try {
+        await _supabase.auth.signOut();
+      } catch (_) {}
+
+      // Registrar el usuario en Supabase Auth (SIN confirmación de email)
       final AuthResponse authResponse = await _supabase.auth.signUp(
         email: email,
         password: password,
@@ -58,6 +64,12 @@ class UserService {
         debugPrint('Error al desbloquear recompensas por defecto: $e');
         // No fallar el registro si esto falla
       }
+
+      // Cerrar sesión para que el usuario entre por "Iniciar sesión" con la cuenta nueva.
+      // Así el JWT y SharedPreferences se alinean en un único flujo (loginUser).
+      try {
+        await _supabase.auth.signOut();
+      } catch (_) {}
 
       return {
         'success': true,

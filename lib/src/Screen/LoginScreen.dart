@@ -15,7 +15,17 @@ import 'package:nofacezone/src/Services/PreferencesService.dart';
 import 'package:nofacezone/src/auth/auth_form_validators.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({
+    super.key,
+    this.initialEmail,
+    this.justRegistered = false,
+  });
+
+  /// Email opcional (p. ej. tras registrarse).
+  final String? initialEmail;
+
+  /// Muestra un mensaje de cuenta creada al abrir la pantalla.
+  final bool justRegistered;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -30,6 +40,28 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool _passwordVisible = false;
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final email = widget.initialEmail?.trim();
+    if (email != null && email.isNotEmpty) {
+      _emailController.text = email;
+    }
+    if (widget.justRegistered) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final loc = AppLocalizations.of(context);
+        if (loc == null) return;
+        CustomSnackBar.showSuccess(
+          context,
+          loc.accountCreatedMessage,
+          icon: Icons.check_circle_rounded,
+          duration: const Duration(milliseconds: 3500),
+        );
+      });
+    }
+  }
 
   void _hapticTap() => HapticFeedback.selectionClick();
   void _hapticSuccess() => HapticFeedback.mediumImpact();

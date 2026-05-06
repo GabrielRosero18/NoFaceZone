@@ -36,7 +36,13 @@ enum Preference {
 }
 
 // Navegación con transición personalizada
-void navigate(BuildContext mContext, CustomScreen mScreen, {bool finishCurrent = false}) {
+void navigate(
+  BuildContext mContext,
+  CustomScreen mScreen, {
+  bool finishCurrent = false,
+  String? loginInitialEmail,
+  bool loginAfterRegistration = false,
+}) {
   late final Widget target;
   switch (mScreen) {
     case CustomScreen.splash:
@@ -61,7 +67,10 @@ void navigate(BuildContext mContext, CustomScreen mScreen, {bool finishCurrent =
       target = const RewardsScreen();
       break;
     case CustomScreen.login:
-      target = const LoginScreen();
+      target = LoginScreen(
+        initialEmail: loginInitialEmail,
+        justRegistered: loginAfterRegistration,
+      );
       break;
     case CustomScreen.register:
       target = const RegisterScreen();

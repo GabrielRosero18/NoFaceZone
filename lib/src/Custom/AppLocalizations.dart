@@ -598,6 +598,7 @@ class AppLocalizations {
       'registration_success': '¡Registro exitoso!',
       'welcome_to_app': '¡Bienvenido a NoFaceZone!',
       'account_created_message': 'Tu cuenta ha sido creada correctamente. Ahora puedes iniciar sesión y comenzar a controlar tu tiempo en Facebook.',
+      'registration_go_to_login': 'Ir a iniciar sesión',
       'registration_error': 'Error en el registro',
       'unknown_error': 'Error desconocido',
       'minimum_6_characters': 'Mínimo 6 caracteres',
@@ -1202,6 +1203,7 @@ class AppLocalizations {
       'registration_success': 'Registration successful!',
       'welcome_to_app': 'Welcome to NoFaceZone!',
       'account_created_message': 'Your account has been created successfully. You can now sign in and start controlling your time on Facebook.',
+      'registration_go_to_login': 'Go to sign in',
       'registration_error': 'Registration error',
       'unknown_error': 'Unknown error',
       'minimum_6_characters': 'Minimum 6 characters',
@@ -1641,6 +1643,7 @@ class AppLocalizations {
   String get registrationSuccess => translate('registration_success');
   String get welcomeToApp => translate('welcome_to_app');
   String get accountCreatedMessage => translate('account_created_message');
+  String get registrationGoToLogin => translate('registration_go_to_login');
   String get registrationError => translate('registration_error');
   String get unknownError => translate('unknown_error');
   String get minimum6Characters => translate('minimum_6_characters');
