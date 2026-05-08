@@ -1,5 +1,6 @@
 import 'dart:ui';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -204,6 +205,11 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   bool _achWeeklyGoal = false;
   bool _ach100hFree = false;
 
+  bool _isDesktopWeb(BuildContext context) {
+    if (!kIsWeb) return false;
+    return MediaQuery.of(context).size.width >= 1024;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -211,6 +217,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   }
 
   Future<void> _loadStatistics() async {
+    if (!mounted) return;
     setState(() {
       _loading = true;
       _loadError = null;
@@ -1035,15 +1042,27 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     required IconData icon,
     required VoidCallback? onTap,
   }) {
-    return InkWell(
+    final isDesktopWeb = _isDesktopWeb(context);
+    return ProPressable(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: Ink(
+      hoverScale: 1.012,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOutCubic,
         padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 12),
         decoration: BoxDecoration(
           color: AppColors.textLight.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: AppColors.textLight.withValues(alpha: 0.2)),
+          boxShadow: isDesktopWeb && onTap != null
+              ? [
+                  BoxShadow(
+                    color: AppColors.accentBlue.withValues(alpha: 0.2),
+                    blurRadius: 12,
+                    offset: const Offset(0, 6),
+                  ),
+                ]
+              : const [],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -1348,9 +1367,17 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 
 
   Widget _buildRevealSection(int index, Widget child) {
+    final sectionChild = _isDesktopWeb(context)
+        ? ProHoverCard(
+            borderRadius: BorderRadius.circular(16),
+            hoverLift: 5,
+            hoverScale: 1.005,
+            child: child,
+          )
+        : child;
     return ProScrollReveal(
       delayMs: 35 + (index * 45),
-      child: child,
+      child: sectionChild,
     );
   }
 

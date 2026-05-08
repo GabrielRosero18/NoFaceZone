@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -30,6 +31,7 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
   List<Map<String, dynamic>> _allRewards = [];
   List<Map<String, dynamic>> _userRewards = [];
   int _lastTabIndex = 0;
+  int _activeTabIndex = 0;
   final Map<String, _RewardsFilter> _tabFilters = {
     'theme': _RewardsFilter.all,
     'font': _RewardsFilter.all,
@@ -41,21 +43,29 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
   void _hapticTap() => HapticFeedback.selectionClick();
   void _hapticSuccess() => HapticFeedback.mediumImpact();
 
+  void _handleTabControllerChanged() {
+    if (!mounted) return;
+    if (_tabController.indexIsChanging) return;
+    if (_lastTabIndex == _tabController.index) return;
+    setState(() {
+      _lastTabIndex = _tabController.index;
+      _activeTabIndex = _tabController.index;
+    });
+    _hapticTap();
+  }
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 5, vsync: this);
     _lastTabIndex = _tabController.index;
-    _tabController.addListener(() {
-      if (!_tabController.indexIsChanging && _lastTabIndex != _tabController.index) {
-        _lastTabIndex = _tabController.index;
-        _hapticTap();
-      }
-    });
+    _activeTabIndex = _tabController.index;
+    _tabController.addListener(_handleTabControllerChanged);
     _loadData();
   }
 
   Future<void> _loadData() async {
+    if (!mounted) return;
     setState(() {
       _isLoading = true;
     });
@@ -106,9 +116,11 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
     } catch (e) {
       debugPrint('Error al cargar datos de recompensas: $e');
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -134,6 +146,7 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
 
   @override
   void dispose() {
+    _tabController.removeListener(_handleTabControllerChanged);
     _tabController.dispose();
     super.dispose();
   }
@@ -209,15 +222,26 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
                   child: RefreshIndicator(
                     onRefresh: _handlePullToRefresh,
                     notificationPredicate: (_) => true,
-                    child: TabBarView(
-                      controller: _tabController,
-                      children: [
-                        _buildThemesTab(),
-                        _buildFontsTab(),
-                        _buildMessagesTab(),
-                        _buildBadgesTab(),
-                      _buildClockStylesTab(),
-                      ],
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 320),
+                      switchInCurve: Curves.easeOutCubic,
+                      switchOutCurve: Curves.easeInCubic,
+                      transitionBuilder: (child, animation) {
+                        return FadeTransition(
+                          opacity: animation,
+                          child: SlideTransition(
+                            position: Tween<Offset>(
+                              begin: const Offset(0.04, 0),
+                              end: Offset.zero,
+                            ).animate(animation),
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: KeyedSubtree(
+                        key: ValueKey<int>(_activeTabIndex),
+                        child: _buildCurrentTabContent(_activeTabIndex),
+                      ),
                     ),
                   ),
                 ),
@@ -231,11 +255,41 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
     );
   }
 
+  bool _isDesktopWeb(BuildContext context) =>
+      kIsWeb && MediaQuery.of(context).size.width >= 1024;
+
+  Widget _buildCurrentTabContent(int index) {
+    switch (index) {
+      case 0:
+        return _buildThemesTab();
+      case 1:
+        return _buildFontsTab();
+      case 2:
+        return _buildMessagesTab();
+      case 3:
+        return _buildBadgesTab();
+      case 4:
+      default:
+        return _buildClockStylesTab();
+    }
+  }
+
+  Widget _wrapInteractiveRewardCard(Widget child) {
+    if (!_isDesktopWeb(context)) return child;
+    return ProHoverCard(
+      borderRadius: BorderRadius.circular(16),
+      hoverLift: 4,
+      hoverScale: 1.004,
+      child: child,
+    );
+  }
+
   Widget _buildPointsBar() {
     final pointsToNextTier = (_gamificationStats.nextLevelAtTotalPoints - _gamificationStats.totalPoints)
         .clamp(0, 250);
     final progress = _gamificationStats.progressToNextLevel;
-    return Container(
+    final isDesktopWeb = kIsWeb && MediaQuery.of(context).size.width >= 1024;
+    final content = Container(
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -359,6 +413,13 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
           ),
         ],
       ),
+    );
+    if (!isDesktopWeb) return content;
+    return ProHoverCard(
+      borderRadius: BorderRadius.circular(20),
+      hoverLift: 5,
+      hoverScale: 1.004,
+      child: content,
     );
   }
 
@@ -761,7 +822,7 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
         final currentTheme = Provider.of<AppProvider>(context).colorTheme;
         final isSelected = currentTheme == theme.id;
 
-        return ProPressable(
+        return _wrapInteractiveRewardCard(ProPressable(
           onTap: () async {
             _hapticTap();
             await RewardService.trackRewardEvent(
@@ -1002,7 +1063,7 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
           ],
         ),
       ),
-    );
+    ));
       },
     );
   }
@@ -1192,7 +1253,7 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
         final currentFont = Provider.of<AppProvider>(context).fontFamily;
         final isSelected = currentFont == font.id;
 
-        return ProPressable(
+        return _wrapInteractiveRewardCard(ProPressable(
           onTap: () async {
             _hapticTap();
             await RewardService.trackRewardEvent(
@@ -1392,7 +1453,7 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
           ],
         ),
       ),
-        );
+        ));
       },
     );
   }
@@ -1512,7 +1573,7 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
         final activeCollections = Provider.of<AppProvider>(context).activeMessageCollections;
         final isActive = activeCollections.contains(message.id);
 
-        return ProPressable(
+        return _wrapInteractiveRewardCard(ProPressable(
           onTap: () async {
             _hapticTap();
             await RewardService.trackRewardEvent(
@@ -1752,7 +1813,7 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
         ],
         ),
       ),
-        );
+        ));
       },
     );
   }
@@ -1885,7 +1946,7 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
   }
 
   Widget _buildBadgeCard(_RewardBadge badge) {
-    return Container(
+    return _wrapInteractiveRewardCard(Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: AppColors.textLight.withValues(alpha: 0.15),
@@ -1988,7 +2049,7 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
             ),
         ],
       ),
-    );
+    ));
   }
 
   Future<String> _getCurrentClockStyle() async {
@@ -2232,7 +2293,7 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
     required _RewardClockStyle style,
     required bool isSelected,
   }) {
-    return ProPressable(
+    return _wrapInteractiveRewardCard(ProPressable(
       onTap: () async {
         _hapticTap();
         await RewardService.trackRewardEvent(
@@ -2401,7 +2462,7 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
           ],
         ),
       ),
-    );
+    ));
   }
 
   String currentThemeId(BuildContext context) =>

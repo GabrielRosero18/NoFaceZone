@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:nofacezone/src/Custom/AppColors.dart';
 import 'package:nofacezone/src/Custom/AuthTheme.dart';
+import 'package:nofacezone/src/Custom/ProAnimations.dart';
 
 class AuthScaffold extends StatelessWidget {
   final String title;
@@ -71,12 +73,26 @@ class AuthPrimaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final canHover = kIsWeb && !MediaQuery.disableAnimationsOf(context);
+    return ProPressable(
+      onTap: isLoading ? null : onPressed,
+      pressedScale: 0.985,
+      hoverScale: 1.01,
+      child: Container(
       height: 56,
       decoration: BoxDecoration(
         gradient: LinearGradient(colors: AppColors.accentGradient),
         borderRadius: BorderRadius.circular(AuthTheme.buttonRadius),
-        boxShadow: AppColors.cardShadow,
+        boxShadow: canHover
+            ? [
+                ...AppColors.cardShadow,
+                BoxShadow(
+                  color: AppColors.accentGradient.first.withValues(alpha: 0.22),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+              ]
+            : AppColors.cardShadow,
       ),
       child: FilledButton(
         onPressed: isLoading ? null : onPressed,
@@ -105,6 +121,7 @@ class AuthPrimaryButton extends StatelessWidget {
                 ),
               ),
       ),
+    ),
     );
   }
 }
@@ -162,10 +179,28 @@ class AuthGlassCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: padding ?? const EdgeInsets.all(20),
-      decoration: AuthTheme.glassCardDecoration(),
-      child: child,
+    return ProHoverCard(
+      borderRadius: BorderRadius.circular(24),
+      baseShadow: const [],
+      hoverShadow: [
+        BoxShadow(
+          color: AppColors.accentGradient.last.withValues(alpha: 0.14),
+          blurRadius: 26,
+          spreadRadius: 0,
+          offset: const Offset(0, 12),
+        ),
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.16),
+          blurRadius: 18,
+          spreadRadius: 0,
+          offset: const Offset(0, 8),
+        ),
+      ],
+      child: Container(
+        padding: padding ?? const EdgeInsets.all(20),
+        decoration: AuthTheme.glassCardDecoration(),
+        child: child,
+      ),
     );
   }
 }

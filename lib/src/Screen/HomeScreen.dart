@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:ui';
 import 'package:geolocator/geolocator.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -77,6 +78,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
   String _nearbyCategoryFilter = 'all';
   bool _nearbyShowExtendedList = false;
   Set<String> _favoriteNearbyPlaceIds = <String>{};
+  Offset _webPointerNormalized = const Offset(0, 0);
 
   static const String _activityDatePrefKey = 'activity_recommendations_date_v1';
   static const String _activityCompletedPrefKey = 'activity_recommendations_completed_v1';
@@ -91,6 +93,23 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     final media = MediaQuery.maybeOf(context);
     if (media == null) return false;
     return media.disableAnimations || media.size.width < 390;
+  }
+
+  bool _useEnhancedWebLayout(BuildContext context) {
+    if (!kIsWeb) return false;
+    final media = MediaQuery.maybeOf(context);
+    if (media == null) return false;
+    return media.size.width >= 1100 && !media.disableAnimations;
+  }
+
+  void _updateWebPointerOffset(PointerHoverEvent event, Size size) {
+    if (size.width <= 0 || size.height <= 0) return;
+    final normalizedX = ((event.localPosition.dx / size.width) * 2 - 1).clamp(-1.0, 1.0);
+    final normalizedY = ((event.localPosition.dy / size.height) * 2 - 1).clamp(-1.0, 1.0);
+    final next = Offset(normalizedX, normalizedY);
+    if ((_webPointerNormalized - next).distance < 0.03) return;
+    if (!mounted) return;
+    setState(() => _webPointerNormalized = next);
   }
 
   String _todayDateKey() {
@@ -1508,6 +1527,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         AppColors.setTheme(appProvider.colorTheme);
         
         final liteEffects = _useLiteEffects();
+        final useEnhancedWebLayout = _useEnhancedWebLayout(context);
         return Scaffold(
       body: Container(
         width: double.infinity,
@@ -1519,67 +1539,43 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
             colors: AppColors.backgroundGradient,
           ),
         ),
-            child: SafeArea(
-              child: RefreshIndicator(
-                onRefresh: _handlePullToRefresh,
-                child: (liteEffects)
-                    ? SingleChildScrollView(
-                        physics: const AlwaysScrollableScrollPhysics(
-                          parent: BouncingScrollPhysics(),
-                        ),
-                        padding: const EdgeInsets.all(24),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildStaggeredSection(index: 0, child: _buildHeader()),
-                            const SizedBox(height: 24),
-                            _buildStaggeredSection(index: 1, child: _buildMotivationalMessage()),
-                            const SizedBox(height: 24),
-                            _buildStaggeredSection(index: 2, child: _buildDailyDashboard()),
-                            const SizedBox(height: 24),
-                            _buildStaggeredSection(index: 3, child: _buildActivityRecommendations()),
-                            const SizedBox(height: 24),
-                            _buildStaggeredSection(index: 4, child: _buildNearbyRecommendations()),
-                            const SizedBox(height: 24),
-                          ],
-                        ),
-                      )
-                    : FadeTransition(
-                        opacity: _fadeInAnimation,
-                        child: SlideTransition(
-                          position: _slideAnimation,
-                          child: SingleChildScrollView(
-                            physics: const AlwaysScrollableScrollPhysics(
-                              parent: BouncingScrollPhysics(),
-                            ),
-                            padding: const EdgeInsets.all(24),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Header con saludo y perfil
-                                _buildStaggeredSection(index: 0, child: _buildHeader()),
-                                const SizedBox(height: 24),
-
-                                // Mensaje motivacional
-                                _buildStaggeredSection(index: 1, child: _buildMotivationalMessage()),
-                                const SizedBox(height: 24),
-
-                                // Dashboard unificado (resumen + límites)
-                                _buildStaggeredSection(index: 2, child: _buildDailyDashboard()),
-                                const SizedBox(height: 24),
-
-                                // Recomendaciones de actividad
-                                _buildStaggeredSection(index: 3, child: _buildActivityRecommendations()),
-                                const SizedBox(height: 24),
-                                _buildStaggeredSection(index: 4, child: _buildNearbyRecommendations()),
-                                const SizedBox(height: 24),
-                              ],
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final content = SafeArea(
+                  child: RefreshIndicator(
+                    onRefresh: _handlePullToRefresh,
+                    child: (liteEffects)
+                        ? _buildHomeScrollableContent(
+                            useEnhancedWebLayout: useEnhancedWebLayout,
+                          )
+                        : FadeTransition(
+                            opacity: _fadeInAnimation,
+                            child: SlideTransition(
+                              position: _slideAnimation,
+                              child: _buildHomeScrollableContent(
+                                useEnhancedWebLayout: useEnhancedWebLayout,
+                              ),
                             ),
                           ),
-                        ),
-                      ),
-              ),
-        ),
+                  ),
+                );
+
+                if (!kIsWeb || liteEffects) {
+                  return content;
+                }
+
+                return MouseRegion(
+                  onHover: (event) => _updateWebPointerOffset(event, constraints.biggest),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      IgnorePointer(child: _buildWebAnimatedBackground()),
+                      content,
+                    ],
+                  ),
+                );
+              },
+            ),
       ),
     );
       },
@@ -1609,6 +1605,161 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
           ),
         );
       },
+    );
+  }
+
+  Widget _buildHomeScrollableContent({
+    required bool useEnhancedWebLayout,
+  }) {
+    final horizontalPadding = useEnhancedWebLayout ? 32.0 : 24.0;
+    final maxWidth = useEnhancedWebLayout ? 1220.0 : 860.0;
+
+    return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(
+        parent: BouncingScrollPhysics(),
+      ),
+      padding: EdgeInsets.fromLTRB(horizontalPadding, 24, horizontalPadding, 30),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: maxWidth),
+          child: _buildHomeContentSections(useEnhancedWebLayout: useEnhancedWebLayout),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHomeContentSections({required bool useEnhancedWebLayout}) {
+    return useEnhancedWebLayout
+        ? _buildWebHomeSections()
+        : _buildMobileHomeSections();
+  }
+
+  Widget _buildMobileHomeSections() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildStaggeredSection(index: 0, child: _buildHeader()),
+        const SizedBox(height: 24),
+        _buildStaggeredSection(index: 1, child: _buildMotivationalMessage()),
+        const SizedBox(height: 24),
+        _buildStaggeredSection(index: 2, child: _buildDailyDashboard()),
+        const SizedBox(height: 24),
+        _buildStaggeredSection(index: 3, child: _buildActivityRecommendations()),
+        const SizedBox(height: 24),
+        _buildStaggeredSection(index: 4, child: _buildNearbyRecommendations()),
+        const SizedBox(height: 24),
+      ],
+    );
+  }
+
+  Widget _buildWebHomeSections() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildStaggeredSection(index: 0, child: _buildHeader()),
+        const SizedBox(height: 24),
+        _buildStaggeredSection(index: 1, child: _buildMotivationalMessage()),
+        const SizedBox(height: 24),
+        _buildStaggeredSection(
+          index: 2,
+          child: ProHoverCard(
+            borderRadius: BorderRadius.circular(18),
+            hoverLift: 5,
+            hoverScale: 1.004,
+            child: _buildDailyDashboard(),
+          ),
+        ),
+        const SizedBox(height: 24),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: _buildStaggeredSection(
+                index: 3,
+                child: ProHoverCard(
+                  borderRadius: BorderRadius.circular(18),
+                  hoverLift: 4,
+                  hoverScale: 1.003,
+                  child: _buildActivityRecommendations(),
+                ),
+              ),
+            ),
+            const SizedBox(width: 20),
+            Expanded(
+              child: _buildStaggeredSection(
+                index: 4,
+                child: ProHoverCard(
+                  borderRadius: BorderRadius.circular(18),
+                  hoverLift: 4,
+                  hoverScale: 1.003,
+                  child: _buildNearbyRecommendations(),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+      ],
+    );
+  }
+
+  Widget _buildWebAnimatedBackground() {
+    return AnimatedBuilder(
+      animation: _ambientGlowController,
+      builder: (context, _) {
+        final t = Curves.easeInOut.transform(_ambientGlowController.value);
+        final primaryAlign = Alignment(
+          -0.9 + (0.45 * t) + (_webPointerNormalized.dx * 0.08),
+          -0.9 + (0.32 * t) + (_webPointerNormalized.dy * 0.08),
+        );
+        final secondaryAlign = Alignment(
+          0.9 - (0.52 * t) + (_webPointerNormalized.dx * 0.05),
+          0.8 - (0.34 * t) + (_webPointerNormalized.dy * 0.05),
+        );
+
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            Align(
+              alignment: primaryAlign,
+              child: _buildAmbientOrb(
+                size: 380 + (70 * t),
+                color: AppColors.accentPurple.withValues(alpha: 0.14 + (0.05 * t)),
+              ),
+            ),
+            Align(
+              alignment: secondaryAlign,
+              child: _buildAmbientOrb(
+                size: 320 + (65 * (1 - t)),
+                color: AppColors.accentBlue.withValues(alpha: 0.12 + (0.04 * (1 - t))),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildAmbientOrb({required double size, required Color color}) {
+    return IgnorePointer(
+      child: ClipOval(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+          child: Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [
+                  color,
+                  color.withValues(alpha: 0.0),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 

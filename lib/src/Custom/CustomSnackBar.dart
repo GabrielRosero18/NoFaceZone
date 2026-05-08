@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:nofacezone/src/Custom/AppColors.dart';
 
 /// Widget de notificación personalizado con diseño moderno y profesional
@@ -27,23 +28,38 @@ class CustomSnackBar extends StatelessWidget {
     IconData icon = Icons.check_circle_rounded,
     Duration duration = const Duration(milliseconds: 1500),
   }) {
+    _show(
+      context,
+      CustomSnackBar(
+        message: message,
+        icon: icon,
+        gradientColors: const [
+          Color(0xFF10B981),
+          Color(0xFF059669),
+        ],
+        showIcon: true,
+      ),
+      duration: duration,
+    );
+  }
+
+  static void _show(
+    BuildContext context,
+    CustomSnackBar content, {
+    required Duration duration,
+  }) {
+    final width = MediaQuery.of(context).size.width;
+    final isDesktopWeb = kIsWeb && width >= 1024;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: CustomSnackBar(
-          message: message,
-          icon: icon,
-          gradientColors: [
-            const Color(0xFF10B981), // Verde esmeralda
-            const Color(0xFF059669), // Verde más oscuro
-          ],
-          showIcon: true,
-        ),
+        content: content,
         backgroundColor: Colors.transparent,
         elevation: 0,
         behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.all(16),
+        margin: isDesktopWeb ? null : const EdgeInsets.all(16),
         duration: duration,
         padding: EdgeInsets.zero,
+        width: isDesktopWeb ? 560 : null,
       ),
     );
   }
@@ -55,24 +71,18 @@ class CustomSnackBar extends StatelessWidget {
     IconData icon = Icons.info_rounded,
     Duration duration = const Duration(milliseconds: 1500),
   }) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: CustomSnackBar(
-          message: message,
-          icon: icon,
-          gradientColors: [
-            AppColors.accentBlue,
-            AppColors.accentBlue.withValues(alpha: 0.8),
-          ],
-          showIcon: true,
-        ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.all(16),
-        duration: duration,
-        padding: EdgeInsets.zero,
+    _show(
+      context,
+      CustomSnackBar(
+        message: message,
+        icon: icon,
+        gradientColors: [
+          AppColors.accentBlue,
+          AppColors.accentBlue.withValues(alpha: 0.8),
+        ],
+        showIcon: true,
       ),
+      duration: duration,
     );
   }
 
@@ -83,24 +93,18 @@ class CustomSnackBar extends StatelessWidget {
     IconData icon = Icons.warning_rounded,
     Duration duration = const Duration(milliseconds: 1500),
   }) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: CustomSnackBar(
-          message: message,
-          icon: icon,
-          gradientColors: [
-            const Color(0xFFF59E0B), // Ámbar
-            const Color(0xFFD97706), // Ámbar oscuro
-          ],
-          showIcon: true,
-        ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.all(16),
-        duration: duration,
-        padding: EdgeInsets.zero,
+    _show(
+      context,
+      CustomSnackBar(
+        message: message,
+        icon: icon,
+        gradientColors: const [
+          Color(0xFFF59E0B),
+          Color(0xFFD97706),
+        ],
+        showIcon: true,
       ),
+      duration: duration,
     );
   }
 
@@ -111,24 +115,18 @@ class CustomSnackBar extends StatelessWidget {
     IconData icon = Icons.error_rounded,
     Duration duration = const Duration(milliseconds: 1500),
   }) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: CustomSnackBar(
-          message: message,
-          icon: icon,
-          gradientColors: [
-            const Color(0xFFEF4444), // Rojo
-            const Color(0xFFDC2626), // Rojo oscuro
-          ],
-          showIcon: true,
-        ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.all(16),
-        duration: duration,
-        padding: EdgeInsets.zero,
+    _show(
+      context,
+      CustomSnackBar(
+        message: message,
+        icon: icon,
+        gradientColors: const [
+          Color(0xFFEF4444),
+          Color(0xFFDC2626),
+        ],
+        showIcon: true,
       ),
+      duration: duration,
     );
   }
 
@@ -145,21 +143,15 @@ class CustomSnackBar extends StatelessWidget {
       AppColors.accentGradient[1],
     ];
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: CustomSnackBar(
-          message: message,
-          icon: icon,
-          gradientColors: colors,
-          showIcon: true,
-        ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.all(16),
-        duration: duration,
-        padding: EdgeInsets.zero,
+    _show(
+      context,
+      CustomSnackBar(
+        message: message,
+        icon: icon,
+        gradientColors: colors,
+        showIcon: true,
       ),
+      duration: duration,
     );
   }
 
@@ -170,34 +162,62 @@ class CustomSnackBar extends StatelessWidget {
       (backgroundColor ?? AppColors.accentGradient[0]).withValues(alpha: 0.8),
     ];
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: colors,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: colors[0].withValues(alpha: 0.4),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-            spreadRadius: 0,
+    return TweenAnimationBuilder<double>(
+      duration: const Duration(milliseconds: 420),
+      curve: Curves.easeOutCubic,
+      tween: Tween<double>(begin: 0, end: 1),
+      builder: (context, t, _) {
+        final sweep = -0.8 + (1.8 * t);
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: colors,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: colors[0].withValues(alpha: 0.4),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+                spreadRadius: 0,
+              ),
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.1),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.2),
+              width: 1,
+            ),
           ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.2),
-          width: 1,
-        ),
-      ),
-      child: Row(
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      gradient: LinearGradient(
+                        begin: Alignment(sweep - 1.0, -0.5),
+                        end: Alignment(sweep + 0.5, 0.8),
+                        colors: [
+                          Colors.transparent,
+                          Colors.white.withValues(alpha: 0.0),
+                          Colors.white.withValues(alpha: 0.16 * t),
+                          Colors.transparent,
+                        ],
+                        stops: const [0.0, 0.35, 0.55, 1.0],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Row(
         children: [
           if (showIcon && icon != null) ...[
             Container(
@@ -245,6 +265,10 @@ class CustomSnackBar extends StatelessWidget {
           ),
         ],
       ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

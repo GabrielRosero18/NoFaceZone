@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:nofacezone/src/Custom/AppColors.dart';
 import 'package:nofacezone/src/Custom/AppLocalizations.dart';
 import 'package:nofacezone/src/Custom/AuthWidgets.dart';
+import 'package:nofacezone/src/Custom/PlatformUI.dart';
 import 'package:nofacezone/src/Custom/ProAnimations.dart';
 import 'package:nofacezone/src/Services/UserService.dart';
 import 'package:nofacezone/src/Providers/AppProvider.dart';
@@ -527,6 +528,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     // Escuchar cambios del AppProvider para actualizar el tema
     final appProvider = Provider.of<AppProvider>(context);
     final localizations = AppLocalizations.of(context)!;
+    final isWebDesktop = PlatformUI.isWebDesktop(context);
     AppColors.setTheme(appProvider.colorTheme);
     
     // Obtener traducciones dinámicamente según el idioma actual
@@ -560,27 +562,124 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 child: SingleChildScrollView(
                   keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(24, 18, 24, 24),
-                  child: Form(
+                  padding: EdgeInsets.fromLTRB(isWebDesktop ? 36 : 24, 18, isWebDesktop ? 36 : 24, 24),
+                  child: PlatformUI.centeredContent(
+                    context: context,
+                    maxWidth: isWebDesktop ? 1180 : 820,
+                    child: Form(
                   key: _formKey,
                   autovalidateMode: _autoValidate ? AutovalidateMode.always : AutovalidateMode.disabled,
                   child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
-                    AuthHeaderChip(
+                    if (!isWebDesktop)
+                      AuthHeaderChip(
                       icon: Icons.auto_awesome_rounded,
                       text: localizations.registerHeaderChip,
                     ),
-                    const SizedBox(height: 20),
-                    AuthSectionTitle(
-                      title: localizations.register,
-                      subtitle: localizations.accountCreatedMessage,
-                    ),
-                    const SizedBox(height: 20),
-                    AuthGlassCard(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                    if (!isWebDesktop) const SizedBox(height: 20),
+                    if (!isWebDesktop)
+                      AuthSectionTitle(
+                        title: localizations.register,
+                        subtitle: localizations.accountCreatedMessage,
+                      ),
+                    if (!isWebDesktop) const SizedBox(height: 20),
+                    if (isWebDesktop)
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          Expanded(
+                            flex: 10,
+                            child: Padding(
+                              padding: const EdgeInsets.only(right: 24, top: 8),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  AuthHeaderChip(
+                                    icon: Icons.auto_awesome_rounded,
+                                    text: localizations.registerHeaderChip,
+                                  ),
+                                  const SizedBox(height: 20),
+                                  AuthSectionTitle(
+                                    title: localizations.register,
+                                    subtitle: localizations.accountCreatedMessage,
+                                  ),
+                                  const SizedBox(height: 14),
+                                  Text(
+                                    localizations.welcomeToApp,
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textLight.withValues(alpha: 0.92),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Text(
+                                    localizations.appDescriptionText,
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      height: 1.5,
+                                      color: AppColors.textLight.withValues(alpha: 0.8),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            flex: 12,
+                            child: _buildRegisterCard(
+                              context: context,
+                              appProvider: appProvider,
+                              localizations: localizations,
+                              ageRanges: ageRanges,
+                              languageCodes: languageCodes,
+                              languageMap: languageMap,
+                            ),
+                          ),
+                        ],
+                      )
+                    else
+                      _buildRegisterCard(
+                        context: context,
+                        appProvider: appProvider,
+                        localizations: localizations,
+                        ageRanges: ageRanges,
+                        languageCodes: languageCodes,
+                        languageMap: languageMap,
+                      ),
+                const SizedBox(height: 12),
+                TextButton(
+                  onPressed: () {
+                    _hapticTap();
+                    Navigator.of(context).pop();
+                  },
+                  child: Text(
+                    '${localizations.alreadyHaveAccount} ${localizations.signIn}',
+                    style: TextStyle(color: AppColors.textLight.withValues(alpha: 0.8)),
+                  ),
+                ),
+              ],
+            ),
+            ),
+            ),
+          ),
+          ),
+    );
+  }
+
+  Widget _buildRegisterCard({
+    required BuildContext context,
+    required AppProvider appProvider,
+    required AppLocalizations localizations,
+    required List<String> ageRanges,
+    required List<String> languageCodes,
+    required Map<String, String> languageMap,
+  }) {
+    return AuthGlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
                           AuthInputField(
                             controller: _nameController,
                             label: localizations.fullName,
@@ -758,25 +857,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     _registerUser();
                   },
                 ),
-                ],
-                      ),
-                    ),
-                const SizedBox(height: 12),
-                TextButton(
-                  onPressed: () {
-                    _hapticTap();
-                    Navigator.of(context).pop();
-                  },
-                  child: Text(
-                    '${localizations.alreadyHaveAccount} ${localizations.signIn}',
-                    style: TextStyle(color: AppColors.textLight.withValues(alpha: 0.8)),
-                  ),
-                ),
-              ],
-            ),
-            ),
-          ),
-          ),
+        ],
+      ),
     );
   }
 }

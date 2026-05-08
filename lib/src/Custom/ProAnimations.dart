@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:nofacezone/src/Custom/PlatformUI.dart';
 
 class ProEntrance extends StatefulWidget {
   final Widget child;
@@ -64,6 +66,9 @@ class ProPressable extends StatefulWidget {
   final Duration duration;
   final double pressedScale;
   final Curve curve;
+  final bool enableHover;
+  final double hoverScale;
+  final MouseCursor? mouseCursor;
 
   const ProPressable({
     super.key,
@@ -72,6 +77,9 @@ class ProPressable extends StatefulWidget {
     this.duration = const Duration(milliseconds: 120),
     this.pressedScale = 0.98,
     this.curve = Curves.easeOutCubic,
+    this.enableHover = true,
+    this.hoverScale = 1.012,
+    this.mouseCursor,
   });
 
   @override
@@ -80,6 +88,7 @@ class ProPressable extends StatefulWidget {
 
 class _ProPressableState extends State<ProPressable> {
   bool _pressed = false;
+  bool _hovered = false;
 
   void _setPressed(bool value) {
     if (!mounted) return;
@@ -92,15 +101,84 @@ class _ProPressableState extends State<ProPressable> {
       return GestureDetector(onTap: widget.onTap, child: widget.child);
     }
 
-    return GestureDetector(
-      onTapDown: (_) => _setPressed(true),
-      onTapUp: (_) => _setPressed(false),
-      onTapCancel: () => _setPressed(false),
-      onTap: widget.onTap,
-      child: AnimatedScale(
+    final canHover = kIsWeb && widget.enableHover;
+    final baseScale = _pressed
+        ? widget.pressedScale
+        : ((canHover && _hovered) ? widget.hoverScale : 1.0);
+
+    return MouseRegion(
+      cursor: widget.mouseCursor ??
+          (widget.onTap != null ? SystemMouseCursors.click : MouseCursor.defer),
+      onEnter: canHover ? (_) => setState(() => _hovered = true) : null,
+      onExit: canHover ? (_) => setState(() => _hovered = false) : null,
+      child: GestureDetector(
+        onTapDown: (_) => _setPressed(true),
+        onTapUp: (_) => _setPressed(false),
+        onTapCancel: () => _setPressed(false),
+        onTap: widget.onTap,
+        child: AnimatedScale(
+          duration: widget.duration,
+          curve: widget.curve,
+          scale: baseScale,
+          child: widget.child,
+        ),
+      ),
+    );
+  }
+}
+
+class ProHoverCard extends StatefulWidget {
+  final Widget child;
+  final Duration duration;
+  final double hoverLift;
+  final double hoverScale;
+  final BorderRadius? borderRadius;
+  final List<BoxShadow>? baseShadow;
+  final List<BoxShadow>? hoverShadow;
+
+  const ProHoverCard({
+    super.key,
+    required this.child,
+    this.duration = const Duration(milliseconds: 180),
+    this.hoverLift = WebMotionTokens.hoverLiftMedium,
+    this.hoverScale = WebMotionTokens.hoverScaleSoft,
+    this.borderRadius,
+    this.baseShadow,
+    this.hoverShadow,
+  });
+
+  @override
+  State<ProHoverCard> createState() => _ProHoverCardState();
+}
+
+class _ProHoverCardState extends State<ProHoverCard> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final canHover = kIsWeb && !MediaQuery.disableAnimationsOf(context);
+    final base = widget.baseShadow ?? const <BoxShadow>[];
+    final hover = widget.hoverShadow ?? WebMotionTokens.hoverShadowSoft;
+
+    return MouseRegion(
+      onEnter: canHover ? (_) => setState(() => _hovered = true) : null,
+      onExit: canHover ? (_) => setState(() => _hovered = false) : null,
+      child: AnimatedContainer(
         duration: widget.duration,
-        curve: widget.curve,
-        scale: _pressed ? widget.pressedScale : 1,
+        curve: Curves.easeOutCubic,
+        transform: Matrix4.identity()
+          ..translateByDouble(0.0, (canHover && _hovered) ? -widget.hoverLift : 0.0, 0.0, 1.0)
+          ..scaleByDouble(
+            (canHover && _hovered) ? widget.hoverScale : 1.0,
+            (canHover && _hovered) ? widget.hoverScale : 1.0,
+            1.0,
+            1.0,
+          ),
+        transformAlignment: Alignment.center,
+        decoration: BoxDecoration(
+          borderRadius: widget.borderRadius ?? BorderRadius.circular(18),
+          boxShadow: (canHover && _hovered) ? hover : base,
+        ),
         child: widget.child,
       ),
     );

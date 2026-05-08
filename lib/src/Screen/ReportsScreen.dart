@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'package:printing/printing.dart';
 import 'package:pdf/pdf.dart';
@@ -6,6 +7,8 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:intl/intl.dart';
 import 'package:nofacezone/src/Custom/AppColors.dart';
 import 'package:nofacezone/src/Custom/AppLocalizations.dart';
+import 'package:nofacezone/src/Custom/PlatformUI.dart';
+import 'package:nofacezone/src/Custom/ProAnimations.dart';
 import 'package:nofacezone/src/Providers/AppProvider.dart';
 import 'package:nofacezone/src/Providers/UserProvider.dart';
 import 'package:nofacezone/src/Services/PreferencesService.dart';
@@ -27,6 +30,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     final appProvider = Provider.of<AppProvider>(context);
     AppColors.setTheme(appProvider.colorTheme);
     final localizations = AppLocalizations.of(context)!;
+    final isWebDesktop = PlatformUI.isWebDesktop(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -51,10 +55,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
         ),
         child: SafeArea(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+            padding: EdgeInsets.all(isWebDesktop ? 32 : 24),
+            child: PlatformUI.centeredContent(
+              context: context,
+              maxWidth: isWebDesktop ? 1100 : 860,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                 // Título y descripción
                 Text(
                   localizations.reportsAndExportation,
@@ -75,12 +82,16 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 const SizedBox(height: 32),
 
                 // Sección de selección de período
-                _buildPeriodSection(localizations),
+                ProHoverCard(
+                  borderRadius: BorderRadius.circular(16),
+                  child: _buildPeriodSection(localizations),
+                ),
                 const SizedBox(height: 24),
 
                 // Botón de generar reporte
                 _buildGenerateButton(localizations),
               ],
+              ),
             ),
           ),
         ),
@@ -177,8 +188,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
     required DateTime? date,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
+    return ProPressable(
       onTap: onTap,
+      hoverScale: 1.01,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         decoration: BoxDecoration(
@@ -233,8 +245,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
     required String text,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
+    return ProPressable(
       onTap: onTap,
+      hoverScale: 1.01,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
         decoration: BoxDecoration(
@@ -259,42 +272,63 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 
   Widget _buildGenerateButton(AppLocalizations localizations) {
+    final isDesktopWeb = kIsWeb && MediaQuery.of(context).size.width >= 1024;
     return SizedBox(
       width: double.infinity,
-      child: ElevatedButton(
-        onPressed: _isGenerating ? null : () => _generateReport(localizations),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.accentBlue,
-          foregroundColor: AppColors.textLight,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(
+      child: ProPressable(
+        onTap: _isGenerating ? null : () => _generateReport(localizations),
+        hoverScale: 1.008,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOutCubic,
+          decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-          ),
-          elevation: 4,
-        ),
-        child: _isGenerating
-            ? const SizedBox(
-                height: 20,
-                width: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.textLight),
-                ),
-              )
-            : Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.picture_as_pdf, size: 24),
-                  const SizedBox(width: 8),
-                  Text(
-                    localizations.generateReport,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
+            boxShadow: isDesktopWeb
+                ? [
+                    BoxShadow(
+                      color: AppColors.accentBlue.withValues(alpha: 0.35),
+                      blurRadius: 18,
+                      offset: const Offset(0, 10),
                     ),
-                  ),
-                ],
+                  ]
+                : const [],
+          ),
+          child: ElevatedButton(
+            onPressed: _isGenerating ? null : () => _generateReport(localizations),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.accentBlue,
+              foregroundColor: AppColors.textLight,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
               ),
+              elevation: 4,
+            ),
+            child: _isGenerating
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.textLight),
+                    ),
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.picture_as_pdf, size: 24),
+                      const SizedBox(width: 8),
+                      Text(
+                        localizations.generateReport,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
+        ),
       ),
     );
   }

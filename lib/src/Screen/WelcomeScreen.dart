@@ -8,6 +8,7 @@ import 'package:nofacezone/src/Custom/AuthWidgets.dart';
 import 'package:nofacezone/src/Custom/AppLocalizations.dart';
 import 'package:nofacezone/src/Custom/Config.dart';
 import 'package:nofacezone/src/Custom/Constans.dart';
+import 'package:nofacezone/src/Custom/PlatformUI.dart';
 import 'package:nofacezone/src/Custom/ProAnimations.dart';
 import 'package:nofacezone/src/Providers/AppProvider.dart';
 
@@ -39,6 +40,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   Widget build(BuildContext context) {
     final appProvider = Provider.of<AppProvider>(context);
     final loc = AppLocalizations.of(context)!;
+    final isWebDesktop = PlatformUI.isWebDesktop(context);
     AppColors.setTheme(appProvider.colorTheme);
 
     return Scaffold(
@@ -57,208 +59,12 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
               ),
               SafeArea(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 18, 24, 16),
-                  child: Column(
-                    children: [
-                      ProEntrance(
-                        delayMs: 20,
-                        child: AuthHeaderChip(
-                          icon: Icons.auto_graph_rounded,
-                          text: loc.welcomeChip,
-                        ),
-                      ),
-                      const SizedBox(height: 18),
-                      ProEntrance(
-                        delayMs: 90,
-                        child: Transform.translate(
-                          offset: Offset(_parallax.dx * 0.8, _parallax.dy * 0.8),
-                          child: ProPressable(
-                            onTap: () {},
-                            child: Container(
-                              width: 120,
-                              height: 120,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                gradient: LinearGradient(colors: AppColors.accentGradient),
-                                boxShadow: AppColors.elevatedShadow,
-                              ),
-                              child: Container(
-                                margin: const EdgeInsets.all(3),
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: AppColors.darkSurface,
-                                  border: Border.all(color: AppColors.textLight.withValues(alpha: 0.45), width: 1),
-                                ),
-                                child: Center(
-                                  child: FittedBox(
-                                    fit: BoxFit.scaleDown,
-                                    child: Text(
-                                      'NFZ',
-                                      maxLines: 1,
-                                      style: const TextStyle(
-                                        fontSize: 46,
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColors.textLight,
-                                        letterSpacing: -0.5,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      ProEntrance(
-                        delayMs: 150,
-                        child: ShaderMask(
-                          shaderCallback: (rect) => LinearGradient(colors: AppColors.accentGradient).createShader(rect),
-                          blendMode: BlendMode.srcIn,
-                          child: const Text(
-                            'NoFaceZone',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 38,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 0.7,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      ProEntrance(
-                        delayMs: 200,
-                        child: Text(
-                          loc.appSubtitle,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 19,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textLight.withValues(alpha: 0.92),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Expanded(
-                        child: ProEntrance(
-                          delayMs: 260,
-                          child: Transform.translate(
-                            offset: Offset(_parallax.dx * 0.45, _parallax.dy * 0.45),
-                            child: AuthGlassCard(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  Text(
-                                    loc.appDescriptionText,
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      height: 1.45,
-                                      color: AppColors.textLight.withValues(alpha: 0.82),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 22),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: _buildFeaturePill(
-                                          icon: Icons.timer_outlined,
-                                          label: loc.welcomeFeatureDailyLimits,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: _buildFeaturePill(
-                                          icon: Icons.emoji_events_outlined,
-                                          label: loc.welcomeFeatureRewards,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 10),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: _buildFeaturePill(
-                                          icon: Icons.track_changes_rounded,
-                                          label: loc.welcomeFeatureTracking,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: _buildFeaturePill(
-                                          icon: Icons.notifications_active_outlined,
-                                          label: loc.welcomeFeatureReminders,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const Spacer(),
-                                  ProEntrance(
-                                    delayMs: 340,
-                                    child: AuthPrimaryButton(
-                                      text: loc.signIn,
-                                      isLoading: false,
-                                      onPressed: () {
-                                        Navigator.of(context).push(
-                                          MaterialPageRoute(builder: (context) => const LoginScreen()),
-                                        );
-                                      },
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  ProEntrance(
-                                    delayMs: 390,
-                                    child: SizedBox(
-                                      height: 56,
-                                      child: OutlinedButton(
-                                        onPressed: () {
-                                          Navigator.of(context).push(
-                                            MaterialPageRoute(builder: (context) => const RegisterScreen()),
-                                          );
-                                        },
-                                        style: OutlinedButton.styleFrom(
-                                          side: BorderSide(color: AppColors.textLight.withValues(alpha: 0.8)),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(16),
-                                          ),
-                                        ),
-                                        child: Text(
-                                          loc.signUp,
-                                          style: const TextStyle(
-                                            color: AppColors.textLight,
-                                            fontWeight: FontWeight.w700,
-                                            fontSize: 17,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      ProEntrance(
-                        delayMs: 450,
-                        child: FutureBuilder<String>(
-                          future: Config.getAppVersion(),
-                          builder: (context, snapshot) {
-                            return Text(
-                              'v${snapshot.data ?? "1.0.0"}',
-                              style: TextStyle(
-                                color: AppColors.textLight.withValues(alpha: 0.62),
-                                fontSize: Constants.smallFontSize,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ],
+                  padding: PlatformUI.pagePadding(context),
+                  child: PlatformUI.centeredContent(
+                    context: context,
+                    child: isWebDesktop
+                        ? _buildDesktopLayout(context, loc)
+                        : _buildMobileLayout(context, loc),
                   ),
                 ),
               ),
@@ -266,6 +72,253 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildBrandColumn(AppLocalizations loc, {required bool desktop}) {
+    return Column(
+      crossAxisAlignment: desktop ? CrossAxisAlignment.start : CrossAxisAlignment.center,
+      children: [
+        ProEntrance(
+          delayMs: 20,
+          child: AuthHeaderChip(
+            icon: Icons.auto_graph_rounded,
+            text: loc.welcomeChip,
+          ),
+        ),
+        SizedBox(height: desktop ? 26 : 18),
+        ProEntrance(
+          delayMs: 90,
+          child: Transform.translate(
+            offset: Offset(_parallax.dx * 0.8, _parallax.dy * 0.8),
+            child: ProPressable(
+              onTap: () {},
+              child: Container(
+                width: desktop ? 138 : 120,
+                height: desktop ? 138 : 120,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(colors: AppColors.accentGradient),
+                  boxShadow: AppColors.elevatedShadow,
+                ),
+                child: Container(
+                  margin: const EdgeInsets.all(3),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.darkSurface,
+                    border: Border.all(color: AppColors.textLight.withValues(alpha: 0.45), width: 1),
+                  ),
+                  child: Center(
+                    child: Text(
+                      'NFZ',
+                      maxLines: 1,
+                      style: TextStyle(
+                        fontSize: desktop ? 56 : 46,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textLight,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        SizedBox(height: desktop ? 24 : 20),
+        ProEntrance(
+          delayMs: 150,
+          child: ShaderMask(
+            shaderCallback: (rect) => LinearGradient(colors: AppColors.accentGradient).createShader(rect),
+            blendMode: BlendMode.srcIn,
+            child: Text(
+              'NoFaceZone',
+              textAlign: desktop ? TextAlign.start : TextAlign.center,
+              style: TextStyle(
+                fontSize: desktop ? 48 : 38,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0.7,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        ProEntrance(
+          delayMs: 200,
+          child: Text(
+            loc.appSubtitle,
+            textAlign: desktop ? TextAlign.start : TextAlign.center,
+            style: TextStyle(
+              fontSize: desktop ? 22 : 19,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textLight.withValues(alpha: 0.92),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAuthCard(BuildContext context, AppLocalizations loc) {
+    return ProEntrance(
+      delayMs: 260,
+      child: Transform.translate(
+        offset: Offset(_parallax.dx * 0.45, _parallax.dy * 0.45),
+        child: AuthGlassCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                loc.appDescriptionText,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 15,
+                  height: 1.45,
+                  color: AppColors.textLight.withValues(alpha: 0.82),
+                ),
+              ),
+              const SizedBox(height: 22),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildFeaturePill(
+                      icon: Icons.timer_outlined,
+                      label: loc.welcomeFeatureDailyLimits,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _buildFeaturePill(
+                      icon: Icons.emoji_events_outlined,
+                      label: loc.welcomeFeatureRewards,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildFeaturePill(
+                      icon: Icons.track_changes_rounded,
+                      label: loc.welcomeFeatureTracking,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _buildFeaturePill(
+                      icon: Icons.notifications_active_outlined,
+                      label: loc.welcomeFeatureReminders,
+                    ),
+                  ),
+                ],
+              ),
+              const Spacer(),
+              ProEntrance(
+                delayMs: 340,
+                child: AuthPrimaryButton(
+                  text: loc.signIn,
+                  isLoading: false,
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (context) => const LoginScreen()),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 12),
+              ProEntrance(
+                delayMs: 390,
+                child: SizedBox(
+                  height: 56,
+                  child: OutlinedButton(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (context) => const RegisterScreen()),
+                      );
+                    },
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(color: AppColors.textLight.withValues(alpha: 0.8)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: Text(
+                      loc.signUp,
+                      style: const TextStyle(
+                        color: AppColors.textLight,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 17,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVersionLabel() {
+    return ProEntrance(
+      delayMs: 450,
+      child: FutureBuilder<String>(
+        future: Config.getAppVersion(),
+        builder: (context, snapshot) {
+          return Text(
+            'v${snapshot.data ?? "1.0.0"}',
+            style: TextStyle(
+              color: AppColors.textLight.withValues(alpha: 0.62),
+              fontSize: Constants.smallFontSize,
+              fontWeight: FontWeight.w500,
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildMobileLayout(BuildContext context, AppLocalizations loc) {
+    return Column(
+      children: [
+        _buildBrandColumn(loc, desktop: false),
+        const SizedBox(height: 16),
+        Expanded(child: _buildAuthCard(context, loc)),
+        const SizedBox(height: 10),
+        _buildVersionLabel(),
+      ],
+    );
+  }
+
+  Widget _buildDesktopLayout(BuildContext context, AppLocalizations loc) {
+    return Column(
+      children: [
+        Expanded(
+          child: Row(
+            children: [
+              Expanded(
+                flex: 12,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: _buildBrandColumn(loc, desktop: true),
+                ),
+              ),
+              const SizedBox(width: 28),
+              Expanded(
+                flex: 11,
+                child: SizedBox(
+                  height: 560,
+                  child: _buildAuthCard(context, loc),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        _buildVersionLabel(),
+      ],
     );
   }
 

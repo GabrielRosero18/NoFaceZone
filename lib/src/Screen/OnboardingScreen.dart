@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -7,6 +8,7 @@ import 'package:nofacezone/src/Custom/AppLocalizations.dart';
 import 'package:nofacezone/src/Custom/Config.dart';
 import 'package:nofacezone/src/Custom/Constans.dart';
 import 'package:nofacezone/src/Custom/Library.dart';
+import 'package:nofacezone/src/Custom/PlatformUI.dart';
 import 'package:nofacezone/src/Providers/AppProvider.dart';
 import 'package:nofacezone/src/Providers/UserProvider.dart';
 
@@ -93,6 +95,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final appProvider = Provider.of<AppProvider>(context);
     AppColors.setTheme(appProvider.colorTheme);
     final pages = _localizedPages();
+    final isWebDesktop = PlatformUI.isWebDesktop(context);
     
     return Scaffold(
       body: Container(
@@ -140,8 +143,48 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ),
             ),
             SafeArea(
-              child: Column(
-                children: [
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  isWebDesktop ? 34 : 0,
+                  isWebDesktop ? 20 : 0,
+                  isWebDesktop ? 34 : 0,
+                  isWebDesktop ? 20 : 0,
+                ),
+                child: PlatformUI.centeredContent(
+                  context: context,
+                  maxWidth: 1160,
+                  child: isWebDesktop
+                      ? _buildDesktopOnboardingBody(context, pages)
+                      : _buildMobileOnboardingBody(context, pages),
+                ),
+              ),
+            ),
+            Positioned(
+              bottom: 16,
+              left: 16,
+              child: FutureBuilder<String>(
+                future: Config.getAppVersion(),
+                builder: (context, snapshot) {
+                  return Text(
+                    'v${snapshot.data ?? "1.0.0"}',
+                    style: TextStyle(
+                      color: AppColors.textLight.withValues(alpha: 0.6),
+                      fontSize: Constants.smallFontSize,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMobileOnboardingBody(BuildContext context, List<OnboardingPage> pages) {
+    return Column(
+      children: [
               // Indicador de progreso
               Padding(
                 padding: const EdgeInsets.all(24.0),
@@ -245,28 +288,97 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   ],
                 ),
               ),
-                ],
-              ),
+      ],
+    );
+  }
+
+  Widget _buildDesktopOnboardingBody(BuildContext context, List<OnboardingPage> pages) {
+    final loc = AppLocalizations.of(context)!;
+    return Row(
+      children: [
+        Expanded(
+          flex: 11,
+          child: Padding(
+            padding: const EdgeInsets.only(right: 22),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  loc.onboardingWelcomeTitle,
+                  style: const TextStyle(
+                    fontSize: 44,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.textLight,
+                    letterSpacing: 0.4,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  loc.appDescriptionText,
+                  style: TextStyle(
+                    fontSize: 18,
+                    height: 1.55,
+                    color: AppColors.textLight.withValues(alpha: 0.86),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    _buildDesktopTag(Icons.timer_outlined, loc.welcomeFeatureDailyLimits),
+                    _buildDesktopTag(Icons.track_changes_rounded, loc.welcomeFeatureTracking),
+                    _buildDesktopTag(Icons.emoji_events_outlined, loc.welcomeFeatureRewards),
+                  ],
+                ),
+              ],
             ),
-            Positioned(
-              bottom: 16,
-              left: 16,
-              child: FutureBuilder<String>(
-                future: Config.getAppVersion(),
-                builder: (context, snapshot) {
-                  return Text(
-                    'v${snapshot.data ?? "1.0.0"}',
-                    style: TextStyle(
-                      color: AppColors.textLight.withValues(alpha: 0.6),
-                      fontSize: Constants.smallFontSize,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
+          ),
         ),
+        Expanded(
+          flex: 12,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(24),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 7, sigmaY: 7),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: AppColors.darkSurface.withValues(alpha: 0.56),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: AppColors.textLight.withValues(alpha: 0.2)),
+                ),
+                child: _buildMobileOnboardingBody(context, pages),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDesktopTag(IconData icon, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.textLight.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppColors.textLight.withValues(alpha: 0.18)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: AppColors.textLight.withValues(alpha: 0.94)),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: const TextStyle(
+              color: AppColors.textLight,
+              fontWeight: FontWeight.w600,
+              fontSize: 12.5,
+            ),
+          ),
+        ],
       ),
     );
   }

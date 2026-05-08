@@ -12,6 +12,7 @@ import 'package:nofacezone/src/Custom/Library.dart';
 import 'package:nofacezone/src/Custom/Config.dart';
 import 'package:nofacezone/src/Custom/AppLocalizations.dart';
 import 'package:nofacezone/src/Custom/CustomSnackBar.dart';
+import 'package:nofacezone/src/Custom/PlatformUI.dart';
 import 'package:nofacezone/src/Custom/ProAnimations.dart';
 import 'package:nofacezone/src/Providers/AppProvider.dart';
 import 'package:nofacezone/src/Providers/UserProvider.dart';
@@ -38,6 +39,7 @@ class _SettingsState extends State<Settings> {
         AppColors.setTheme(appProvider.colorTheme);
         final backLabel = MaterialLocalizations.of(context).backButtonTooltip;
         final loc = AppLocalizations.of(context)!;
+        final isWebDesktop = PlatformUI.isWebDesktop(context);
 
         return Scaffold(
           appBar: AppBar(
@@ -78,32 +80,29 @@ class _SettingsState extends State<Settings> {
                   child: ProEntrance(
                     delayMs: 90,
                     child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          AuthHeaderChip(
-                            icon: Icons.tune_rounded,
-                            text: AppLocalizations.of(context)?.advancedSettingsTitle ?? 'Configuración avanzada',
-                          ),
-                          const SizedBox(height: 14),
-                          AuthSectionTitle(
-                            title: AppLocalizations.of(context)?.settings ?? 'Configuración',
-                            subtitle: AppLocalizations.of(context)?.settingsScreenSubtitle,
-                          ),
-                          const SizedBox(height: 16),
-                          RepaintBoundary(
-                            child: AuthGlassCard(
-                              child: _buildNotificationsSection(),
+                      padding: EdgeInsets.all(isWebDesktop ? 32 : 24),
+                      child: PlatformUI.centeredContent(
+                        context: context,
+                        maxWidth: isWebDesktop ? 1220 : 860,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            AuthHeaderChip(
+                              icon: Icons.tune_rounded,
+                              text: AppLocalizations.of(context)?.advancedSettingsTitle ?? 'Configuración avanzada',
                             ),
-                          ),
-                          const SizedBox(height: 16),
-                          RepaintBoundary(
-                            child: AuthGlassCard(
-                              child: _buildIntroReplaySection(),
+                            const SizedBox(height: 14),
+                            AuthSectionTitle(
+                              title: AppLocalizations.of(context)?.settings ?? 'Configuración',
+                              subtitle: AppLocalizations.of(context)?.settingsScreenSubtitle,
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 16),
+                            if (isWebDesktop)
+                              _buildWebDesktopSettingsLayout()
+                            else
+                              _buildMobileSettingsLayout(),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -113,6 +112,59 @@ class _SettingsState extends State<Settings> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildMobileSettingsLayout() {
+    return Column(
+      children: [
+        RepaintBoundary(
+          child: AuthGlassCard(
+            child: _buildNotificationsSection(),
+          ),
+        ),
+        const SizedBox(height: 16),
+        RepaintBoundary(
+          child: AuthGlassCard(
+            child: _buildIntroReplaySection(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWebDesktopSettingsLayout() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          flex: 12,
+          child: RepaintBoundary(
+            child: AuthGlassCard(
+              child: _buildNotificationsSection(),
+            ),
+          ),
+        ),
+        const SizedBox(width: 18),
+        Expanded(
+          flex: 9,
+          child: Column(
+            children: [
+              RepaintBoundary(
+                child: AuthGlassCard(
+                  child: _buildProfileSection(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              RepaintBoundary(
+                child: AuthGlassCard(
+                  child: _buildIntroReplaySection(),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 

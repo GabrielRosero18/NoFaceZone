@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:nofacezone/src/Screen/SplashScreen.dart';
 import 'package:nofacezone/src/Screen/WelcomeScreen.dart';
 import 'package:nofacezone/src/Screen/OnboardingScreen.dart';
@@ -83,7 +84,7 @@ void navigate(
       break;
   }
 
-  final route = _goScreen(target, TypeAnimation.transition);
+  final route = _goScreen(target, TypeAnimation.transition, mScreen);
   if (finishCurrent) {
     Navigator.of(mContext).pushReplacement(route);
   } else {
@@ -91,14 +92,40 @@ void navigate(
   }
 }
 
-Route _goScreen(Widget screen, TypeAnimation animationType) {
+Route _goScreen(Widget screen, TypeAnimation animationType, CustomScreen routeType) {
+  final isWeb = kIsWeb;
+  final bool authLikeRoute = routeType == CustomScreen.welcome ||
+      routeType == CustomScreen.login ||
+      routeType == CustomScreen.register ||
+      routeType == CustomScreen.onboarding;
+  final bool dashboardLikeRoute = routeType == CustomScreen.home ||
+      routeType == CustomScreen.statistics ||
+      routeType == CustomScreen.rewards ||
+      routeType == CustomScreen.settings;
+
   return PageRouteBuilder(
     pageBuilder: (BuildContext context, Animation<double> animation, Animation<double> secondaryAnimation) => screen,
-    transitionDuration: const Duration(milliseconds: 600),
+    transitionDuration: Duration(milliseconds: isWeb ? 460 : 600),
     transitionsBuilder: (context, animation, secondaryAnimation, child) {
       final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
       switch (animationType) {
         case TypeAnimation.transition:
+          if (isWeb) {
+            final beginOffset = authLikeRoute
+                ? const Offset(0, 0.05)
+                : (dashboardLikeRoute ? const Offset(0.015, 0.02) : const Offset(0, 0.03));
+            final beginScale = authLikeRoute ? 0.985 : (dashboardLikeRoute ? 0.995 : 0.99);
+            return FadeTransition(
+              opacity: CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+              child: SlideTransition(
+                position: Tween<Offset>(begin: beginOffset, end: Offset.zero).animate(curved),
+                child: ScaleTransition(
+                  scale: Tween<double>(begin: beginScale, end: 1.0).animate(curved),
+                  child: child,
+                ),
+              ),
+            );
+          }
           return FadeTransition(
             opacity: CurvedAnimation(parent: animation, curve: Curves.easeInOut),
             child: SlideTransition(

@@ -176,6 +176,87 @@ class _SplashAtmospherePainter extends CustomPainter {
       oldDelegate.accentB != accentB;
 }
 
+/// Barras de luz y cortina cinemática solo para web.
+class _WebCinematicBarsPainter extends CustomPainter {
+  _WebCinematicBarsPainter({
+    required this.progress,
+    required this.accentA,
+    required this.accentB,
+  });
+
+  final double progress;
+  final Color accentA;
+  final Color accentB;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    final reveal = Curves.easeOutCubic.transform(progress.clamp(0.0, 1.0));
+    final sweep = ((progress - 0.12) / 0.74).clamp(0.0, 1.0);
+
+    final background = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          Colors.black.withValues(alpha: 0.32 * (1 - reveal) + 0.22),
+          Colors.transparent,
+          Colors.black.withValues(alpha: 0.24 * (1 - reveal) + 0.14),
+        ],
+      ).createShader(rect);
+    canvas.drawRect(rect, background);
+
+    const bars = 8;
+    final barWidth = size.width / 18;
+    for (int i = 0; i < bars; i++) {
+      final xBase = size.width * 0.08 + i * (size.width * 0.105);
+      final x = xBase + ((sweep - 0.5) * 22 * (i.isEven ? 1 : -1));
+      final barRect = Rect.fromLTWH(x, -20, barWidth, size.height + 40);
+      final pulse = (math.sin((progress * math.pi * 2) + (i * 0.7)) * 0.5 + 0.5);
+      final alpha = (0.05 + (0.07 * reveal) + (0.05 * pulse)).clamp(0.0, 0.18);
+
+      final barPaint = Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            accentA.withValues(alpha: alpha * 0.8),
+            Colors.white.withValues(alpha: alpha),
+            accentB.withValues(alpha: alpha * 0.75),
+          ],
+          stops: const [0.0, 0.45, 1.0],
+        ).createShader(barRect)
+        ..blendMode = BlendMode.screen;
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(barRect, const Radius.circular(999)),
+        barPaint,
+      );
+    }
+
+    final horizon = Paint()
+      ..shader = LinearGradient(
+        begin: const Alignment(-1, 0),
+        end: const Alignment(1, 0),
+        colors: [
+          Colors.transparent,
+          accentB.withValues(alpha: 0.1 + 0.15 * reveal),
+          Colors.white.withValues(alpha: 0.06 + 0.1 * reveal),
+          Colors.transparent,
+        ],
+      ).createShader(rect);
+    canvas.drawRect(
+      Rect.fromLTWH(0, size.height * (0.64 - 0.03 * reveal), size.width, size.height * 0.32),
+      horizon,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _WebCinematicBarsPainter oldDelegate) =>
+      oldDelegate.progress != progress ||
+      oldDelegate.accentA != accentA ||
+      oldDelegate.accentB != accentB;
+}
+
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -282,12 +363,84 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
 
   void _navigateFromSplash(bool isOnboardingCompleted) {
     final target = isOnboardingCompleted ? const WelcomeScreen() : const OnboardingScreen();
+    final transitionDuration = kIsWeb
+        ? const Duration(milliseconds: 760)
+        : const Duration(milliseconds: 520);
 
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
-        transitionDuration: const Duration(milliseconds: 520),
+        transitionDuration: transitionDuration,
         pageBuilder: (_, __, ___) => target,
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          if (kIsWeb) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+            final overlayBase = isDark ? 0.035 : 0.02;
+            final overlayPulse = isDark ? 0.06 : 0.04;
+            final accentAAlpha = isDark ? 0.16 : 0.11;
+            final whiteAlpha = isDark ? 0.22 : 0.14;
+            final accentBAlpha = isDark ? 0.14 : 0.1;
+            final fade = CurvedAnimation(
+              parent: animation,
+              curve: const Interval(0.0, 0.72, curve: Curves.easeOutCubic),
+            );
+            final scale = Tween<double>(begin: 1.08, end: 1.0).animate(
+              CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+            );
+            final portalSweep = CurvedAnimation(
+              parent: animation,
+              curve: const Interval(0.16, 0.92, curve: Curves.easeInOutCubic),
+            );
+            final glowPulse = CurvedAnimation(
+              parent: animation,
+              curve: const Interval(0.08, 0.84, curve: Curves.easeOutCubic),
+            );
+
+            return Stack(
+              fit: StackFit.expand,
+              children: [
+                FadeTransition(
+                  opacity: fade,
+                  child: ScaleTransition(scale: scale, child: child),
+                ),
+                IgnorePointer(
+                  child: AnimatedBuilder(
+                    animation: animation,
+                    builder: (context, _) {
+                      final sweepX = -1.3 + (2.9 * portalSweep.value);
+                      final pulse = math.sin(glowPulse.value * math.pi).clamp(0.0, 1.0);
+                      final overlayOpacity = (overlayBase + (overlayPulse * pulse)).clamp(0.0, 0.1);
+                      return Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          ColoredBox(
+                            color: Colors.white.withValues(alpha: overlayOpacity),
+                          ),
+                          DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment(sweepX - 1.0, -0.6),
+                                end: Alignment(sweepX + 0.8, 0.8),
+                                colors: [
+                                  Colors.transparent,
+                                  Colors.white.withValues(alpha: 0.0),
+                                  AppColors.accentGradient.first.withValues(alpha: accentAAlpha * pulse),
+                                  Colors.white.withValues(alpha: whiteAlpha * pulse),
+                                  AppColors.accentGradient.last.withValues(alpha: accentBAlpha * pulse),
+                                  Colors.transparent,
+                                ],
+                                stops: const [0.0, 0.28, 0.45, 0.5, 0.58, 1.0],
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ],
+            );
+          }
+
           final fade = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
           final scale = Tween<double>(begin: 1.045, end: 1.0).animate(
             CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
@@ -346,6 +499,198 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
     );
   }
 
+  Widget _buildWebSplash({
+    required AppLocalizations? loc,
+    required Color accentA,
+    required Color accentB,
+    required double t,
+  }) {
+    final logoReveal = Curves.easeOutCubic.transform(((t - 0.18) / 0.56).clamp(0.0, 1.0));
+    final titleReveal = Curves.easeOutCubic.transform(((t - 0.42) / 0.42).clamp(0.0, 1.0));
+    final subtitleReveal = Curves.easeOutCubic.transform(((t - 0.58) / 0.34).clamp(0.0, 1.0));
+    final flashOpacity = (math.sin(_flash.value * math.pi) * 0.2).clamp(0.0, 0.2) * _flash.value;
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = isDark ? const Color(0xFF06070D) : const Color(0xFFF4F6FF);
+    final titleColor = isDark
+        ? Colors.white.withValues(alpha: 0.95)
+        : const Color(0xFF161A2E);
+    final subtitleColor = isDark
+        ? Colors.white.withValues(alpha: 0.78)
+        : const Color(0xFF2D3355).withValues(alpha: 0.76);
+    final trackColor = isDark
+        ? Colors.white.withValues(alpha: 0.14)
+        : const Color(0xFF1C2440).withValues(alpha: 0.14);
+    final loadingColor = isDark
+        ? Colors.white.withValues(alpha: 0.65)
+        : const Color(0xFF2E355C).withValues(alpha: 0.62);
+    final centerAuraOpacity = isDark
+        ? (0.11 + (0.08 * titleReveal))
+        : (0.07 + (0.05 * titleReveal));
+
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      decoration: BoxDecoration(color: backgroundColor),
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: IgnorePointer(
+              child: CustomPaint(
+                painter: _WebCinematicBarsPainter(
+                  progress: t,
+                  accentA: accentA,
+                  accentB: accentB,
+                ),
+              ),
+            ),
+          ),
+          Positioned.fill(
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    center: const Alignment(0, 0.12),
+                    radius: 1.0,
+                    colors: [
+                      accentA.withValues(alpha: centerAuraOpacity),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Center(
+            child: Transform.scale(
+              scale: 0.92 + (0.08 * titleReveal),
+              child: Opacity(
+                opacity: titleReveal,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Transform.translate(
+                      offset: Offset(0, 38 * (1 - logoReveal)),
+                      child: Opacity(
+                        opacity: logoReveal,
+                        child: ShaderMask(
+                          blendMode: BlendMode.srcIn,
+                          shaderCallback: (bounds) => LinearGradient(
+                            begin: Alignment(-0.7 + t, -1),
+                            end: Alignment(0.8 + t, 1),
+                            colors: [
+                              accentA,
+                              Colors.white,
+                              accentB,
+                            ],
+                          ).createShader(bounds),
+                          child: const Text(
+                            'NFZ',
+                            style: TextStyle(
+                              fontSize: 128,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 4.5,
+                              height: 0.95,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Opacity(
+                      opacity: titleReveal,
+                      child: Text(
+                        'NoFaceZone',
+                        style: TextStyle(
+                          fontSize: 54,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.8,
+                          color: titleColor,
+                          shadows: [
+                            Shadow(
+                              color: accentB.withValues(alpha: 0.4),
+                              blurRadius: 24,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Transform.translate(
+                      offset: Offset(0, 14 * (1 - subtitleReveal)),
+                      child: Opacity(
+                        opacity: subtitleReveal,
+                        child: Text(
+                          loc?.splashTagline ?? 'Menos ruido digital, mas vida real',
+                          style: TextStyle(
+                            color: subtitleColor,
+                            fontSize: 15.5,
+                            letterSpacing: 0.8,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 26),
+                    SizedBox(
+                      width: 300,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(999),
+                        child: Stack(
+                          children: [
+                            Container(
+                              height: 4,
+                              color: trackColor,
+                            ),
+                            FractionallySizedBox(
+                              widthFactor: t.clamp(0.0, 1.0),
+                              child: Container(
+                                height: 4,
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      accentA,
+                                      Colors.white,
+                                      accentB,
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Opacity(
+                      opacity: 0.45 + (0.45 * subtitleReveal),
+                      child: Text(
+                        loc?.splashLoading ?? 'Preparando tu experiencia...',
+                        style: TextStyle(
+                          color: loadingColor,
+                          fontSize: 12.5,
+                          letterSpacing: 0.4,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Positioned.fill(
+            child: IgnorePointer(
+              child: ColoredBox(
+                color: Colors.white.withValues(alpha: flashOpacity),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final appProvider = Provider.of<AppProvider>(context);
@@ -359,6 +704,14 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
         animation: _intro,
         builder: (context, _) {
           final t = _intro.value;
+          if (kIsWeb) {
+            return _buildWebSplash(
+              loc: loc,
+              accentA: accentA,
+              accentB: accentB,
+              t: t,
+            );
+          }
           final flashOpacity = (math.sin(_flash.value * math.pi) * 0.14).clamp(0.0, 0.14) * _flash.value;
 
           return Container(
